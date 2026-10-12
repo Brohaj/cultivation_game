@@ -1,0 +1,1894 @@
+{
+  "name": "Культиватор",
+  "qi": 707809.2,
+  "daoProgress": 1025.1664135657356,
+  "daoLevel": 17,
+  "realmIndex": 7,
+  "subLevel": 2,
+  "years": 1375,
+  "birthYear": 0,
+  "strength": 70,
+  "spirit": 122,
+  "luck": 53,
+  "stones": 7842,
+  "pills": 110,
+  "daoEssence": 53,
+  "artifactDust": 157,
+  "refinedPills": 6,
+  "spiritualPills": 0,
+  "heavenlyPills": 0,
+  "enhanceFailstacks": 0,
+  "daoScrolls": 30,
+  "scrollFailstacksApplied": 0,
+  "flags": {
+    "wonCombat": true,
+    "caravan_ally": true,
+    "caravan_ally_year": 25,
+    "caravan_ally_name": "Тань Хао",
+    "helped_hermit": true,
+    "helped_hermit_year": 37,
+    "merchant_step": 99,
+    "merchant_year": 62,
+    "_cd_failed_alchemist": 389,
+    "found_accessory": true,
+    "caravan_ally_returned": true,
+    "joinedSect": true,
+    "_cd_old_teahouse": 671,
+    "completedExpedition": true,
+    "expedition_spirit_forest": true,
+    "sectMissionsCompleted": 159,
+    "jade_beauty_saved": true,
+    "pillsDonated": 134,
+    "ancient_step": 99,
+    "ancient_year": 272,
+    "campfire_friend": true,
+    "campfire_friend_year": 194,
+    "campfire_friend_name": "Бай Мин",
+    "expedition_beast_cave": true,
+    "elder_kindness": true,
+    "elder_kindness_year": 290,
+    "elder_kindness_name": "Чжан Лун",
+    "sect_crisis_step": 99,
+    "sect_crisis_year": 374,
+    "_cd_snoring_elder": 332,
+    "met_granny": true,
+    "met_granny_year": 344,
+    "met_granny_name": "Бабушка Лу",
+    "expedition_heavenly_auction": true,
+    "_cd_night_market_filler": 380,
+    "failedBreakthrough": true,
+    "breakthroughFails": {
+      "4": 1,
+      "5": 3,
+      "6": 3,
+      "7": 1
+    },
+    "campfire_sparred": true,
+    "coreDisciple": true,
+    "_cd_starry_night": 926,
+    "met_weapon_boy": true,
+    "elder_patriarch_done": true,
+    "_cd_cranes_south": 530,
+    "jade_crimson_cd": 1106,
+    "star_prophecy": true,
+    "star_prophecy_era": "invasion",
+    "_cd_valley_dawn": 596,
+    "_cd_mountain_storm": 1280,
+    "patrol_cd": 1364,
+    "spirit_beast_healed": true,
+    "_cd_bell_fog": 1313,
+    "expedition_forgotten_ruins": true,
+    "heard_survivor": true,
+    "_cd_drunk_cultivator": 755,
+    "met_cold_gaze": true,
+    "_cd_lake_reflection": 809,
+    "met_dark_lord": true,
+    "demonFailsafeUsed": true,
+    "granny_special": true,
+    "_cd_petals": 1172,
+    "scroll_fragment_1": true,
+    "scroll_fragment_1_year": 911,
+    "_cd_two_clouds": 1301,
+    "era_invasion_cd": 1223,
+    "_cd_invisible": 1337,
+    "_cd_ancient_obelisk": 1157,
+    "hermit_returned": true,
+    "star_prophecy_claimed": true,
+    "moon_supply_cd": 1037,
+    "expedition_demon_abyss": true,
+    "heard_dark_lord": true,
+    "trial_artifact": true,
+    "_cd_echo": 1334,
+    "_cd_river_upstream": 1361,
+    "scroll_fragment_2": true
+  },
+  "techniques": [
+    "basic_breathing",
+    "jade_meditation",
+    "iron_body",
+    "void_perception",
+    "jade_barrier",
+    "stone_meditation",
+    "mirror_soul_art",
+    "sword_of_ten_thousand",
+    "wood_rejuvenation",
+    "thunder_fist",
+    "blood_moon_sutra",
+    "body_masters_legacy"
+  ],
+  "equippedTechniques": [
+    "jade_meditation",
+    "jade_barrier",
+    "void_perception",
+    "sword_of_ten_thousand",
+    "wood_rejuvenation",
+    "blood_moon_sutra"
+  ],
+  "techLevels": {
+    "basic_breathing": 5,
+    "jade_meditation": 11,
+    "iron_body": 7,
+    "void_perception": 8,
+    "jade_barrier": 5,
+    "stone_meditation": 1,
+    "mirror_soul_art": 5,
+    "sword_of_ten_thousand": 7,
+    "wood_rejuvenation": 9,
+    "thunder_fist": 1,
+    "blood_moon_sutra": 3,
+    "body_masters_legacy": 1
+  },
+  "techAscendedTiers": {
+    "basic_breathing": "uncommon"
+  },
+  "spiritualRoot": {
+    "id": "common",
+    "name": "Обычный корень",
+    "description": "Как и большинство людей, вы не обладаете особым талантом. Но путь открыт.",
+    "qiMultiplier": 1,
+    "elements": [],
+    "tier": "common",
+    "color": "#aaa"
+  },
+  "milestones": [
+    "first_qi",
+    "first_technique",
+    "first_break",
+    "win_combat",
+    "realm_2",
+    "five_breakthroughs",
+    "stones_100",
+    "first_artifact",
+    "joined_sect",
+    "stat_10",
+    "first_expedition",
+    "realm_3",
+    "age_100",
+    "first_adventure",
+    "artifact_rare",
+    "artifact_epic",
+    "artifact_legendary",
+    "ten_breakthroughs",
+    "stones_500",
+    "realm_4",
+    "stat_25",
+    "first_formation",
+    "sect_missions_20",
+    "dao_3",
+    "age_250",
+    "three_techniques",
+    "dao_level_5",
+    "realm_5",
+    "five_techniques",
+    "sect_rank_3",
+    "stat_50",
+    "failed_break",
+    "full_equipment",
+    "adventures_5",
+    "combat_power_50",
+    "realm_6",
+    "breakthroughs_20",
+    "age_500",
+    "artifact_enhance_5",
+    "adventures_10_life",
+    "realm_7",
+    "stones_1000",
+    "sect_rank_5",
+    "mastered_jade",
+    "stones_2000",
+    "ten_techniques",
+    "age_1000",
+    "stones_5000",
+    "expedition_demon_abyss",
+    "combat_power_200",
+    "realm_8"
+  ],
+  "totalMeditations": 22888,
+  "meditationYears": 1294,
+  "totalBreakthroughs": 29,
+  "worldEvent": {
+    "id": "spirit_tide",
+    "name": "Духовный Прилив",
+    "startYear": 1362,
+    "duration": 70,
+    "modifiers": {
+      "qiMultiplier": 1.8
+    },
+    "color": "#44ccaa"
+  },
+  "lastWorldEventYear": 1362,
+  "currentActivity": "meditation",
+  "activityXP": {
+    "strength": 8185.176486603584,
+    "spirit": 87416.5138464588,
+    "luck": 3.844361566489359
+  },
+  "techXP": {
+    "basic_breathing": 74.89500992001022,
+    "jade_meditation": 217.83478268382325,
+    "iron_body": 1144.4724861969135,
+    "void_perception": 2964.658984443248,
+    "jade_barrier": 0.01505353507855034,
+    "stone_meditation": 0,
+    "mirror_soul_art": 963.1972772334726,
+    "sword_of_ten_thousand": 5966.5118426365525,
+    "wood_rejuvenation": 397.4581899621205,
+    "thunder_fist": 0,
+    "blood_moon_sutra": 2510.659978811492,
+    "body_masters_legacy": 0
+  },
+  "_pendingInsightXP": null,
+  "_insightTicksLeft": 0,
+  "sect": {
+    "id": "jade_purity",
+    "rank": 4,
+    "contribution": 7334
+  },
+  "sectMissions": [
+    {
+      "templateId": "hall_master_artifact",
+      "text": "Секта поручает Главе Зала возглавить экспедицию за древним артефактом.",
+      "type": "combat",
+      "description": "Боевая мощь 226+ — добыть древний артефакт",
+      "cost": null,
+      "check": {
+        "combatPower": 226
+      },
+      "reward": {
+        "artifact": "rare",
+        "stones": 68,
+        "pills": 1
+      },
+      "cooldown": 0,
+      "meditationYearsAtStart": 1293,
+      "breakthroughsAtStart": 29,
+      "pillsDonatedAtStart": 134
+    },
+    {
+      "templateId": "hall_master_treasury",
+      "text": "Глава Зала открывает доступ к тайной сокровищнице секты.",
+      "type": "combat",
+      "description": "Боевая мощь 187+ — пройти стражей сокровищницы",
+      "cost": null,
+      "check": {
+        "combatPower": 187
+      },
+      "reward": {
+        "stones": 152,
+        "daoScroll": 1,
+        "pills": 1
+      },
+      "cooldown": 0,
+      "meditationYearsAtStart": 1293,
+      "breakthroughsAtStart": 29,
+      "pillsDonatedAtStart": 134
+    },
+    {
+      "templateId": "hall_master_wisdom",
+      "text": "Глава Зала проводит закрытое духовное испытание для совета секты.",
+      "type": "meditation",
+      "description": "Дух 79+ для прохождения совета",
+      "cost": null,
+      "check": {
+        "spirit": 79
+      },
+      "reward": {
+        "daoScroll": 2,
+        "stones": 122,
+        "pills": 1
+      },
+      "cooldown": 0,
+      "meditationYearsAtStart": 1293,
+      "breakthroughsAtStart": 29,
+      "pillsDonatedAtStart": 134
+    }
+  ],
+  "sectMissionTimer": 12,
+  "expedition": null,
+  "_insightUses": 0,
+  "ascendedLocations": {
+    "spirit_forest": 1
+  },
+  "expeditionCompletions": {
+    "spirit_forest": 13,
+    "beast_cave": 6,
+    "heavenly_auction": 4,
+    "forgotten_ruins": 7,
+    "demon_abyss": 2
+  },
+  "lastExpeditionReward": {
+    "locationId": "spirit_forest",
+    "locationName": "Лес Духовных Трав",
+    "rewards": [
+      "+78 камней",
+      "+36 эссенции",
+      "+27 пыли",
+      "+4 пилюль",
+      "+181 постижение Дао (×2 секта)"
+    ],
+    "year": 1370
+  },
+  "_lastExpeditionId": "spirit_forest",
+  "adventureRumors": [],
+  "activeAdventures": [],
+  "completedAdventures": [
+    "root_eater",
+    "lost_caravan",
+    "crane_peak",
+    "hundred_schools",
+    "elder_betrayal",
+    "abandoned_temple",
+    "ascend_spirit_forest",
+    "mirror_lake",
+    "ancient_tomb",
+    "fog_mentor",
+    "dragon_bones",
+    "mirror_library",
+    "shadow_market",
+    "demon_lair",
+    "tribulation_trial"
+  ],
+  "lastAdventureReward": {
+    "id": "tribulation_trial",
+    "name": "Испытание Небесной Кары",
+    "rewards": [
+      "+38 эссенции",
+      "+29 пыли",
+      "артефакт: Облачное Копьё Охоты",
+      "+117 постижение Дао"
+    ],
+    "year": 1300
+  },
+  "artifacts": [
+    {
+      "id": "art_1791745531938_5151",
+      "name": "Мудрейшее Зеркало Ци",
+      "slot": "treasure",
+      "tier": "legendary",
+      "effects": {
+        "techXpSpeed": 30.9,
+        "qi": 30.3
+      },
+      "enhance": 6,
+      "transcend": 0,
+      "investedEssence": 240,
+      "investedDust": 240
+    },
+    {
+      "id": "art_1791745981372_5835",
+      "name": "Простая Секира Силы",
+      "slot": "weapon",
+      "tier": "common",
+      "effects": {
+        "strength": 6.5
+      },
+      "enhance": 5,
+      "transcend": 0,
+      "investedEssence": 140,
+      "investedDust": 140
+    },
+    {
+      "id": "art_1791746409336_5232",
+      "name": "Пламенная Кираса Долголетия",
+      "slot": "armor",
+      "tier": "rare",
+      "effects": {
+        "lifespan": 7.8
+      },
+      "enhance": 5,
+      "transcend": 0,
+      "investedEssence": 90,
+      "investedDust": 90
+    },
+    {
+      "id": "art_1791746824379_219",
+      "name": "Пламенный Амулет Прорыва",
+      "slot": "accessory",
+      "tier": "rare",
+      "effects": {
+        "breakthroughBonus": 1.2
+      },
+      "enhance": 6,
+      "transcend": 0,
+      "investedEssence": 240,
+      "investedDust": 240
+    },
+    {
+      "id": "art_1791747548712_8960",
+      "name": "Закалённая Курильница Ци",
+      "slot": "treasure",
+      "tier": "uncommon",
+      "effects": {
+        "qi": 11.9
+      },
+      "enhance": 0,
+      "transcend": 0,
+      "investedEssence": 0,
+      "investedDust": 0
+    },
+    {
+      "id": "art_1791747560155_3080",
+      "name": "Кристальная Роба Алхимии",
+      "slot": "armor",
+      "tier": "rare",
+      "effects": {
+        "pillEffect": 8.8
+      },
+      "enhance": 0,
+      "transcend": 0,
+      "investedEssence": 0,
+      "investedDust": 0
+    },
+    {
+      "id": "art_1791747560456_3761",
+      "name": "Яшмовая Роба Долголетия",
+      "slot": "armor",
+      "tier": "uncommon",
+      "effects": {
+        "lifespan": 6.4
+      },
+      "enhance": 0,
+      "transcend": 0,
+      "investedEssence": 0,
+      "investedDust": 0
+    },
+    {
+      "id": "art_1791747570733_1582",
+      "name": "Закалённая Секира Мощи",
+      "slot": "weapon",
+      "tier": "uncommon",
+      "effects": {
+        "combatPower": 6.6
+      },
+      "enhance": 4,
+      "transcend": 0,
+      "investedEssence": 90,
+      "investedDust": 90
+    },
+    {
+      "id": "art_1791747631144_3112",
+      "name": "Древняя Жемчужина Роста",
+      "slot": "treasure",
+      "tier": "rare",
+      "effects": {
+        "statXpSpeed": 11.9
+      },
+      "enhance": 0,
+      "transcend": 0,
+      "investedEssence": 0,
+      "investedDust": 0
+    }
+  ],
+  "equippedArtifacts": {
+    "weapon": {
+      "id": "art_1791745981372_5835",
+      "name": "Простая Секира Силы",
+      "slot": "weapon",
+      "tier": "common",
+      "effects": {
+        "strength": 6.5
+      },
+      "enhance": 5,
+      "transcend": 0,
+      "investedEssence": 140,
+      "investedDust": 140
+    },
+    "armor": {
+      "id": "art_1791746409336_5232",
+      "name": "Пламенная Кираса Долголетия",
+      "slot": "armor",
+      "tier": "rare",
+      "effects": {
+        "lifespan": 7.8
+      },
+      "enhance": 5,
+      "transcend": 0,
+      "investedEssence": 90,
+      "investedDust": 90
+    },
+    "accessory": {
+      "id": "art_1791746824379_219",
+      "name": "Пламенный Амулет Прорыва",
+      "slot": "accessory",
+      "tier": "rare",
+      "effects": {
+        "breakthroughBonus": 1.2
+      },
+      "enhance": 6,
+      "transcend": 0,
+      "investedEssence": 240,
+      "investedDust": 240
+    },
+    "treasure": {
+      "id": "art_1791745531938_5151",
+      "name": "Мудрейшее Зеркало Ци",
+      "slot": "treasure",
+      "tier": "legendary",
+      "effects": {
+        "techXpSpeed": 30.9,
+        "qi": 30.3
+      },
+      "enhance": 6,
+      "transcend": 0,
+      "investedEssence": 240,
+      "investedDust": 240
+    }
+  },
+  "formations": {
+    "breakthroughAltar": 17,
+    "qiPillar": 15
+  },
+  "selectedFormations": [
+    "breakthroughAltar",
+    "qiPillar"
+  ],
+  "gameOver": false,
+  "prestige": {
+    "karma": 0,
+    "totalRebirths": 0,
+    "permanentMilestones": [
+      "first_qi",
+      "first_technique",
+      "first_break",
+      "win_combat",
+      "realm_2",
+      "five_breakthroughs",
+      "stones_100",
+      "first_artifact",
+      "visited_sect_jade_purity",
+      "joined_sect",
+      "stat_10",
+      "first_expedition",
+      "realm_3",
+      "age_100",
+      "completed_adventure_root_eater",
+      "first_adventure",
+      "artifact_rare",
+      "artifact_epic",
+      "artifact_legendary",
+      "ten_breakthroughs",
+      "completed_adventure_lost_caravan",
+      "stones_500",
+      "realm_4",
+      "stat_25",
+      "first_formation",
+      "sect_missions_20",
+      "dao_3",
+      "age_250",
+      "completed_adventure_crane_peak",
+      "three_techniques",
+      "dao_level_5",
+      "realm_5",
+      "completed_adventure_hundred_schools",
+      "five_techniques",
+      "sect_rank_3",
+      "stat_50",
+      "failed_break",
+      "full_equipment",
+      "completed_adventure_elder_betrayal",
+      "adventures_5",
+      "completed_adventure_abandoned_temple",
+      "combat_power_50",
+      "realm_6",
+      "breakthroughs_20",
+      "age_500",
+      "completed_adventure_ascend_spirit_forest",
+      "completed_adventure_mirror_lake",
+      "completed_adventure_ancient_tomb",
+      "artifact_enhance_5",
+      "completed_adventure_fog_mentor",
+      "adventures_10_life",
+      "realm_7",
+      "completed_adventure_dragon_bones",
+      "stones_1000",
+      "mastered_sect_jade_purity",
+      "sect_rank_5",
+      "mastered_jade",
+      "completed_adventure_mirror_library",
+      "completed_adventure_shadow_market",
+      "stones_2000",
+      "ten_techniques",
+      "age_1000",
+      "stones_5000",
+      "expedition_demon_abyss",
+      "combat_power_200",
+      "realm_8",
+      "completed_adventure_demon_lair",
+      "completed_adventure_tribulation_trial"
+    ],
+    "karmaUpgrades": {},
+    "lastBody": "peasant",
+    "bodyAscensions": {},
+    "worldAge": 0,
+    "daoLevels": {
+      "jade_purity": 17
+    },
+    "unlockedFormations": [
+      "qiPillar",
+      "breakthroughAltar"
+    ],
+    "totalAdventures": 15
+  },
+  "pendingRebirth": null,
+  "_minRootTier": null,
+  "version": 14,
+  "_computed": {
+    "characterAge": 1375,
+    "maxAge": 4485,
+    "realmName": "Слияние Тела",
+    "subLevelName": "Средний",
+    "rootName": "Обычный корень",
+    "rootTier": "common",
+    "rootElements": [],
+    "rootQiMultiplier": 1,
+    "bodyName": "Обычный Крестьянин",
+    "bodyId": "peasant",
+    "qiPerSec": 15180,
+    "qiNeeded": 1760000,
+    "qiPct": 40.22,
+    "spiritMult": 7.281424945589405,
+    "strengthMult": 3.5852224,
+    "qiMultiplier": 1.62,
+    "techQiMult": 2.94,
+    "karmaQiMult": 1,
+    "elementalMult": 1,
+    "formationQiMult": 2.5,
+    "artifactQiMult": 1.6333623278846081,
+    "sectQiMult": 1.15,
+    "combatPower": 268,
+    "artifactStrength": 16.174079999999996,
+    "artifactCombatPower": 0,
+    "techCombatMult": 3.121,
+    "sectCombatMult": 1,
+    "daoProgress": 1025.1664135657356,
+    "daoLevel": 17,
+    "daoNeeded": 1350,
+    "daoPct": 75.94,
+    "daoPath": "water",
+    "daoName": "Путь Воды",
+    "daoActivity": "dao",
+    "daoLevelsAll": {
+      "jade_purity": 17
+    },
+    "unlockedFormations": [
+      "qiPillar",
+      "breakthroughAltar"
+    ],
+    "breakthroughChance": 48.25,
+    "demonChance": 35.67,
+    "techBreakthroughBonus": 0,
+    "artifactBreakthroughBonus": 0.03583180799999999,
+    "sectBreakthroughBonus": 0.06,
+    "formationBreakthroughBonus": 0.068,
+    "qiRetention": 0.4,
+    "statXpPerTick_strength": 40.11644951669637,
+    "statXpPerTick_spirit": 59.18419467860129,
+    "statXpPerTick_luck": 33.01771159996263,
+    "statXpNeeded_strength": 10649,
+    "statXpNeeded_spirit": 234652,
+    "statXpNeeded_luck": 5628,
+    "totalLuck": 53,
+    "techSlots": "6/6",
+    "techniquesDetail": [
+      {
+        "id": "basic_breathing",
+        "name": "Техника Глубокого Дыхания",
+        "tier": "uncommon",
+        "equipped": false,
+        "level": 5,
+        "maxLevel": 5,
+        "xp": 74.89500992001022,
+        "xpNeeded": 746,
+        "xpPerTick": 0,
+        "effects": {
+          "qi": 0.03
+        },
+        "element": null
+      },
+      {
+        "id": "jade_meditation",
+        "name": "Нефритовая Медитация",
+        "tier": "rare",
+        "equipped": true,
+        "level": 11,
+        "maxLevel": 12,
+        "xp": 217.83478268382325,
+        "xpNeeded": 9807,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "qi": 0.04
+        },
+        "element": "water"
+      },
+      {
+        "id": "iron_body",
+        "name": "Техника Железного Тела",
+        "tier": "uncommon",
+        "equipped": false,
+        "level": 7,
+        "maxLevel": 8,
+        "xp": 1144.4724861969135,
+        "xpNeeded": 1504,
+        "xpPerTick": 0,
+        "effects": {
+          "qiRetention": 0.0125
+        },
+        "element": null
+      },
+      {
+        "id": "void_perception",
+        "name": "Восприятие Пустоты",
+        "tier": "epic",
+        "equipped": true,
+        "level": 8,
+        "maxLevel": 12,
+        "xp": 2964.658984443248,
+        "xpNeeded": 8599,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "qi": 0.04
+        },
+        "element": null
+      },
+      {
+        "id": "jade_barrier",
+        "name": "Нефритовый Барьер Духа",
+        "tier": "epic",
+        "equipped": true,
+        "level": 5,
+        "maxLevel": 5,
+        "xp": 0.01505353507855034,
+        "xpNeeded": 3110,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "qiRetention": 0.02
+        },
+        "element": "water"
+      },
+      {
+        "id": "stone_meditation",
+        "name": "Медитация Каменного Будды",
+        "tier": "uncommon",
+        "equipped": false,
+        "level": 1,
+        "maxLevel": 8,
+        "xp": 0,
+        "xpNeeded": 72,
+        "xpPerTick": 0,
+        "effects": {
+          "qi": 0.04
+        },
+        "element": "earth"
+      },
+      {
+        "id": "mirror_soul_art",
+        "name": "Искусство Зеркальной Души",
+        "tier": "epic",
+        "equipped": false,
+        "level": 5,
+        "maxLevel": 12,
+        "xp": 963.1972772334726,
+        "xpNeeded": 3110,
+        "xpPerTick": 0,
+        "effects": {
+          "daoSpeed": 0.0075
+        },
+        "element": null
+      },
+      {
+        "id": "sword_of_ten_thousand",
+        "name": "Десять Тысяч Мечей",
+        "tier": "epic",
+        "equipped": true,
+        "level": 7,
+        "maxLevel": 12,
+        "xp": 5966.5118426365525,
+        "xpNeeded": 6270,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "combatPower": 0.06
+        },
+        "element": null
+      },
+      {
+        "id": "wood_rejuvenation",
+        "name": "Восстановление Древесной Ци",
+        "tier": "rare",
+        "equipped": true,
+        "level": 9,
+        "maxLevel": 10,
+        "xp": 397.4581899621205,
+        "xpNeeded": 5572,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "lifespan": 0.03
+        },
+        "element": "wood"
+      },
+      {
+        "id": "thunder_fist",
+        "name": "Кулак Грома",
+        "tier": "rare",
+        "equipped": false,
+        "level": 1,
+        "maxLevel": 10,
+        "xp": 0,
+        "xpNeeded": 144,
+        "xpPerTick": 0,
+        "effects": {
+          "combatPower": 0.05
+        },
+        "element": "thunder"
+      },
+      {
+        "id": "blood_moon_sutra",
+        "name": "Сутра Кровавой Луны",
+        "tier": "legendary",
+        "equipped": true,
+        "level": 3,
+        "maxLevel": 15,
+        "xp": 2510.659978811492,
+        "xpNeeded": 2591,
+        "xpPerTick": 5.632888508267968,
+        "effects": {
+          "combatPower": 0.035
+        },
+        "element": null
+      },
+      {
+        "id": "body_masters_legacy",
+        "name": "Наследие Бродячего Мастера",
+        "tier": "uncommon",
+        "equipped": false,
+        "level": 1,
+        "maxLevel": 8,
+        "xp": 0,
+        "xpNeeded": 72,
+        "xpPerTick": 0,
+        "effects": {
+          "statXpSpeed": 0.02,
+          "techXpSpeed": 0.02
+        },
+        "element": null
+      }
+    ],
+    "equippedDetail": [
+      {
+        "slot": "weapon",
+        "name": "Простая Секира Силы",
+        "tier": "common",
+        "enhance": 5,
+        "transcend": 0,
+        "effects": {
+          "strength": 6.5
+        },
+        "enhanceMult": 2.4883199999999994
+      },
+      {
+        "slot": "armor",
+        "name": "Пламенная Кираса Долголетия",
+        "tier": "rare",
+        "enhance": 5,
+        "transcend": 0,
+        "effects": {
+          "lifespan": 7.8
+        },
+        "enhanceMult": 2.4883199999999994
+      },
+      {
+        "slot": "accessory",
+        "name": "Пламенный Амулет Прорыва",
+        "tier": "rare",
+        "enhance": 6,
+        "transcend": 0,
+        "effects": {
+          "breakthroughBonus": 1.2
+        },
+        "enhanceMult": 2.9859839999999993
+      },
+      {
+        "slot": "treasure",
+        "name": "Мудрейшее Зеркало Ци",
+        "tier": "legendary",
+        "enhance": 6,
+        "transcend": 0,
+        "effects": {
+          "techXpSpeed": 30.9,
+          "qi": 30.3
+        },
+        "enhanceMult": 2.9859839999999993
+      }
+    ],
+    "activeFormations": [
+      {
+        "id": "breakthroughAltar",
+        "name": "Алтарь Прорыва",
+        "effectKey": "breakthroughBonus",
+        "level": 17,
+        "maxLevel": 20,
+        "daoCap": 17,
+        "effectiveMax": 17,
+        "sect": "jade_purity",
+        "totalBonus": 0.068
+      },
+      {
+        "id": "qiPillar",
+        "name": "Нефритовый Столб Ци",
+        "effectKey": "qi",
+        "level": 15,
+        "maxLevel": 20,
+        "daoCap": 17,
+        "effectiveMax": 17,
+        "sect": "jade_purity",
+        "totalBonus": 1.5
+      }
+    ],
+    "sectName": "Секта Нефритовой Чистоты",
+    "sectRankName": "Глава Секты",
+    "sectRankMult": 2,
+    "sectContribution": 7334,
+    "sectNextRank": null,
+    "sectElementAffinity": 0.75,
+    "eraName": "Демоническое Нашествие",
+    "eraQiMult": 0.9,
+    "eraDangerWeight": 2,
+    "eraRewardWeight": 1.6,
+    "worldEventName": "Духовный Прилив",
+    "bodyPerks": {
+      "id": "karmaBonus",
+      "karmaBonus": 0.25
+    },
+    "speedMultiplier": 1,
+    "debugSpeed": 3,
+    "pacing": {
+      "secsToQiFull": 70,
+      "minsToQiFull": 1.2,
+      "breakthroughChancePct": 48.25,
+      "avgAttemptsToBreakthrough": 3,
+      "avgSecsPerBreakthrough": 348,
+      "avgMinsPerBreakthrough": 5.8,
+      "yearsToMaxAge": 3110,
+      "daoPct": 76,
+      "daoLeft": 324,
+      "daoNeeded": 1350,
+      "stats": {
+        "strength": {
+          "level": 70,
+          "xpLeft": 2463.82,
+          "secsToNextLevel": 62,
+          "secsToNextLevel_passive": 410
+        },
+        "spirit": {
+          "level": 122,
+          "xpLeft": 147235.49,
+          "secsToNextLevel": 2488,
+          "secsToNextLevel_passive": 16586
+        },
+        "luck": {
+          "level": 53,
+          "xpLeft": 5624.16,
+          "secsToNextLevel": 171,
+          "secsToNextLevel_passive": 1136
+        }
+      }
+    },
+    "breakthroughFails": {
+      "4": 1,
+      "5": 3,
+      "6": 3,
+      "7": 1
+    },
+    "pills": {
+      "basic": 110,
+      "refined": 6,
+      "spiritual": 0,
+      "heavenly": 0
+    },
+    "pillBreakthroughBonus": 0,
+    "heavenlyStats": {},
+    "income": {
+      "stonesPerYear": 22,
+      "stonesPerMinute": 792,
+      "yearsPerMinuteRealtime": 36,
+      "expeditionActive": null
+    },
+    "allArtifacts": [
+      {
+        "id": "art_1791745531938_5151",
+        "name": "Мудрейшее Зеркало Ци",
+        "slot": "treasure",
+        "tier": "legendary",
+        "enhance": 6,
+        "transcend": 0,
+        "effects": {
+          "techXpSpeed": 30.9,
+          "qi": 30.3
+        },
+        "equipped": true
+      },
+      {
+        "id": "art_1791745981372_5835",
+        "name": "Простая Секира Силы",
+        "slot": "weapon",
+        "tier": "common",
+        "enhance": 5,
+        "transcend": 0,
+        "effects": {
+          "strength": 6.5
+        },
+        "equipped": true
+      },
+      {
+        "id": "art_1791746409336_5232",
+        "name": "Пламенная Кираса Долголетия",
+        "slot": "armor",
+        "tier": "rare",
+        "enhance": 5,
+        "transcend": 0,
+        "effects": {
+          "lifespan": 7.8
+        },
+        "equipped": true
+      },
+      {
+        "id": "art_1791746824379_219",
+        "name": "Пламенный Амулет Прорыва",
+        "slot": "accessory",
+        "tier": "rare",
+        "enhance": 6,
+        "transcend": 0,
+        "effects": {
+          "breakthroughBonus": 1.2
+        },
+        "equipped": true
+      },
+      {
+        "id": "art_1791747548712_8960",
+        "name": "Закалённая Курильница Ци",
+        "slot": "treasure",
+        "tier": "uncommon",
+        "enhance": 0,
+        "transcend": 0,
+        "effects": {
+          "qi": 11.9
+        },
+        "equipped": false
+      },
+      {
+        "id": "art_1791747560155_3080",
+        "name": "Кристальная Роба Алхимии",
+        "slot": "armor",
+        "tier": "rare",
+        "enhance": 0,
+        "transcend": 0,
+        "effects": {
+          "pillEffect": 8.8
+        },
+        "equipped": false
+      },
+      {
+        "id": "art_1791747560456_3761",
+        "name": "Яшмовая Роба Долголетия",
+        "slot": "armor",
+        "tier": "uncommon",
+        "enhance": 0,
+        "transcend": 0,
+        "effects": {
+          "lifespan": 6.4
+        },
+        "equipped": false
+      },
+      {
+        "id": "art_1791747570733_1582",
+        "name": "Закалённая Секира Мощи",
+        "slot": "weapon",
+        "tier": "uncommon",
+        "enhance": 4,
+        "transcend": 0,
+        "effects": {
+          "combatPower": 6.6
+        },
+        "equipped": false
+      },
+      {
+        "id": "art_1791747631144_3112",
+        "name": "Древняя Жемчужина Роста",
+        "slot": "treasure",
+        "tier": "rare",
+        "enhance": 0,
+        "transcend": 0,
+        "effects": {
+          "statXpSpeed": 11.9
+        },
+        "equipped": false
+      }
+    ],
+    "expeditions": {
+      "spirit_forest": {
+        "name": "Сердце Древнего Леса",
+        "completions": 13,
+        "ascendTier": 1,
+        "rewardMult": 2,
+        "nextAscend": "13/20"
+      },
+      "beast_cave": {
+        "name": "Пещера Древнего Зверя",
+        "completions": 6,
+        "ascendTier": 0,
+        "rewardMult": 1,
+        "nextAscend": "6/10"
+      },
+      "forgotten_ruins": {
+        "name": "Руины Забытой Секты",
+        "completions": 7,
+        "ascendTier": 0,
+        "rewardMult": 1,
+        "nextAscend": "7/10"
+      },
+      "heavenly_auction": {
+        "name": "Небесный Аукцион",
+        "completions": 4,
+        "ascendTier": 0,
+        "rewardMult": 1,
+        "nextAscend": "4/10"
+      },
+      "demon_abyss": {
+        "name": "Бездна Демонов",
+        "completions": 2,
+        "ascendTier": 0,
+        "rewardMult": 1,
+        "nextAscend": "2/10"
+      }
+    },
+    "daoSpeedMult": 1.13,
+    "statXpSpeedTotal": {
+      "formation": 0,
+      "sect": 0,
+      "artifact": 0,
+      "technique": 0,
+      "total": 0
+    },
+    "techXpSpeedTotal": {
+      "formation": 0,
+      "sect": 0,
+      "artifact": 0.6374675896127814,
+      "technique": 0,
+      "total": 0.6374675896127814
+    },
+    "adventureStats": {
+      "totalAdventures": 15,
+      "completedThisLife": 15,
+      "activeRumors": 0,
+      "activeAdventures": 0
+    },
+    "costs": {
+      "formations": [
+        {
+          "name": "Алтарь Прорыва",
+          "nextLevelCost": 1290,
+          "currentLevel": 17
+        },
+        {
+          "name": "Нефритовый Столб Ци",
+          "nextLevelCost": 415,
+          "currentLevel": 15
+        }
+      ],
+      "enhance": [
+        {
+          "slot": "weapon",
+          "name": "Простая Секира Силы",
+          "enhance": 5,
+          "nextChance": "35%",
+          "failstacks": 0
+        },
+        {
+          "slot": "armor",
+          "name": "Пламенная Кираса Долголетия",
+          "enhance": 5,
+          "nextChance": "29%",
+          "failstacks": 0
+        },
+        {
+          "slot": "accessory",
+          "name": "Пламенный Амулет Прорыва",
+          "enhance": 6,
+          "nextChance": "19%",
+          "failstacks": 0
+        },
+        {
+          "slot": "treasure",
+          "name": "Мудрейшее Зеркало Ци",
+          "enhance": 6,
+          "nextChance": "10%",
+          "failstacks": 0
+        }
+      ],
+      "breakthroughInsurance": 190,
+      "insightScroll": 31
+    },
+    "lifespan": {
+      "baseMaxAge": 3000,
+      "techBonus": 0.675,
+      "artifactBonus": 0.19408895999999995,
+      "totalBonus": 0.86908896,
+      "effectiveMaxAge": 4485
+    },
+    "qiRetentionBreakdown": {
+      "technique": 0.4,
+      "artifact": 0,
+      "sect": 0,
+      "body": 0,
+      "total": 0.4
+    },
+    "karma": {
+      "current": 0,
+      "totalSpent": 0,
+      "totalEver": 0,
+      "karmaPreview": 53,
+      "karmaPreviewNatural": 79,
+      "upgrades": {},
+      "bodyAscensions": {}
+    },
+    "expeditionDanger": null,
+    "worldEventDetail": {
+      "name": "Духовный Прилив",
+      "yearsLeft": 57,
+      "modifiers": {
+        "qiMultiplier": 1.8
+      }
+    },
+    "elementalResonance": {
+      "count": 0,
+      "techs": []
+    },
+    "bottleneck": [
+      "HIGH_DEMON: шанс демона 36%"
+    ],
+    "milestonesDetail": {
+      "total": 88,
+      "achieved": 51,
+      "byTier": {
+        "bronze": {
+          "done": 9,
+          "total": 10
+        },
+        "silver": {
+          "done": 18,
+          "total": 18
+        },
+        "gold": {
+          "done": 19,
+          "total": 26
+        },
+        "jade": {
+          "done": 4,
+          "total": 21
+        },
+        "secret": {
+          "done": 1,
+          "total": 13
+        }
+      },
+      "byCategory": {
+        "cultivation": {
+          "done": 23,
+          "total": 34
+        },
+        "combat": {
+          "done": 4,
+          "total": 5
+        },
+        "exploration": {
+          "done": 9,
+          "total": 11
+        },
+        "sect": {
+          "done": 8,
+          "total": 13
+        },
+        "artifacts": {
+          "done": 6,
+          "total": 8
+        },
+        "prestige": {
+          "done": 0,
+          "total": 4
+        },
+        "secret": {
+          "done": 1,
+          "total": 13
+        }
+      },
+      "achievedList": [
+        {
+          "id": "first_qi",
+          "name": "Первый Поток Ци",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "five_breakthroughs",
+          "name": "Усердный Ученик",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "first_break",
+          "name": "Первый Прорыв",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "realm_2",
+          "name": "Путь Очищения",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "realm_3",
+          "name": "Основание Заложено",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "first_technique",
+          "name": "Первая Техника",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "age_100",
+          "name": "Столетний Старец",
+          "tier": "bronze",
+          "category": "cultivation"
+        },
+        {
+          "id": "win_combat",
+          "name": "Первая Победа",
+          "tier": "bronze",
+          "category": "combat"
+        },
+        {
+          "id": "stones_100",
+          "name": "Малое Состояние",
+          "tier": "bronze",
+          "category": "exploration"
+        },
+        {
+          "id": "realm_4",
+          "name": "Золотое Ядро Сформировано",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "realm_5",
+          "name": "Душа Пробудилась",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "ten_breakthroughs",
+          "name": "Неутомимый Практик",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "five_techniques",
+          "name": "Собиратель Знаний",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "age_500",
+          "name": "Пятьсот Вёсен",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "three_techniques",
+          "name": "Путь Техник",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "age_250",
+          "name": "Четверть Тысячелетия",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "stat_10",
+          "name": "Закалённое Тело",
+          "tier": "silver",
+          "category": "cultivation"
+        },
+        {
+          "id": "first_formation",
+          "name": "Первая Формация",
+          "tier": "silver",
+          "category": "sect"
+        },
+        {
+          "id": "combat_power_50",
+          "name": "Боец",
+          "tier": "silver",
+          "category": "combat"
+        },
+        {
+          "id": "failed_break",
+          "name": "Упавший и Вставший",
+          "tier": "silver",
+          "category": "combat"
+        },
+        {
+          "id": "joined_sect",
+          "name": "Вступление в Секту",
+          "tier": "silver",
+          "category": "sect"
+        },
+        {
+          "id": "first_expedition",
+          "name": "Первая Экспедиция",
+          "tier": "silver",
+          "category": "exploration"
+        },
+        {
+          "id": "stones_500",
+          "name": "Духовное Состояние",
+          "tier": "silver",
+          "category": "exploration"
+        },
+        {
+          "id": "first_adventure",
+          "name": "Искатель Приключений",
+          "tier": "silver",
+          "category": "exploration"
+        },
+        {
+          "id": "first_artifact",
+          "name": "Первая Находка",
+          "tier": "silver",
+          "category": "artifacts"
+        },
+        {
+          "id": "artifact_rare",
+          "name": "Редкая Находка",
+          "tier": "silver",
+          "category": "artifacts"
+        },
+        {
+          "id": "realm_6",
+          "name": "Слияние с Пустотой",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "realm_7",
+          "name": "Слияние Тела",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "realm_8",
+          "name": "Небесная Кара",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "age_1000",
+          "name": "Тысячелетний Культиватор",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "breakthroughs_20",
+          "name": "Неудержимый",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "stat_25",
+          "name": "Мастер Тела и Духа",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "combat_power_200",
+          "name": "Гроза Поднебесной",
+          "tier": "gold",
+          "category": "combat"
+        },
+        {
+          "id": "sect_rank_3",
+          "name": "Ядровой Ученик",
+          "tier": "gold",
+          "category": "sect"
+        },
+        {
+          "id": "sect_rank_5",
+          "name": "Глава Секты",
+          "tier": "gold",
+          "category": "sect"
+        },
+        {
+          "id": "mastered_jade",
+          "name": "Мастер Нефритовой Чистоты",
+          "tier": "gold",
+          "category": "sect"
+        },
+        {
+          "id": "sect_missions_20",
+          "name": "Верный Слуга Секты",
+          "tier": "silver",
+          "category": "sect"
+        },
+        {
+          "id": "stones_1000",
+          "name": "Духовный Богач",
+          "tier": "gold",
+          "category": "exploration"
+        },
+        {
+          "id": "expedition_demon_abyss",
+          "name": "Покоритель Бездны",
+          "tier": "gold",
+          "category": "exploration"
+        },
+        {
+          "id": "artifact_enhance_5",
+          "name": "Начинающий Кузнец",
+          "tier": "gold",
+          "category": "artifacts"
+        },
+        {
+          "id": "full_equipment",
+          "name": "Полное Снаряжение",
+          "tier": "gold",
+          "category": "artifacts"
+        },
+        {
+          "id": "stat_50",
+          "name": "Грань Совершенства",
+          "tier": "gold",
+          "category": "cultivation"
+        },
+        {
+          "id": "artifact_epic",
+          "name": "Эпическая Находка",
+          "tier": "gold",
+          "category": "artifacts"
+        },
+        {
+          "id": "stones_2000",
+          "name": "Казна Секты",
+          "tier": "gold",
+          "category": "exploration"
+        },
+        {
+          "id": "dao_3",
+          "name": "Путь Дао",
+          "tier": "gold",
+          "category": "sect"
+        },
+        {
+          "id": "ten_techniques",
+          "name": "Мастер Ста Школ",
+          "tier": "jade",
+          "category": "cultivation"
+        },
+        {
+          "id": "dao_level_5",
+          "name": "Постигший Дао",
+          "tier": "jade",
+          "category": "sect"
+        },
+        {
+          "id": "stones_5000",
+          "name": "Сокровищница Дракона",
+          "tier": "jade",
+          "category": "exploration"
+        },
+        {
+          "id": "adventures_5",
+          "name": "Искатель Древностей",
+          "tier": "gold",
+          "category": "exploration"
+        },
+        {
+          "id": "artifact_legendary",
+          "name": "Легенда во Плоти",
+          "tier": "jade",
+          "category": "artifacts"
+        },
+        {
+          "id": "adventures_10_life",
+          "name": "Неутомимый Искатель",
+          "tier": "secret",
+          "category": "secret"
+        }
+      ],
+      "lockedList": [
+        {
+          "id": "first_pill",
+          "name": "Первая Пилюля",
+          "tier": "bronze",
+          "category": "cultivation",
+          "description": "Использовать пилюлю"
+        },
+        {
+          "id": "breakthroughs_50",
+          "name": "Разрушитель Барьеров",
+          "tier": "gold",
+          "category": "cultivation",
+          "description": "Совершить 50 прорывов за все жизни"
+        },
+        {
+          "id": "mastered_crimson",
+          "name": "Мастер Алого Пламени",
+          "tier": "gold",
+          "category": "sect",
+          "description": "Стать Главой Ордена Алого Пламени. Разблокирует выбор элемента Огня"
+        },
+        {
+          "id": "mastered_moon",
+          "name": "Мастер Лунного Озера",
+          "tier": "gold",
+          "category": "sect",
+          "description": "Стать Главой Секты Лунного Озера. Разблокирует выбор элемента Дерева"
+        },
+        {
+          "id": "mastered_abyss",
+          "name": "Мастер Культа Бездны",
+          "tier": "gold",
+          "category": "sect",
+          "description": "Стать Главой Культа Бездны. Разблокирует выбор элемента Пустоты"
+        },
+        {
+          "id": "mastered_hermit",
+          "name": "Мастер Скрытой Секты",
+          "tier": "jade",
+          "category": "sect",
+          "description": "Стать Главой Скрытой Секты. Разблокирует выбор элемента Ветра"
+        },
+        {
+          "id": "age_5000",
+          "name": "Древний",
+          "tier": "gold",
+          "category": "cultivation",
+          "description": "Прожить 5000 лет"
+        },
+        {
+          "id": "reborn",
+          "name": "Перерождённый",
+          "tier": "gold",
+          "category": "prestige",
+          "description": "Переродиться впервые"
+        },
+        {
+          "id": "reborn_3",
+          "name": "Три Жизни",
+          "tier": "gold",
+          "category": "prestige",
+          "description": "Переродиться 3 раза"
+        },
+        {
+          "id": "realm_9",
+          "name": "Махаяна",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Достичь ступени Махаяна — вершины смертного пути"
+        },
+        {
+          "id": "immortal",
+          "name": "Вознесение",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Стать Бессмертным (реалм 10)"
+        },
+        {
+          "id": "realm_11",
+          "name": "Небесный Бессмертный",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Достичь ступени Небесный Бессмертный"
+        },
+        {
+          "id": "realm_12",
+          "name": "Истинный Бессмертный",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Достичь ступени Истинный Бессмертный"
+        },
+        {
+          "id": "realm_13",
+          "name": "Мистический Бессмертный",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Достичь ступени Мистический Бессмертный"
+        },
+        {
+          "id": "realm_14",
+          "name": "Золотой Бессмертный",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Достичь вершины культивации"
+        },
+        {
+          "id": "breakthroughs_100",
+          "name": "Сто Врат",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Совершить 100 прорывов за все жизни"
+        },
+        {
+          "id": "age_10000",
+          "name": "Свидетель Эпох",
+          "tier": "jade",
+          "category": "cultivation",
+          "description": "Прожить 10 000 лет"
+        },
+        {
+          "id": "combat_power_500",
+          "name": "Властелин Небес",
+          "tier": "jade",
+          "category": "combat",
+          "description": "Боевая мощь 500+"
+        },
+        {
+          "id": "sect_all_visited",
+          "name": "Странствующий Мудрец",
+          "tier": "jade",
+          "category": "sect",
+          "description": "Вступить в 3 разные секты (за все жизни)"
+        },
+        {
+          "id": "expedition_immortal_palace",
+          "name": "Наследник Бессмертного",
+          "tier": "jade",
+          "category": "exploration",
+          "description": "Завершить экспедицию во Дворец Бессмертного"
+        },
+        {
+          "id": "adventures_50",
+          "name": "Ветеран Приключений",
+          "tier": "jade",
+          "category": "exploration",
+          "description": "Завершить 50 приключений (за все жизни, с повторами)"
+        },
+        {
+          "id": "artifact_enhance_10",
+          "name": "Мастер-Кузнец",
+          "tier": "jade",
+          "category": "artifacts",
+          "description": "Заточить артефакт до +10"
+        },
+        {
+          "id": "artifact_transcend",
+          "name": "Трансценденция",
+          "tier": "jade",
+          "category": "artifacts",
+          "description": "Совершить первый трансценд артефакта"
+        },
+        {
+          "id": "reborn_5",
+          "name": "Вечный Странник",
+          "tier": "jade",
+          "category": "prestige",
+          "description": "Переродиться 5 раз"
+        },
+        {
+          "id": "reborn_10",
+          "name": "Колесо Сансары",
+          "tier": "jade",
+          "category": "prestige",
+          "description": "Переродиться 10 раз"
+        },
+        {
+          "id": "survived_demon",
+          "name": "Победивший Внутреннего Демона",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Пережить встречу с внутренним демоном"
+        },
+        {
+          "id": "natural_death",
+          "name": "Мудрость Полной Жизни",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Умереть от старости"
+        },
+        {
+          "id": "rebirth_all_events",
+          "name": "Память Всех Жизней",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Встретить все события перерождения за одну жизнь"
+        },
+        {
+          "id": "all_sects_mastered",
+          "name": "Владыка Пяти Путей",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Стать Главой Зала в каждой из 5 сект (за все жизни)"
+        },
+        {
+          "id": "artifact_tri",
+          "name": "Тройное Слияние",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Довести артефакт до TRI"
+        },
+        {
+          "id": "four_tri",
+          "name": "Абсолютная Экипировка",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Экипировать 4 артефакта уровня TRI"
+        },
+        {
+          "id": "artifact_divine",
+          "name": "Дар Небес",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Получить божественный артефакт"
+        },
+        {
+          "id": "failstacks_30",
+          "name": "Несгибаемая Воля",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Накопить 30 Воли Дао"
+        },
+        {
+          "id": "stat_100",
+          "name": "Совершенство Тела и Духа",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Все три стата достигли 100"
+        },
+        {
+          "id": "stat_200",
+          "name": "За Гранью Смертных",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Любой стат достиг 200"
+        },
+        {
+          "id": "adventures_all",
+          "name": "Легенда Поднебесной",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Завершить все приключения (за все жизни)"
+        },
+        {
+          "id": "tech_divine",
+          "name": "Божественная Техника",
+          "tier": "secret",
+          "category": "secret",
+          "description": "Вознести технику до божественного тира"
+        }
+      ]
+    }
+  }
+}

@@ -54,7 +54,7 @@ EVENTS.push(
             if (res.pills > 1) available.push("pills");
             if (res.essence > 10) available.push("essence");
             if (res.dust > 5) available.push("dust");
-            if (available.length === 0) available.push("stones");
+            if (available.length === 0) return "+0 (тайник пуст)";
 
             const pick = available[Math.floor(Math.random() * available.length)];
             const names = { stones: "камней", pills: "пилюль", essence: "эссенции", dust: "пыли" };
@@ -88,7 +88,7 @@ EVENTS.push(
     },
     {
         id: "rebirth_familiar_enemy",
-        text: "Культиватор, убивший вас в прошлой жизни. Он не помнит, но вы — каждый удар.",
+        text: "Культиватор с пугающе знакомым лицом перегородил вам путь. На миг вы вспомнили удары его меча — из одной из прошлых жизней или из сна. Он вас не узнаёт.",
         type: "danger",
         condition: (g) => g.prestige.totalRebirths >= 3 && !g.flags.rebirth_familiar_enemy && g.realmIndex >= 5,
         effect: (g) => {
@@ -121,12 +121,7 @@ EVENTS.push(
 
             // Шанс на технику (до epic включительно)
             const maxTiers = ["common", "uncommon", "rare", "epic"];
-            const unlearned = TECHNIQUES.filter(t =>
-                !g.hasTechnique(t.id) &&
-                t.source !== "sect" &&
-                maxTiers.includes(t.tier) &&
-                (!t.requirement || !t.requirement.realm || g.realmIndex >= t.requirement.realm)
-            );
+            const unlearned = g.getRewardTechniquePool(maxTiers);
             if (unlearned.length > 0 && Math.random() < 0.50) {
                 const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                 g.learnTechnique(tech.id);
@@ -152,12 +147,7 @@ EVENTS.push(
 
             // Техника (гарантированная, до epic)
             const maxTiers = ["common", "uncommon", "rare", "epic"];
-            const unlearned = TECHNIQUES.filter(t =>
-                !g.hasTechnique(t.id) &&
-                t.source !== "sect" &&
-                maxTiers.includes(t.tier) &&
-                (!t.requirement || !t.requirement.realm || g.realmIndex >= t.requirement.realm)
-            );
+            const unlearned = g.getRewardTechniquePool(maxTiers);
             if (unlearned.length > 0) {
                 const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                 g.learnTechnique(tech.id);
@@ -193,12 +183,7 @@ EVENTS.push(
 
             // 2 техники (до epic)
             const maxTiers = ["common", "uncommon", "rare", "epic"];
-            const unlearned = TECHNIQUES.filter(t =>
-                !g.hasTechnique(t.id) &&
-                t.source !== "sect" &&
-                maxTiers.includes(t.tier) &&
-                (!t.requirement || !t.requirement.realm || g.realmIndex >= t.requirement.realm)
-            );
+            const unlearned = g.getRewardTechniquePool(maxTiers);
             for (let i = 0; i < 2 && unlearned.length > 0; i++) {
                 const idx = Math.floor(Math.random() * unlearned.length);
                 const tech = unlearned.splice(idx, 1)[0];

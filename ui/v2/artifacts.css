@@ -1,0 +1,179 @@
+/* Компактный инвентарь и отдельное улучшение выбранного предмета. */
+.ui-v2 #artifacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    container-type: inline-size;
+}
+.ui-v2 .art-tier-common { --artifact-tier: #888; }
+.ui-v2 .art-tier-uncommon { --artifact-tier: #4acc6a; }
+.ui-v2 .art-tier-rare { --artifact-tier: #4488ff; }
+.ui-v2 .art-tier-epic { --artifact-tier: #aa44cc; }
+.ui-v2 .art-tier-legendary { --artifact-tier: #ff8844; }
+.ui-v2 .art-tier-divine { --artifact-tier: #ffe080; }
+.ui-v2 #artifacts-list .v2-artifact-currencies {
+    position: static;
+    flex: 0 0 auto;
+    padding: 0 0 7px;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--v2-line);
+    border-radius: 0;
+    background: transparent;
+    font-size: 12px;
+}
+.v2-artifact-currencies .currency-row { gap: 5px 13px; }
+.v2-artifact-currencies .currency-item { gap: 5px; }
+.v2-artifact-currencies .currency-icon { font-size: 16px; line-height: 1; font-weight: 600; }
+.v2-artifact-type-icon { display: inline-block; min-width: 17px; font-size: 16px; line-height: 1; vertical-align: -1px; }
+.v2-artifact-currencies .btn { min-height: 28px; padding: 3px 8px; }
+.v2-artifact-scroll-count, .v2-artifact-ring { color: var(--v2-muted); font-size: 11px; }
+.ui-v2 #artifacts-list .v2-artifact-loadout {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+}
+.ui-v2 #artifacts-list .v2-artifact-slot {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 8px;
+    border: 1px solid var(--v2-line);
+    border-radius: 6px;
+    background: var(--v2-surface);
+    text-align: left;
+    box-shadow: none;
+}
+.v2-artifact-slot button { cursor: pointer; }
+button.v2-artifact-slot { cursor: pointer; }
+.ui-v2 #artifacts-list .v2-artifact-slot .artifact-slot-label { font-size: 10px; color: var(--v2-muted); }
+.ui-v2 #artifacts-list .v2-artifact-slot .artifact-name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin: 0;
+    color: var(--artifact-tier);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.ui-v2 #artifacts-list .v2-artifact-slot .artifact-empty { padding: 0; font-size: 11px; text-align: left; }
+.v2-artifact-workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 10px;
+    min-height: 0;
+    min-width: 0;
+}
+.v2-artifact-inventory { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.v2-artifact-list-heading {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-bottom: 7px;
+    font-size: 12px;
+}
+.v2-artifact-list-heading strong { font-weight: 600; }
+.v2-artifact-list-heading .btn { min-height: 28px; padding: 3px 7px; font-size: 11px; }
+.ui-v2 #artifacts-list .artifact-inv-list {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    gap: 2px;
+    padding-right: 3px;
+}
+.ui-v2 #artifacts-list .artifact-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    flex-shrink: 0;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px 7px;
+    gap: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    border-left: 3px solid var(--artifact-tier);
+    background: #172326;
+    box-shadow: none;
+    font-size: 12px;
+    line-height: 1.35;
+}
+.ui-v2 #artifacts-list .artifact-row:hover { background: #223438; }
+.ui-v2 #artifacts-list .artifact-row-selected { background: #253c35; border-color: #81ad96; border-left-color: var(--artifact-tier); box-shadow: none; }
+.ui-v2 #artifacts-list .artrow-name { grid-column: 1; grid-row: 1; flex: 1; min-width: 0; color: var(--artifact-tier); font-weight: 600; }
+.ui-v2 #artifacts-list .artrow-effects { display: block; grid-column: 1 / -1; grid-row: 2; color: #b9dac8; text-align: left; font-size: 11px; line-height: 1.4; }
+.ui-v2 #artifacts-list .artrow-tier { grid-column: 3; grid-row: 1; color: var(--artifact-tier); opacity: 1; font-size: 11px; }
+.artrow-state { grid-column: 2; grid-row: 1; flex-shrink: 0; font-size: 10px; color: #a4d1b5; }
+.artrow-state:empty { display: none; }
+.v2-art-effects-full { display: none; }
+.ui-v2 #artifacts-list .v2-artifact-forge {
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 11px;
+    border-color: var(--v2-line);
+    background: #182629;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.ui-v2 #artifacts-list .forge-top { display: block; margin-bottom: 9px; }
+.ui-v2 #artifacts-list .forge-title { display: block; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.v2-artifact-selected-name { color: var(--artifact-tier); }
+.ui-v2 #artifacts-list .forge-tier { display: block; color: var(--artifact-tier); font-size: 11px; margin-top: 3px; opacity: 1; }
+.ui-v2 #artifacts-list .forge-effects { margin: 7px 0; gap: 3px 8px; }
+.v2-artifact-replacement { margin: 4px 0 7px; color: var(--v2-muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.ui-v2 #artifacts-list .forge-effect { color: #b9dac8; font-size: 11px; line-height: 1.5; }
+.ui-v2 #artifacts-list .forge-actions { flex-wrap: wrap; gap: 6px; }
+.ui-v2 #artifacts-list .forge-actions .btn { font-size: 11px; min-height: 30px; padding: 5px 9px; }
+.ui-v2 #artifacts-list .enhance-section { display: flex; flex-direction: column; align-items: stretch; gap: 9px; padding: 9px 0 0; background: transparent; border-top: 1px solid var(--v2-line); border-radius: 0; }
+.ui-v2 #artifacts-list .enhance-info { flex-direction: column; align-items: stretch; gap: 5px; font-size: 12px; line-height: 1.5; }
+.ui-v2 #artifacts-list .enhance-cost, .ui-v2 #artifacts-list .fusion-cost { color: var(--v2-muted); font-size: 12px; }
+.ui-v2 #artifacts-list .enhance-downgrade-hint { color: #d9b8aa; font-size: 11px; }
+.ui-v2 #artifacts-list .enhance-buttons { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.ui-v2 #artifacts-list .enhance-buttons .btn { min-height: 32px; font-size: 12px; white-space: normal; }
+.ui-v2 #artifacts-list .enhance-max { font-size: 12px; text-align: left; color: var(--v2-muted); }
+.ui-v2 #artifacts-list .v2-artifact-preview { padding: 0; margin: 0; border: 0; font-size: 11px; line-height: 1.5; color: var(--v2-muted); }
+.ui-v2 #artifacts-list .fusion-section { padding: 9px 0 0; margin-top: 10px; background: transparent; border: 0; border-top: 1px solid var(--v2-line); border-radius: 0; }
+.ui-v2 #artifacts-list .fusion-header { font-size: 12px; color: #c7d9cc; margin-bottom: 5px; }
+.v2-fusion-choice { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--v2-muted); margin-top: 8px; }
+.v2-fusion-choice select { min-width: 0; width: 100%; padding: 7px; border: 1px solid #46635a; border-radius: 5px; background: #1f3431; color: var(--v2-text); font-size: 12px; }
+.ui-v2 #artifacts-list .fusion-victim { font-size: 11px; line-height: 1.5; margin: 7px 0; }
+.ui-v2 #artifacts-list .btn-fuse { width: 100%; white-space: normal; font-size: 12px; min-height: 32px; }
+.ui-v2 #artifacts-list .fusion-no-candidates { display: block; color: var(--v2-muted); font-size: 11px; font-style: normal; line-height: 1.5; margin-top: 7px; }
+.ui-v2 #artifacts-list .disassemble-overlay { text-align: center; font-size: 12px; background: #172422f5; }
+@media (min-width: 860px) {
+    .ui-v2 #tab-artifacts.active { overflow: hidden; }
+}
+@container (min-width: 900px) {
+    .ui-v2 #artifacts-list .artifact-row { display: flex; min-height: 33px; padding: 6px 7px; gap: 6px; }
+    .ui-v2 #artifacts-list .artrow-effects { display: block; flex: 1; color: #b9dac8; font-size: 11px; }
+    .v2-art-effects-short { display: none; }
+    .v2-art-effects-full { display: inline; }
+}
+@container (max-width: 510px) {
+    .v2-artifact-workspace { display: flex; flex-direction: column; gap: 9px; overflow-y: auto; }
+    .v2-artifact-forge { order: -1; flex: 0 0 auto; max-height: 46dvh; }
+    .v2-artifact-inventory { flex: 1 0 200px; }
+    .ui-v2 #artifacts-list .artifact-inv-list { max-height: 46dvh; }
+    .ui-v2 #artifacts-list .v2-artifact-loadout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ui-v2 #artifacts-list .artrow-tier { font-size: 11px; }
+}
+@media (max-width: 859px) {
+    .ui-v2 #artifacts-list { height: auto; }
+    .v2-artifact-workspace { min-height: 330px; }
+}

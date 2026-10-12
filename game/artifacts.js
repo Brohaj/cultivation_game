@@ -22,10 +22,12 @@ Object.assign(game, {
         const shuffled = [...pool].sort(() => Math.random() - 0.5);
         const chosen = shuffled.slice(0, Math.min(numEffects, pool.length));
 
-        // Редкий бонусный эффект (только epic+, заменяет второй стат при удаче)
+        // Редкий бонусный эффект (только epic+, эпоха Сумерки Богов+)
+        const era = this.getCurrentEra();
+        const rareUnlocked = era && ERAS.indexOf(era) >= ERAS.findIndex(e => e.id === "twilight");
         const rareEffRaw = ARTIFACT_RARE_EFFECTS[slot];
-        if (isHighTier && rareEffRaw && numEffects >= 2) {
-            const rareEffs = Array.isArray(rareEffRaw) ? rareEffRaw : [rareEffRaw];
+        if (isHighTier && rareEffRaw && numEffects >= 2 && rareUnlocked) {
+            const rareEffs = Array.isArray(rareEffRaw) ? [...rareEffRaw].sort(() => Math.random() - 0.5) : [rareEffRaw];
             for (const re of rareEffs) {
                 if (Math.random() < re.chance) {
                     chosen[chosen.length - 1] = re;
@@ -59,8 +61,11 @@ Object.assign(game, {
             name = `${prefix[suffix.g]} ${suffix.name}${statSuffix}`;
         }
 
+        this._artifactIdSerial = (this._artifactIdSerial || 0) + 1;
+        let artifactId = "art_" + Date.now() + "_" + this._artifactIdSerial + "_" + Math.floor(Math.random() * 10000);
+        while (this.artifacts.some(artifact => artifact.id === artifactId)) artifactId += "_next";
         return {
-            id: "art_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
+            id: artifactId,
             name,
             slot,
             tier,
@@ -98,13 +103,16 @@ Object.assign(game, {
 
     removeArtifact(artifactId) {
         const equipped = this.equippedArtifacts;
+        let affectsTime = false;
         for (const slot of ARTIFACT_SLOTS) {
             if (equipped[slot] && equipped[slot].id === artifactId) {
+                affectsTime = !!equipped[slot].effects.timeSpeed;
                 equipped[slot] = null;
                 break;
             }
         }
         this.artifacts = this.artifacts.filter(a => a.id !== artifactId);
+        if (affectsTime) this.refreshTimers();
     },
 
     // === ЭКИПИРОВКА ===
@@ -116,7 +124,7 @@ Object.assign(game, {
         if (current && current.id === artifactId) return false;
         this.equippedArtifacts[artifact.slot] = artifact;
         addLog(`Экипирован: ${artifact.name}`, "system");
-        if (artifact.effects.timeSpeed) this.refreshTimers();
+        if (artifact.effects.timeSpeed || (current && current.effects.timeSpeed)) this.refreshTimers();
         return true;
     },
 
@@ -180,6 +188,7 @@ Object.assign(game, {
             this.enhanceFailstacks = 0;
             this.scrollFailstacksApplied = 0;
             addLog(`\u2728 Заточка успешна! ${artifact.name} +${artifact.enhance}`, "breakthrough");
+            if (artifact.effects.timeSpeed) this.refreshTimers();
             saveGame();
             return { success: true, level: artifact.enhance };
         } else {
@@ -202,6 +211,8 @@ Object.assign(game, {
                     if (downgradeChance > 0 && Math.random() < downgradeChance) {
                         artifact.enhance = Math.max(0, artifact.enhance - 1);
                         addLog(`${artifact.name} упал до +${artifact.enhance}!`, "danger");
+                        if (artifact.effects.timeSpeed) this.refreshTimers();
+                        saveGame();
                         return { success: false, downgraded: true, level: artifact.enhance };
                     }
                 }
@@ -256,6 +267,7 @@ Object.assign(game, {
     },
 
     fuseArtifacts(keepId, consumeId) {
+        if (keepId === consumeId) return false;
         const keep = this.artifacts.find(a => a.id === keepId);
         const consume = this.artifacts.find(a => a.id === consumeId);
         if (!keep || !consume) return false;
@@ -296,6 +308,7 @@ Object.assign(game, {
 
         const newName = TRANSCEND_NAMES[keep.transcend];
         addLog(`\u2728 Слияние успешно! ${keep.name} → ${newName}!`, "breakthrough");
+        this.refreshTimers();
         updateUI();
         return true;
     },
@@ -306,11 +319,11 @@ Object.assign(game, {
         const baseDust = DISASSEMBLE_DUST[artifact.tier] || 1;
         const baseEssence = (typeof DISASSEMBLE_ESSENCE !== "undefined" ? DISASSEMBLE_ESSENCE[artifact.tier] : 0) || 0;
         const transcendBonus = (artifact.transcend || 0) * baseDust * 2;
-        const bonusDust = Math.floor((artifact.investedDust || 0) * 0.5);
-        const bonusEssence = Math.floor((artifact.investedEssence || 0) * 0.5);
-        let dust = baseDust + transcendBonus + bonusDust;
-        let essence = baseEssence + bonusEssence + transcendBonus;
-        // Наследник Алхимика / Кузнец Древних: бонус к разбору
+        const refundDust = Math.floor((artifact.investedDust || 0) * 0.5);
+        const refundEssence = Math.floor((artifact.investedEssence || 0) * 0.5);
+        let dust = baseDust + transcendBonus;
+        let essence = baseEssence + transcendBonus;
+        // Перки усиливают добычу, но не возврат вложенных ресурсов.
         const perks = this.getActiveBodyPerks();
         if (perks.disassembleBonus) {
             dust = Math.floor(dust * (1 + perks.disassembleBonus));
@@ -322,7 +335,7 @@ Object.assign(game, {
             dust = Math.floor(dust * (1 + sectDisBonus));
             essence = Math.floor(essence * (1 + sectDisBonus));
         }
-        return { dust, essence };
+        return { dust: dust + refundDust, essence: essence + refundEssence };
     },
 
     disassembleArtifact(artifactId) {
@@ -402,8 +415,12 @@ Object.assign(game, {
                 if (found) name = found.name;
             }
             // Редкие бонусные эффекты
-            const rare = ARTIFACT_RARE_EFFECTS[artifact.slot];
-            if (rare && rare.key === key) name = rare.name;
+            const rareRaw = ARTIFACT_RARE_EFFECTS[artifact.slot];
+            if (rareRaw) {
+                const rares = Array.isArray(rareRaw) ? rareRaw : [rareRaw];
+                const found = rares.find(r => r.key === key);
+                if (found) name = found.name;
+            }
             const displayVal = Math.round(val * enhanceMult * 10) / 10;
             result.push({ name, value: displayVal, key });
         }
@@ -420,6 +437,10 @@ Object.assign(game, {
 
         const row = TECH_ASCEND_TABLE.find(r => r.from === tech.tier);
         if (!row) return null; // уже на макс тире
+        if (this._pendingInsightXP && this._pendingInsightXP[techId] > 0) {
+            return { ...row, locked: true, insightPending: true };
+        }
+        if (row.eraReq && !this.hasReachedEra(row.eraReq)) return { ...row, locked: true, eraLocked: true };
         if (this.realmIndex < row.realmReq) return { ...row, locked: true };
         // Отшельник Дао: скидка на вознесение техник
         const perks = this.getActiveBodyPerks();
@@ -439,6 +460,8 @@ Object.assign(game, {
         const tech = TECHNIQUES.find(t => t.id === techId);
         if (!tech) return false;
 
+        // Динамические техники тоже должны сохранять исходные данные для сброса.
+        rememberTechniqueOriginal(tech);
         this.daoEssence -= info.essence;
         const oldName = tech.name;
         tech.tier = info.to;
@@ -462,6 +485,7 @@ Object.assign(game, {
         }
         this.techLevels[techId] = 1;
         this.techXP[techId] = 0;
+        this.refreshTimers();
 
         const tierNames = { uncommon: "Духовная", rare: "Мистическая", epic: "Небесная", legendary: "Священная", divine: "Божественная" };
         const tierLabel = tierNames[info.to] || info.to;

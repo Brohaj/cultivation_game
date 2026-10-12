@@ -42,7 +42,7 @@ Object.assign(game, {
     // === ТИКИ ===
 
     tick() {
-        if (this.gameOver) return;
+        if (this.gameOver || this.pendingRebirth) return;
         const tickFraction = 1 / TICK_RATE; // доля секунды за 1 тик
         {
             // Авто-активность + пассивная прокачка статов
@@ -50,7 +50,7 @@ Object.assign(game, {
             const statMap = { body: "strength", dao: "spirit", fate: "luck" };
             const activeStat = statMap[this.currentActivity]; // null если медитация
 
-            if (this.currentActivity === "meditation") {
+            if (this.currentActivity === "meditation" && !this.expedition) {
                 this.qi += this.qiPerSec() * tickFraction;
                 this.totalMeditations++;
                 this.checkQiCap();
@@ -91,7 +91,7 @@ Object.assign(game, {
             }
             this._checkDaoLevelUp();
 
-            // Постепенное добавление XP от свитка озарения
+            // Совместимость: разовая выдача остатка оплаченного XP старого сейва.
             this._tickInsightXP();
 
             // Пассивная прокачка техник (только экипированные)
@@ -117,7 +117,7 @@ Object.assign(game, {
     },
 
     passYear() {
-        if (this.gameOver) return;
+        if (this.gameOver || this.pendingRebirth) return;
         this._lastYearTime = Date.now();
         {
             if (this.gameOver) return;
@@ -131,7 +131,7 @@ Object.assign(game, {
             this.stones += income;
 
             // Трекинг лет медитации (для заданий секты) — постижение Дао тоже считается
-            if (this.currentActivity === "meditation" || this.currentActivity === "dao") {
+            if (!this.expedition && (this.currentActivity === "meditation" || this.currentActivity === "dao")) {
                 this.meditationYears++;
             }
 
@@ -149,32 +149,12 @@ Object.assign(game, {
                 if (prevEra) {
                     addLog(`\u2550\u2550\u2550 Наступила новая эпоха: ${era.name} \u2550\u2550\u2550`, "breakthrough");
                     addLog(era.description, "system");
+                    this._onEraChange(era);
                 }
             }
 
             this.checkWorldEvent();
-            // Накопительный шанс слуха: +2% каждый год без приключений, кулдаун 50 лет после завершения
-            const adventureCooldown = 50;
-            const yearsSinceLastComplete = this.years - (this._lastAdventureCompleteYear || 0);
-            if (this.adventureRumors.length === 0 && this.activeAdventures.length === 0 && yearsSinceLastComplete >= adventureCooldown) {
-                this._yearsSinceAdventure = (this._yearsSinceAdventure || 0) + 1;
-                const chance = this._yearsSinceAdventure * 0.01;
-                if (Math.random() < chance) {
-                    const available = ADVENTURES.filter(a =>
-                        a.condition(this)
-                        && !(this.completedAdventures && this.completedAdventures.includes(a.id))
-                    );
-                    if (available.length > 0) {
-                        const adv = available[Math.floor(Math.random() * available.length)];
-                        if (this.addAdventureRumor(adv.id)) {
-                            addLog(`До вас дошёл слух: "${adv.rumor}"`, "event");
-                            this._yearsSinceAdventure = 0;
-                        }
-                    }
-                }
-            } else if (this.adventureRumors.length > 0 || this.activeAdventures.length > 0) {
-                this._yearsSinceAdventure = 0;
-            }
+            this.tickAdventureRumors();
             // Гарантированный бой: если реалм 2+ и ещё нет победы, каждый год ~15% шанс
             if (this.realmIndex >= 2 && !this.flags.wonCombat && Math.random() < 0.15) {
                 const power = 1 + this.realmIndex;
@@ -191,8 +171,8 @@ Object.assign(game, {
 
             // Авто-функции (тир 3 вознесений тел)
             const autoPerks = this.getActiveBodyPerks();
-            // Авто-рефайн пилюль (Архиалхимик ★3)
-            if (autoPerks.autoRefine) {
+            // Авто-рефайн пилюль (Архиалхимик ★3, тоггл)
+            if (autoPerks.autoRefine && this._autoRefineEnabled !== false) {
                 for (let t = 1; t <= 3; t++) {
                     while (this.canRefinePill(t)) this.refinePillTier(t);
                 }
@@ -228,10 +208,9 @@ Object.assign(game, {
                     this.startExpedition(lastLoc);
                 }
             }
-            // Авто-озарение (свиток озарения за камни)
+            // Авто-озарение за эссенцию
             if (da.insight && typeof this.buyInsight === "function") {
-                const cost = this.getInsightCost();
-                if (this.stones >= cost) this.buyInsight();
+                if (this.canBuyInsight()) this.buyInsight();
             }
 
             // Смерть (по возрасту персонажа, не мировому времени)
@@ -271,6 +250,7 @@ Object.assign(game, {
     start() {
         // Остановить предыдущие таймеры чтобы не дублировать
         this.stop();
+        if (this.gameOver || this.pendingRebirth) return;
         this._paused = false;
         const speedMult = this.getSpeedMultiplier();
         const totalSpeed = speedMult * (this.debugSpeed || 1);
@@ -381,6 +361,7 @@ Object.assign(game, {
         this.pills = 0;
         // autoActive removed — always idle
         this.gameOver = false;
+        this.pendingRebirth = null;
         this._maxRealmThisLife = 0;
         this.currentActivity = "meditation";
         this.activityXP = { strength: 0, spirit: 0, luck: 0 };
@@ -407,6 +388,9 @@ Object.assign(game, {
         this.adventureRumors = [];
         this.activeAdventures = [];
         this.completedAdventures = [];
+        this.adventureDiscovery = { poolKey: "", waitYears: 0, lastCompleteYear: null };
+        this._yearsSinceAdventure = 0;
+        this._lastAdventureCompleteYear = 0;
         this.lastAdventureReward = null;
         // Формации сбрасываются при перерождении
         this.formations = {};
@@ -417,8 +401,10 @@ Object.assign(game, {
         this.equippedTechniques = [];
         this.techLevels = {};
         this.techXP = {};
+        this._pendingInsightXP = null;
+        this._insightTicksLeft = 0;
         // Восстановить оригинальные тиры и имена техник (вознесение мутирует глобальный массив)
-        for (const t of TECHNIQUES) {
+        for (const t of new Set([...TECHNIQUES, ...Object.values(SECT_TECHNIQUES)])) {
             if (TECHNIQUES_ORIGINAL_TIERS[t.id]) t.tier = TECHNIQUES_ORIGINAL_TIERS[t.id];
             if (TECHNIQUES_ORIGINAL_NAMES[t.id]) t.name = TECHNIQUES_ORIGINAL_NAMES[t.id];
             if (TECHNIQUES_ORIGINAL_DESCRIPTIONS[t.id]) t.description = TECHNIQUES_ORIGINAL_DESCRIPTIONS[t.id];
@@ -467,7 +453,7 @@ Object.assign(game, {
         this.debugSpeed = 1;
         this._lastEra = null;
         this._minRootTier = null;
-        this.prestige = savedPrestige || { karma: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", formations: {}, bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
+        this.prestige = savedPrestige || { karma: 0, karmaSpent: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", formations: {}, bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
         // Восстановить достижения из перманентных
         this.milestones = [...(this.prestige.permanentMilestones || [])].filter(m => !m.startsWith("visited_sect_"));
         deleteSave();
@@ -501,6 +487,9 @@ Object.assign(game, {
         if (perks.stoneIncomeMult) {
             base = Math.floor(base * perks.stoneIncomeMult);
         }
+
+        // Бонус эпохи: Золотая Эра +1
+        base += this.getEraStoneIncomeBonus();
 
         return base;
     },

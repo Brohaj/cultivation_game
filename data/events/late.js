@@ -87,7 +87,7 @@ EVENTS.push(
         type: "reward",
         condition: (g) => g.realmIndex >= 8 && g.realmIndex <= 9,
         effect: (g) => {
-            const stones = 25 + Math.floor(g.luck * 4);
+            const stones = 25 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 4);
             g.stones += stones;
             return `+${stones} камней. Громовые минералы высоко ценятся.`;
         }
@@ -413,22 +413,18 @@ EVENTS.push(
         id: "rumor_fallen_immortal",
         text: "Небо раскололось над Пиком Девяти Драконов. Пространственная рябь не исчезает — старейшины шепчутся: «Осколок Небесного Дворца...»",
         type: "event",
-        condition: (g) => g.realmIndex >= 9 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "fallen_immortal")
-            && !g.activeAdventures.find(a => a.id === "fallen_immortal"),
+        condition: (g) => g.canDiscoverAdventureRumor("fallen_immortal") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("fallen_immortal") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("fallen_immortal") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_oblivion_gate",
         text: "На краю мира появилась трещина, из которой сочится тьма. Те, кто подходил близко, забывали своё имя. Старейшины назвали её Вратами Забвения.",
         type: "event",
-        condition: (g) => g.realmIndex >= 9 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "oblivion_gate")
-            && !g.activeAdventures.find(a => a.id === "oblivion_gate"),
+        condition: (g) => g.canDiscoverAdventureRumor("oblivion_gate") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("oblivion_gate") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("oblivion_gate") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
 );

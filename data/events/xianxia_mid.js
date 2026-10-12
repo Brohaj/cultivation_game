@@ -7,7 +7,7 @@ EVENTS.push(
     // --- 11. Великий аукцион Золотого Лотоса ---
     {
         id: "golden_lotus_auction",
-        text: "Аукционный Дом Золотого Лотоса открывает двери раз в столетие! Культиваторы трёх континентов съехались. На торги выставлен запечатанный ларец.",
+        text: "Аукционный Дом Золотого Лотоса снова открыл двери! Культиваторы трёх континентов съехались. На торги выставлен запечатанный ларец.",
         type: "event",
         condition: (g) => g.realmIndex >= 4 && g.realmIndex <= 8 && g.stones >= 50,
         effect: (g) => {
@@ -67,7 +67,7 @@ EVENTS.push(
         id: "blood_karma_debt",
         text: "Культиватор в рваных одеждах перегородил путь, сжимая ржавый меч. «Твоя секта уничтожила мою семью 300 лет назад!» Вы никогда его не видели, но ненависть в его глазах настоящая.",
         type: "danger",
-        condition: (g) => g.realmIndex >= 5 && g.realmIndex <= 9,
+        condition: (g) => g.sect && g.realmIndex >= 5 && g.realmIndex <= 9,
         effect: (g) => {
             const totalSpirit = g.spirit + g.getArtifactBonus("spirit");
             const spiritThreshold = 15 + g.realmIndex * 8;
@@ -157,7 +157,7 @@ EVENTS.push(
         type: "event",
         condition: (g) => {
             if (g.realmIndex > 9 || g.stones < 10) return false;
-            return g.artifacts.length > 1;
+            return ["weapon", "armor", "accessory", "treasure"].some(s => g.equippedArtifacts[s] != null);
         },
         effect: (g) => {
             // Выбрать случайный экипированный артефакт

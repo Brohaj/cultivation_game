@@ -2,6 +2,36 @@
 // UI/UPDATE.JS — Основное обновление интерфейса, табы, прогресс-бары
 // ============================================================
 
+// Не заменять DOM между нажатием и отпусканием кнопки: браузер иначе теряет click.
+const _uiHeldControls = new Set();
+const _deferredUIRenders = new Set();
+let _uiReleaseTimer = null;
+
+function deferUIRender(render) {
+    if (_uiHeldControls.size === 0 && _uiReleaseTimer === null) return false;
+    _deferredUIRenders.add(render);
+    return true;
+}
+
+function beginUIInteraction(token) {
+    if (_uiReleaseTimer !== null) clearTimeout(_uiReleaseTimer);
+    _uiReleaseTimer = null;
+    _uiHeldControls.add(token);
+}
+
+function endUIInteraction(token) {
+    const held = _uiHeldControls.delete(token);
+    if (!held && token !== null) return;
+    if (_uiHeldControls.size > 0 || _uiReleaseTimer !== null) return;
+    // click следует за pointerup/keyup в том же событии браузера.
+    _uiReleaseTimer = setTimeout(() => {
+        _uiReleaseTimer = null;
+        const renders = [..._deferredUIRenders];
+        _deferredUIRenders.clear();
+        for (const render of renders) render();
+    }, 0);
+}
+
 function _statSpeedBreakdown(stat) {
     const level = game[stat] || 1;
     const parts = [`База: 1.0`];
@@ -9,12 +39,7 @@ function _statSpeedBreakdown(stat) {
     parts.push(`Ур.${level}: x${levelMult.toFixed(2)}`);
     const realmMult = 1 + game.realmIndex * 0.15;
     if (game.realmIndex > 0) parts.push(`Ступень ${game.realmIndex}: x${realmMult.toFixed(2)}`);
-    const formB = game.getFormationBonus("statXpSpeed");
-    if (formB > 0) parts.push(`Пагода: x${(1 + formB).toFixed(2)}`);
-    const sectB = game.getSectBonus("statXpSpeed");
-    if (sectB > 0) parts.push(`Секта: x${(1 + sectB).toFixed(2)}`);
-    const statSpeedLevel = game.prestige.karmaUpgrades.statSpeed || 0;
-    if (statSpeedLevel > 0) parts.push(`Совершенствование: +${(statSpeedLevel * 5)}%`);
+    parts.push("Совершенствование усиливает дух и медитацию; скорость тренировки статов не меняет");
     return parts.join(" | ");
 }
 
@@ -39,6 +64,7 @@ function switchTab(tabId) {
 // === ЛЁГКОЕ ОБНОВЛЕНИЕ (каждый тик, 200ms) ===
 // Только то, что реально меняется каждый тик: ци, прогресс-бары, экспедиция
 function updateTickUI() {
+    if (deferUIRender(updateTickUI)) return;
     const isMeditation = game.currentActivity === "meditation";
     const statMap = { body: "strength", dao: "spirit", fate: "luck" };
     const statNameMap = { strength: "Сила", spirit: "Дух", luck: "Удача" };
@@ -54,11 +80,11 @@ function updateTickUI() {
         // Режим ци
         const needed = game.qiNeeded();
         const pct = needed === Infinity ? 0 : Math.min(100, (game.qi / needed) * 100);
-        if (titleEl) titleEl.textContent = "Ци";
+        if (titleEl) titleEl.textContent = game.expedition ? "Ци — медитация приостановлена" : "Ци";
         qiBar.style.width = pct + "%";
         qiBar.className = "qi-bar";
         qiText.textContent = needed === Infinity ? `${Math.floor(game.qi)}` : `${Math.floor(game.qi)} / ${needed}`;
-        document.getElementById("qi-rate").textContent = game.qiPerSec();
+        document.getElementById("qi-rate").textContent = game.expedition ? 0 : game.qiPerSec();
         if (medSection) medSection.style.display = "";
         if (statSection) statSection.style.display = "none";
     } else if (activeStat) {
@@ -161,7 +187,8 @@ function updateTickUI() {
                     actText = activityNames[daoAct] || daoAct;
                 }
                 const daoSpeedMult = game.getDaoSpeedMultiplier();
-                const daoPerYear = (3 * daoSpeedMult * (sect.id === "hidden_hermit" ? 0.5 : 1)).toFixed(1);
+                const trainingMult = 1 + game.getTechBonus("techXpSpeed") + game.getArtifactBonus("techXpSpeed") * 0.01 + game.getFormationBonus("techXpSpeed");
+                const daoPerYear = (3 * trainingMult * daoSpeedMult * (sect.id === "hidden_hermit" ? 0.5 : 1)).toFixed(1);
                 const tipDaoBar = document.getElementById("tip-dao-bar");
                 if (tipDaoBar) {
                     let tip = `Активность: ${actText} (+${daoPerYear}/год)`;
@@ -204,6 +231,14 @@ function updateTickUI() {
     // === ПИЛЮЛИ (таблица) ===
     const pillTable = document.getElementById("pill-table");
     if (pillTable) {
+        // Кнопка авто-рефайна (Архиалхимик ★3)
+        const autoRefinePerks = game.getActiveBodyPerks();
+        let autoRefineHtml = "";
+        if (autoRefinePerks.autoRefine) {
+            const on = game._autoRefineEnabled !== false;
+            autoRefineHtml = `<button class="btn btn-tiny ${on ? "btn-primary" : "btn-secondary"}" onclick="game._autoRefineEnabled = ${!on}; updateTickUI();" title="Автоматически переплавлять пилюли каждый год">${on ? "\u2699 Авто-рефайн: ВКЛ" : "\u2699 Авто-рефайн: ВЫКЛ"}</button>`;
+        }
+
         const r2 = game.refinedPills || 0;
         const r3 = game.spiritualPills || 0;
         const r4 = game.heavenlyPills || 0;
@@ -215,28 +250,21 @@ function updateTickUI() {
         const _pmSect = game.getSectBonus("pillEffect");
         const _pmArt = game.getArtifactBonus("pillEffect") * 0.01;
         const _pmForm = game.getFormationBonus("pillEffect");
-        const _pmFormReal = _pmForm * 0.05;
-        const _pmBody = (game.getActiveBodyPerks().pillMult || 1);
+        const _pmFormReal = _pmForm;
         if (_pmSect > 0) _pmParts.push(`Секта +${Math.round(_pmSect * 100)}%`);
         if (_pmArt > 0) _pmParts.push(`Артефакт +${Math.round(_pmArt * 100)}%`);
         if (_pmFormReal > 0) _pmParts.push(`Печь +${Math.round(_pmFormReal * 100)}%`);
-        if (_pmBody > 1) _pmParts.push(`Тело ×${_pmBody}`);
+        if (game.worldEvent?.modifiers?.pillEffect) _pmParts.push(`Событие ×${game.worldEvent.modifiers.pillEffect}`);
         const _pmText = _pmParts.length > 0 ? ` | ${_pmParts.join(", ")}` : "";
 
         // Тултипы по тирам
         const daoGain = game.realmIndex >= 3 && game.sect ? Math.floor(game.daoNeeded() * 0.08) : 0;
         const pillBt = (game.flags && game.flags._pillBreakthroughBonus) || 0;
-        const hs = (game.prestige && game.prestige.heavenlyStats) || {};
-        const hsParts = [];
-        if (hs.strength) hsParts.push(`+${hs.strength} сила`);
-        if (hs.spirit) hsParts.push(`+${hs.spirit} дух`);
-        if (hs.luck) hsParts.push(`+${hs.luck} удача`);
-
         const tips = {
-            1: `5% от ${_qiN} ци${_pmText}`,
-            2: `15% от ${_qiN} ци | Рефайн: ${rc} базовых + ${game.getRefineCost(1)} пыли${_pmText}`,
-            3: `10% ци + 8% дао${daoGain ? ` (+${daoGain})` : ""} + 5% прорыв${pillBt > 0 ? ` (накоплено +${(pillBt*100).toFixed(0)}%)` : ""} | Рефайн: ${rc} очищ. + ${game.getRefineCost(2)} пыли`,
-            4: `+1 к наименьшему стату (перманентно)${hsParts.length ? ` | Всего: ${hsParts.join(", ")}` : ""} | Рефайн: ${rc} дух. + ${game.getRefineCost(3)} пыли`
+            1: `+${game.getPillQi(1)} ци${_pmText}`,
+            2: `+${game.getPillQi(2)} ци | Рефайн: ${rc} базовых + ${game.getRefineCost(1)} пыли${_pmText}`,
+            3: `+${game.getPillQi(3)} ци + 8% дао${daoGain ? ` (+${daoGain})` : ""} + 5% прорыв${pillBt > 0 ? ` (накоплено +${(pillBt*100).toFixed(0)}%)` : ""} | Рефайн: ${rc} очищ. + ${game.getRefineCost(2)} пыли`,
+            4: `+${game.getPillQi(4)} ци, +1 к наименьшему стату в этой жизни | Рефайн: ${rc} дух. + ${game.getRefineCost(3)} пыли`
         };
 
         const tiers = [
@@ -257,9 +285,10 @@ function updateTickUI() {
             const amounts = [1, 10, 100];
             for (const n of amounts) {
                 if (n > 1 && t.count < 2) continue;
-                const disabled = t.count < n ? "disabled" : "";
+                const qiFull = t.tier <= 2 && game.qi >= game.qiNeeded();
+                const disabled = game.gameOver || qiFull || t.count < n ? "disabled" : "";
                 const label = n === 1 ? `+${t.qi} ци${extraText}` : `\u00D7${n}`;
-                useBtns += `<button class="btn btn-tiny btn-pill ${t.cls} ${n > 1 ? "pill-multi" : ""}" onclick="game.usePillMulti(${t.tier},${n});" ${disabled} title="${tip}">${label}</button>`;
+                useBtns += `<button class="btn btn-tiny btn-pill ${t.cls} ${n > 1 ? "pill-multi" : ""}" onclick="game.usePillMulti(${t.tier},${n});" ${disabled} title="${qiFull ? "Ци уже заполнена: сначала совершите прорыв" : tip}">${label}</button>`;
             }
 
             // Кнопки рефайна: x1, x10, x100
@@ -270,11 +299,15 @@ function updateTickUI() {
                     refBtns = `<button class="btn btn-tiny btn-secondary" disabled title="${req}">\uD83D\uDD12</button>`;
                 } else {
                     const maxRef = Math.floor(t.refCount / rc);
+                    const dustCost = game.getRefineCost(t.refTier);
+                    const dustHave = game.artifactDust || 0;
                     for (const n of amounts) {
                         if (n > maxRef && n > 1) continue;
-                        const canN = game.canRefinePill(t.refTier) && maxRef >= n;
+                        const totalDust = dustCost * n;
+                        const refTip = `${rc * n} пилюль + ${totalDust} пыли${totalDust > dustHave ? ` (есть ${dustHave})` : ""} → ${n} ${t.refName}`;
+                        const canN = game.canRefinePill(t.refTier) && maxRef >= n && dustHave >= totalDust;
                         const label = n === 1 ? `${rc}\u2192${t.refName}` : `\u00D7${n}`;
-                        refBtns += `<button class="btn btn-tiny btn-secondary ${n > 1 ? "pill-multi" : ""}" onclick="game.refinePillMulti(${t.refTier},${n});" ${canN ? "" : "disabled"}>${label}</button>`;
+                        refBtns += `<button class="btn btn-tiny btn-secondary ${n > 1 ? "pill-multi" : ""}" onclick="game.refinePillMulti(${t.refTier},${n});" ${canN ? "" : "disabled"} title="${refTip}">${label}</button>`;
                     }
                 }
             }
@@ -286,7 +319,11 @@ function updateTickUI() {
                 <span class="pill-refine">${refBtns}</span>
             </div>`;
         }
-        pillTable.innerHTML = rows;
+        const pillHtml = autoRefineHtml + rows;
+        if (pillTable._renderedPillHTML !== pillHtml) {
+            pillTable.innerHTML = pillHtml;
+            pillTable._renderedPillHTML = pillHtml;
+        }
 
         // Показать высшие пилюли в ресурсах
         const pillsHigher = document.getElementById("pills-higher");
@@ -302,6 +339,8 @@ function updateTickUI() {
     // Прогресс-бары активностей
     updateActivityBars();
 
+    _updateInsightButtons();
+
     // Прогресс техник (если вкладка открыта)
     _updateTechXpBars();
 
@@ -309,6 +348,22 @@ function updateTickUI() {
     _updateSectMissionProgress();
     _updateExpeditionProgress();
     _updateAdventureProgress();
+}
+
+function _updateInsightButtons() {
+    const btnInsight = document.getElementById("btn-insight");
+    if (btnInsight) {
+        const cost = game.getInsightCost();
+        btnInsight.textContent = `Свиток Озарения (${cost} эссенции)`;
+        btnInsight.disabled = !game.canBuyInsight();
+    }
+    const btnBulk = document.getElementById("btn-insight-multi10");
+    if (btnBulk) {
+        const purchase = game.getInsightPurchaseInfo(10);
+        btnBulk.disabled = !game.canBuyInsight(10);
+        btnBulk.textContent = "До 10";
+        btnBulk.title = `${purchase.count} ${_plural(purchase.count, 'озарение', 'озарения', 'озарений')}: ${purchase.cost} эссенции`;
+    }
 }
 
 function _updateTechXpBars() {
@@ -356,43 +411,9 @@ function _updateTechXpBars() {
     }
 }
 
-    // Лёгкое обновление прогресса миссий секты
-    if (game.sect && game.sectMissions) {
-        for (let i = 0; i < game.sectMissions.length; i++) {
-            const m = game.sectMissions[i];
-            if (!m || m.cooldown > 0) continue;
-            const card = document.querySelector(`.sect-mission-card[data-index="${i}"]`);
-            if (!card) continue;
-            const canComplete = game.canCompleteSectMission(i);
-            const btn = card.querySelector(".btn");
-            if (btn) {
-                btn.disabled = !canComplete;
-                btn.className = `btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}`;
-                btn.textContent = canComplete ? "Выполнить" : "Не готово";
-            }
-            // Обновить прогресс-текст
-            const descEl = card.querySelector(".sect-mission-desc");
-            if (descEl && m.check) {
-                let progressText = "";
-                if (m.check.meditationYears) {
-                    const done = game.meditationYears - (m.meditationYearsAtStart || 0);
-                    progressText = ` (${Math.min(done, m.check.meditationYears)}/${m.check.meditationYears} лет)`;
-                }
-                if (m.check.pillsDonated) {
-                    const done = (game.flags.pillsDonated || 0) - (m.pillsDonatedAtStart || 0);
-                    progressText = ` (${Math.min(done, m.check.pillsDonated)}/${m.check.pillsDonated} пожертвовано)`;
-                }
-                if (m.check.breakthroughs) {
-                    const done = game.totalBreakthroughs - (m.breakthroughsAtStart || 0);
-                    progressText = ` (${Math.min(done, m.check.breakthroughs)}/${m.check.breakthroughs})`;
-                }
-                descEl.textContent = m.description + progressText;
-            }
-        }
-    }
-
 // === ПОЛНОЕ ОБНОВЛЕНИЕ (вызывается из событий, НЕ из тика) ===
 function updateUI() {
+    if (deferUIRender(updateUI)) return;
     const realm = REALMS[game.realmIndex];
 
     // Имя культиватора
@@ -483,11 +504,11 @@ function updateUI() {
     document.getElementById("luck").textContent = Math.floor(totalLuck);
     document.getElementById("combat-power").textContent = game.getCombatPower();
 
-    // Совершенствование (общий бонус к росту статов)
+    // Совершенствование усиливает множитель духа для медитации.
     const perfBonus = game.getFormationBonus("statXpSpeed") + game.getSectBonus("statXpSpeed")
         + game.getArtifactBonus("statXpSpeed") * 0.01 + game.getTechBonus("statXpSpeed")
-        + (game.prestige.karmaUpgrades.statSpeed || 0) * 0.05;
-    const perfText = perfBonus > 0 ? ` | Совершенствование: +${Math.round(perfBonus * 100)}%` : "";
+        + ((game.prestige.karmaUpgrades.statSpeed || 0) + (game.getActiveBodyPerks().freeUpgradeLevel || 0)) * 0.05;
+    const perfText = perfBonus > 0 ? ` | Совершенствование духа: +${Math.round(softcap(perfBonus, 3, 0.5) * 100)}%` : "";
 
     // Тултипы статов
     const tipStr = document.getElementById("tip-strength");
@@ -513,12 +534,12 @@ function updateUI() {
     }
     const tipLuck = document.getElementById("tip-luck");
     if (tipLuck) {
-        const rewardBonus = (totalLuck * 2).toFixed(0);
-        const btBonus = (Math.sqrt(totalLuck) * 1.2).toFixed(1);
+        const rewardBonus = (game.getRewardLuckBonus() * 100).toFixed(1);
+        const btBonus = (Math.sqrt(totalLuck) * 0.6).toFixed(1);
         const parts = [`База: ${game.luck}`];
         if (artLuck > 0) parts.push(`Артефакт: +${artLuck.toFixed(1)}`);
         if (formLuck > 0) parts.push(`Формация: +${formLuck.toFixed(0)}`);
-        parts.push(`Награды: +${rewardBonus}%`);
+        parts.push(`Награды: +${rewardBonus}% (предел +50%)`);
         parts.push(`Прорыв: +${btBonus}%`);
         tipLuck.textContent = parts.join(" | ") + perfText;
     }
@@ -535,7 +556,7 @@ function updateUI() {
     const sectDangerReward = game.getSectBonus("dangerReward");
     const formDangerReward = game.getFormationBonus("dangerReward");
     const bodyDangerReward = (game.getActiveBodyPerks().dangerReward || 0);
-    const totalDangerReward = artDangerReward + sectDangerReward + formDangerReward + bodyDangerReward;
+    const totalDangerReward = game.getDangerRewardBonus();
     if (dangerRewardEl) {
         dangerRewardEl.textContent = `+${Math.round(totalDangerReward * 100)}%`;
     }
@@ -549,7 +570,7 @@ function updateUI() {
         if (sectDangerReward > 0) parts.push(`Секта: +${Math.round(sectDangerReward * 100)}%`);
         if (formDangerReward > 0) parts.push(`Формация: +${Math.round(formDangerReward * 100)}%`);
         if (bodyDangerReward > 0) parts.push(`Тело: +${Math.round(bodyDangerReward * 100)}%`);
-        parts.push("Бонус к наградам из опасных событий и экспедиций");
+        parts.push("Бонус к наградам из опасных событий и экспедиций: предел +300%");
         tipDangerReward.textContent = parts.join(" | ");
     }
 
@@ -582,7 +603,7 @@ function updateUI() {
             : "Смягчает потерю ци при провале прорыва (макс 95%). Источники: техники, артефакты, секта, тело.";
     }
 
-    // Совершенствование (скорость статов)
+    // Совершенствование (бонус множителя духа)
     const perfRow = document.getElementById("perfection-row");
     const perfVal = document.getElementById("perfection-value");
     const tipPerf = document.getElementById("tip-perfection");
@@ -591,11 +612,11 @@ function updateUI() {
         const sectB = game.getSectBonus("statXpSpeed");
         const artB = game.getArtifactBonus("statXpSpeed") * 0.01;
         const techB = game.getTechBonus("statXpSpeed");
-        const karmaB = (game.prestige.karmaUpgrades.statSpeed || 0) * 0.05;
+        const karmaB = ((game.prestige.karmaUpgrades.statSpeed || 0) + (game.getActiveBodyPerks().freeUpgradeLevel || 0)) * 0.05;
         const total = formB + sectB + artB + techB + karmaB;
         perfRow.style.display = total > 0 ? "" : "none";
-        const spiritMult = game.getSpiritMultiplier();
-        perfVal.textContent = `×${spiritMult.toFixed(2)}`;
+        const effective = softcap(total, 3, 0.5);
+        perfVal.textContent = `+${Math.round(effective * 100)}%`;
         if (tipPerf) {
             const parts = [`Бонус к духу: +${Math.round(total * 100)}%`];
             if (formB > 0) parts.push(`Формация: +${Math.round(formB * 100)}%`);
@@ -603,7 +624,7 @@ function updateUI() {
             if (artB > 0) parts.push(`Артефакт: +${Math.round(artB * 100)}%`);
             if (techB > 0) parts.push(`Техника: +${Math.round(techB * 100)}%`);
             if (karmaB > 0) parts.push(`Карма: +${Math.round(karmaB * 100)}%`);
-            tipPerf.textContent = `Множитель духа (влияет на скорость ци). ${parts.join(" | ")}`;
+            tipPerf.textContent = `Усиливает дух в формуле медитации; XP статов не ускоряет. ${parts.join(" | ")}. После +300% рост замедляется; итог +${Math.round(effective * 100)}%.`;
         }
     }
 
@@ -616,11 +637,11 @@ function updateUI() {
         const sectB = game.getSectBonus("techXpSpeed");
         const artB = game.getArtifactBonus("techXpSpeed") * 0.01;
         const techB = game.getTechBonus("techXpSpeed");
-        const karmaB = (game.prestige.karmaUpgrades.talent || 0) * 0.10;
+        const karmaB = ((game.prestige.karmaUpgrades.talent || 0) + (game.getActiveBodyPerks().freeUpgradeLevel || 0)) * 0.10;
         const spiB = game.spirit * 0.02;
-        const total = formB + sectB + artB + techB + karmaB + spiB;
-        techSpeedRow.style.display = total > 0 ? "" : "none";
-        techSpeedVal.textContent = `+${Math.round(total * 100)}%`;
+        const total = (1 + formB) * (1 + sectB) * (1 + artB) * (1 + techB) * (1 + karmaB) * (1 + spiB);
+        techSpeedRow.style.display = total > 1 ? "" : "none";
+        techSpeedVal.textContent = `×${total.toFixed(2)}`;
         if (tipTechSpeed) {
             const parts = [`Дух (${game.spirit}): +${Math.round(spiB * 100)}%`];
             if (formB > 0) parts.push(`Формация: +${Math.round(formB * 100)}%`);
@@ -628,7 +649,7 @@ function updateUI() {
             if (artB > 0) parts.push(`Артефакт: +${Math.round(artB * 100)}%`);
             if (techB > 0) parts.push(`Техника: +${Math.round(techB * 100)}%`);
             if (karmaB > 0) parts.push(`Карма: +${Math.round(karmaB * 100)}%`);
-            tipTechSpeed.textContent = `Ускоряет прокачку экипированных техник. ${parts.join(" | ")}`;
+            tipTechSpeed.textContent = `Множители перемножаются; сродство конкретной техники дополнительно ×1.5. ${parts.join(" | ")}`;
         }
     }
 
@@ -670,7 +691,7 @@ function updateUI() {
     // Тултип камней
     const tipStones = document.getElementById("tip-stones");
     if (tipStones) {
-        tipStones.textContent = "Формации, свитки озарения, защита при заточке, вход в экспедиции, задания секты.";
+        tipStones.textContent = "Формации, защита при заточке, вход в экспедиции, задания секты.";
     }
 
     // Тело перерождения
@@ -765,7 +786,7 @@ function updateUI() {
         if (karmaMult > 1) parts.push(`Карма: x${karmaMult.toFixed(2)}`);
         const elemMult = game.getElementalMultiplier();
         if (elemMult > 1) parts.push(`Резонанс: x${elemMult.toFixed(2)}`);
-        tipQiRate.textContent = parts.join(" | ");
+        tipQiRate.textContent = game.expedition ? "Медитация приостановлена до завершения экспедиции: 0 ци/сек" : parts.join(" | ");
     } else if (tipQiRate) {
         tipQiRate.textContent = "";
     }
@@ -787,7 +808,7 @@ function updateUI() {
                 const realmLoss = game.getDemonRealmLoss();
                 const rawChance = game.getDemonChance();
                 const bodyPerks = game.getActiveBodyPerks();
-                const flatRed = (bodyPerks.demonReduction || 0) + game.getFormationBonus("demonReduction");
+                const flatRed = (bodyPerks.demonReduction || 0) + game.getFormationBonus("demonReduction") + game.getArtifactBonus("demonReduction") * 0.01;
                 const demonPctLoss = bodyPerks.demonStatPct || 0;
                 const statLoss = demonPctLoss > 0
                     ? `${Math.round(demonPctLoss * 100)}% всех статов`
@@ -802,7 +823,8 @@ function updateUI() {
                 if (flatRed > 0) tipParts.push(`Защита: -${(flatRed * 100).toFixed(0)}%`);
                 tipParts.push(`Итого: ${(demonChance * 100).toFixed(0)}%`);
                 tipParts.push(`Потеря: ${realmLoss} ступеней + ${statLoss}`);
-                tipParts.push(`Ци и Дао → 0`);
+                tipParts.push(`Ци → 0; Дао: -${Math.max(0, realmLoss - 1)} ур.`);
+                if (!game.flags.demonFailsafeUsed) tipParts.push("Первого демона в этой жизни отражает защитный инстинкт");
                 tipDemon.textContent = tipParts.join(" | ");
             } else if (demonEl) {
                 demonEl.style.display = "none";
@@ -841,6 +863,10 @@ function updateUI() {
             if (bodyB > 0) parts.push(`Тело: +${(bodyB * 100).toFixed(1)}%`);
             const pillB = game.flags._pillBreakthroughBonus || 0;
             if (pillB > 0) parts.push(`Дух. пилюля: +${(pillB * 100).toFixed(0)}%`);
+            const techLuckB = game.getTechBonus("luck") * 0.01;
+            if (techLuckB > 0) parts.push(`Удача техник: +${(techLuckB * 100).toFixed(2)}%`);
+            if (game.flags.prophetic_dream) parts.push("Пророческий сон: +5%");
+            parts.push(`Предел эпохи: ${(game.getEraBreakthroughCap() * 100).toFixed(0)}%`);
             tipBtChance.textContent = parts.join(" | ");
         } else {
             tipBtChance.textContent = "";
@@ -866,22 +892,11 @@ function updateUI() {
     }
 
     // Кнопка Свитка Озарения (в табе техник)
-    const btnInsight = document.getElementById("btn-insight");
-    if (btnInsight) {
-        const iCost = game.getInsightCost();
-        btnInsight.textContent = `Свиток Озарения (${iCost} эссенции)`;
-        btnInsight.disabled = game.daoEssence < iCost || game.equippedTechniques.length === 0;
-    }
+    _updateInsightButtons();
     const tipInsight = document.getElementById("tip-insight");
     if (tipInsight) {
         const uses = game._insightUses || 0;
-        if (game.equippedTechniques.length > 0) {
-            const sampleTech = game.equippedTechniques[0];
-            const xpGain = game.getInsightXpGain(sampleTech);
-            tipInsight.textContent = `+10% XP до уровня каждой техники (~${xpGain} XP). Использовано: ${uses}, стоимость растёт.`;
-        } else {
-            tipInsight.textContent = `+10% XP до уровня каждой техники. Стоимость растёт с каждым использованием.`;
-        }
+        tipInsight.textContent = `Сразу 10% XP, необходимого для текущего уровня каждой экипированной техники. Максимальные техники пропускаются. Использовано: ${uses}, стоимость растёт.`;
     }
 
     // Активности — подсветка активной
@@ -942,7 +957,10 @@ function updateUI() {
 
     // Достижения badge
     const mileBadge = document.getElementById("mile-count");
-    if (mileBadge) mileBadge.textContent = `${game.milestones.length}/${MILESTONES.length}`;
+    if (mileBadge) {
+        const realMileCount = game.milestones.filter(id => MILESTONES.some(m => m.id === id)).length;
+        mileBadge.textContent = `${realMileCount}/${MILESTONES.length}`;
+    }
 
     // Артефакты badge
     const artBadge = document.getElementById("art-count");
@@ -953,6 +971,11 @@ function updateUI() {
 
     // Формации — полная перерисовка (стоимость/уровень могут измениться после reset)
     renderFormations();
+
+    const techniquesTab = document.getElementById("tab-techniques");
+    if (techniquesTab?.classList.contains("active")) renderTechniques();
+    const artifactsTab = document.getElementById("tab-artifacts");
+    if (artifactsTab?.classList.contains("active")) renderArtifacts();
 
     // Приключения — перерисовка если таб активен (прогресс-бары, шаги)
     const advTab = document.getElementById("tab-adventures");
@@ -990,7 +1013,7 @@ function updateUI() {
             expInfoEl.style.display = "";
             const expNameEl = document.getElementById("expedition-name");
             const expTimeEl = document.getElementById("expedition-time");
-            if (expNameEl && loc) { expNameEl.textContent = loc.name; expNameEl.style.color = loc.color; }
+            if (expNameEl && loc) { expNameEl.textContent = game.getLocationName(loc.id); expNameEl.style.color = loc.color; }
             if (expTimeEl) expTimeEl.textContent = `${game.getExpeditionTimeLeft()} лет`;
         } else {
             expInfoEl.style.display = "none";
@@ -1032,9 +1055,6 @@ function updateUI() {
             if (tipKarma) {
                 const parts = [`Свободная: ${game.prestige.karma}`, `Всего: ${totalKarma}`];
                 parts.push(`Множитель ци: ×${karmaMult.toFixed(2)}`);
-                // Бонус камней от сокровищницы
-                const stoneBonus = Math.round(Math.log10(Math.max(1, game.stones)) * 8);
-                if (stoneBonus > 0) parts.push(`Сокровищница: +${stoneBonus}% ци`);
                 // Бонус кармы от ачивок
                 if (game.prestige.totalRebirths >= 1) {
                     let achBonus = 0;
@@ -1197,14 +1217,19 @@ function _updateSectMissionProgress() {
                 const done = game.meditationYears - (m.meditationYearsAtStart || 0);
                 descEl.textContent = `${m.description} (${Math.min(done, m.check.meditationYears)}/${m.check.meditationYears} лет)`;
             } else if (m.check.strength) {
-                descEl.textContent = `${m.description} (${game.strength}/${m.check.strength})`;
+                descEl.textContent = `${m.description} (${Math.floor(game.strength + game.getArtifactBonus("strength"))}/${m.check.strength})`;
             } else if (m.check.spirit) {
-                descEl.textContent = `${m.description} (${game.spirit}/${m.check.spirit})`;
+                descEl.textContent = `${m.description} (${Math.floor(game.spirit + game.getArtifactBonus("spirit"))}/${m.check.spirit})`;
             } else if (m.check.breakthroughs) {
                 const done = game.totalBreakthroughs - (m.breakthroughsAtStart || 0);
                 descEl.textContent = `${m.description} (${Math.min(done, m.check.breakthroughs)}/${m.check.breakthroughs})`;
             } else if (m.check.combatPower) {
                 descEl.textContent = `${m.description} (${Math.floor(game.getCombatPower())}/${m.check.combatPower})`;
+            } else if (m.check.pillsDonated) {
+                const done = (game.flags.pillsDonated || 0) - (m.pillsDonatedAtStart || 0);
+                descEl.textContent = `${m.description} (${Math.min(done, m.check.pillsDonated)}/${m.check.pillsDonated} пожертвовано)`;
+            } else if (m.check.luck) {
+                descEl.textContent = `${m.description} (${Math.floor(game.getTotalLuck())}/${m.check.luck})`;
             }
         }
 
@@ -1280,7 +1305,7 @@ function _updateFormationButtons() {
     const buttons = container.querySelectorAll("button[data-cost]");
     buttons.forEach(btn => {
         const cost = parseInt(btn.dataset.cost, 10);
-        btn.disabled = game.stones < cost;
+        btn.disabled = game.gameOver || game.stones < cost;
     });
 }
 
@@ -1293,7 +1318,9 @@ function updateActivityBars() {
         const needed = game.qiNeeded();
         const pct = needed === Infinity ? 0 : Math.min(100, (game.qi / needed) * 100);
         medBar.style.width = pct + "%";
-        medInfo.textContent = `${pct.toFixed(0)}% \u2014 ${game.qiPerSec()} ци/сек`;
+        medInfo.textContent = game.expedition ? `${pct.toFixed(0)}% — приостановлена в экспедиции, 0 ци/сек` : `${pct.toFixed(0)}% \u2014 ${game.qiPerSec()} ци/сек`;
+        const medRow = medBar.closest(".activity-row");
+        if (medRow) medRow.title = game.expedition ? "Медитация возобновится после экспедиции. Тренировка статов и техник продолжается." : "Погружение в себя. Накапливает ци для прорыва на следующую ступень";
     }
 
     // Сила

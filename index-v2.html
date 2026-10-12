@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Путь Культиватора · Интерфейс 2</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ui/v2/style.css"><link rel="stylesheet" href="ui/v2/sect.css"><link rel="stylesheet" href="ui/v2/expeditions.css"><link rel="stylesheet" href="ui/v2/artifacts.css"><link rel="stylesheet" href="ui/v2/pills.css"><link rel="stylesheet" href="ui/v2/formations.css"><link rel="stylesheet" href="ui/scenery.css"><link rel="stylesheet" href="ui/v2/scenery.css"></head>
+<body class="ui-v2">
+    <!-- Модалка перерождения -->
+    <div id="rebirth-modal" class="modal-overlay">
+        <div class="modal rebirth-modal">
+            <div id="rebirth-content"></div>
+        </div>
+    </div>
+
+    <!-- Модалка вступления -->
+    <div id="intro-modal" class="modal-overlay"><div class="modal modal-intro">
+    <span class="v2-eyebrow">Ваш первый шаг</span><h2>От смертного к бессмертию</h2>
+    <p class="v2-intro-lead">Выберите занятие — герой будет выполнять его сам. Начните с медитации.</p>
+    <ol class="v2-intro-steps"><li><strong>Накопите ци</strong><span>Медитация наполняет шкалу энергии для роста.</span></li><li><strong>Совершите прорыв</strong><span>Полная шкала открывает следующий уровень и продлевает жизнь.</span></li><li><strong>Откройте новые возможности</strong><span>С ростом появятся секты, походы и новые техники.</span></li></ol>
+    <p class="v2-muted">В начале 5 секунд — один игровой год. Возраст растёт вместе с вами. После смерти можно начать новую жизнь; позже она принесёт постоянные улучшения.</p>
+    <div class="modal-actions"><button class="btn btn-breakthrough" onclick="closeIntroModal()">Начать путь</button></div>
+</div></div>
+
+    <!-- Модалка духовного корня -->
+    <div id="root-modal" class="modal-overlay">
+        <div class="modal modal-root">
+            <h2>Духовный Корень</h2>
+            <div class="name-input-section">
+                <label for="cultivator-name-input" class="name-input-label">Имя культиватора:</label>
+                <input type="text" id="cultivator-name-input" class="name-input" maxlength="24" placeholder="Культиватор">
+            </div>
+            <div id="root-result" class="root-result"></div>
+            <div id="element-choice-section" style="display:none"></div>
+            <div class="modal-actions">
+                <button id="btn-accept-root" class="btn btn-breakthrough" style="display:none">Принять судьбу</button>
+            </div>
+        </div>
+    </div>
+
+
+<div id="app">
+<header class="v2-header"><div class="v2-brand"><span class="v2-brand-mark" aria-hidden="true">道</span><div><h1>Путь Культиватора</h1><span class="v2-version">Уединение — путь к бессмертию</span></div></div><div class="v2-header-actions"><button class="tab-btn" data-tab="guide">Помощь</button><button class="tab-btn" data-tab="milestones">Достижения <span id="mile-count" class="badge">0</span></button><button class="tab-btn" data-tab="options">Настройки</button><button id="btn-pause" class="btn btn-small btn-pause" onclick="togglePause()">⏸ Пауза</button></div></header>
+<div class="v2-world"><span class="header-era header-with-tip">Эпоха: <span id="current-era">—</span><span id="tip-era" class="header-tip"></span></span><span class="header-we header-with-tip">Мир: <span id="world-event">—</span><span id="tip-world-event" class="header-tip"></span></span></div>
+<div class="main-layout">
+<aside class="panel stats-panel"><span class="v2-eyebrow">Ваш герой</span><h2 id="cultivator-name">Культиватор</h2>
+<div class="v2-realm stat-with-tip"><strong id="realm">Смертный</strong><span id="sub-realm">Начальный</span><span id="tip-realm" class="stat-tip"></span></div>
+<div class="v2-age stat-with-tip"><span>Возраст</span><span><strong id="years">16</strong> / <span id="max-age">70</span> лет</span><span id="tip-lifespan" class="stat-tip"></span></div>
+<div id="death-timer-row" class="stat" style="display:none"><span class="stat-label">До конца жизни</span><span id="death-timer" class="stat-value"></span></div>
+<div class="v2-stat-grid"><div class="stat stat-with-tip"><span class="stat-label">Сила</span><span id="strength" class="stat-value">—</span><span id="tip-strength" class="stat-tip"></span></div><div class="stat stat-with-tip"><span class="stat-label">Дух</span><span id="spirit" class="stat-value">—</span><span id="tip-spirit" class="stat-tip"></span></div><div id="luck-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Удача</span><span id="luck" class="stat-value">—</span><span id="tip-luck" class="stat-tip"></span></div></div>
+<div id="combat-power-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Боевая мощь</span><span id="combat-power" class="stat-value">—</span><span id="tip-combat" class="stat-tip"></span></div>
+<div class="v2-stones"><div class="stat stat-with-tip"><span class="stat-label">Камни</span><span id="stones" class="stat-value">—</span><span id="tip-stones" class="stat-tip"></span></div><span id="stones-qi-bonus" class="stat-bonus-text"></span></div>
+<section class="v2-resources" aria-label="Запасы"><div id="pills-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Пилюли</span><span id="pills" class="stat-value">—</span><span id="pills-higher" class="stat-value-sub" hidden></span><span id="tip-pills-all" class="stat-tip"></span></div>
+<div id="essence-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Эссенция</span><span id="dao-essence" class="stat-value">—</span><span id="v2-tip-essence" class="stat-tip"></span></div>
+<div id="dust-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Пыль артефактов</span><span id="artifact-dust" class="stat-value">—</span><span id="v2-tip-dust" class="stat-tip"></span></div>
+<div id="scrolls-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Свитки заточки</span><span id="dao-scrolls" class="stat-value">—</span><span id="v2-tip-scrolls" class="stat-tip"></span></div>
+<div id="v2-refined-stock-row" class="stat" hidden><span class="stat-label">Очищенные пилюли</span><span id="v2-refined-stock" class="stat-value">0</span></div>
+<div id="v2-spiritual-stock-row" class="stat" hidden><span class="stat-label">Духовные пилюли</span><span id="v2-spiritual-stock" class="stat-value">0</span></div>
+<div id="v2-heavenly-stock-row" class="stat" hidden><span class="stat-label">Небесные пилюли</span><span id="v2-heavenly-stock" class="stat-value">0</span></div>
+</section>
+<details class="v2-details v2-profile-details"><summary>Сведения о герое</summary><div class="v2-details-body"><div class="stat stat-with-tip"><span class="stat-label">Тело</span><span id="body-name" class="stat-value">—</span><span id="tip-body" class="stat-tip"></span></div>
+<div class="stat stat-with-tip"><span class="stat-label">Духовный корень</span><span id="spiritual-root" class="stat-value">—</span><span id="tip-root" class="stat-tip"></span></div>
+<div class="stat stat-with-tip"><span class="stat-label">Стихии</span><span id="root-elements" class="stat-value">—</span><span id="tip-elements" class="stat-tip"></span></div>
+<h3>Дополнительные бонусы</h3>
+<div id="danger-reward-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Бонус опасной добычи</span><span id="danger-reward" class="stat-value">—</span><span id="tip-danger-reward" class="stat-tip"></span></div>
+<div id="retention-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Сохранение ци при провале</span><span id="qi-retention" class="stat-value">—</span><span id="tip-retention" class="stat-tip"></span></div>
+<div id="perfection-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Усиление медитации</span><span id="perfection-value" class="stat-value">—</span><span id="tip-perfection" class="stat-tip"></span></div>
+<div id="tech-speed-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Скорость обучения</span><span id="tech-speed-value" class="stat-value">—</span><span id="tip-tech-speed" class="stat-tip"></span></div>
+<div id="dao-speed-row" style="display:none" class="stat stat-with-tip"><span class="stat-label">Скорость пути секты</span><span id="dao-speed-value" class="stat-value">—</span><span id="tip-dao-speed" class="stat-tip"></span></div>
+<div id="karma-display" class="stat-group" style="display:none"><h3>Прошлые жизни</h3><div class="stat stat-with-tip"><span class="stat-label">Карма</span><span id="karma-value" class="stat-value">—</span><span id="tip-karma" class="stat-tip"></span></div><div class="stat"><span class="stat-label">Перерождений</span><span id="rebirths-value" class="stat-value">—</span></div></div></div></details>
+<div id="sect-info" class="v2-status stat-group" style="display:none"><span class="v2-eyebrow">Секта</span><strong id="sect-name">—</strong><span id="sect-rank">—</span></div>
+<div id="expedition-info" class="v2-status stat-group" style="display:none"><span class="v2-eyebrow">В походе</span><strong id="expedition-name">—</strong><span id="expedition-time">—</span></div>
+<div class="stat-group save-group"><button id="btn-rebirth" class="btn btn-small btn-rebirth-btn" onclick="voluntaryRebirth()" style="display:none">Рассеять культивацию</button></div>
+<div id="rebirth-confirm-panel" class="inline-confirm-panel" style="display:none">
+                        <p class="inline-confirm-warning">Рассеять культивацию и начать новый путь?</p>
+                        <ul class="inline-confirm-losses">
+                            <li>Ступень, ци — сброс до начала</li>
+                            <li>Техники и их уровни — потеряны</li>
+                            <li>Артефакты — потеряны, кроме переноса через "Память Артефактов" или Пространственное Кольцо тела</li>
+                            <li>Членство, ранг секты и текущее постижение Дао — сброшены</li>
+                            <li>Пилюли и камни — сброшены; перенос пыли и эссенции зависит от тела текущей жизни</li>
+                            <li>Сила, дух, удача — сброшены до стартовых значений выбранного тела и кармических улучшений</li>
+                        </ul>
+                        <p class="inline-confirm-detail">Карма, достижения и кармические улучшения сохранятся.</p>
+                        <p class="inline-confirm-hint">Естественная смерть даёт +50% кармы.</p>
+                        <div class="inline-confirm-actions">
+                            <button class="btn btn-small btn-danger-btn" onclick="confirmVoluntaryRebirth()">Рассеять</button>
+                            <button class="btn btn-small btn-secondary" onclick="cancelVoluntaryRebirth()">Отмена</button>
+                        </div>
+                    </div>
+</aside>
+<main class="panel center-panel"><nav class="tabs" aria-label="Игровые занятия"><button class="tab-btn active" data-tab="cultivation" id="tab-btn-cultivation">Культивация <span id="breakthrough-badge" class="tab-badge" style="display:none">Готово</span></button>
+<button class="tab-btn" data-tab="sect" id="tab-btn-sect" style="display:none">Секта <span id="sect-mission-badge" class="tab-badge" style="display:none"></span></button>
+<button class="tab-btn" data-tab="expeditions" id="tab-btn-expeditions" style="display:none">Походы <span id="expedition-badge" class="tab-badge" style="display:none"></span></button>
+<button class="tab-btn" data-tab="adventures" id="tab-btn-adventures" style="display:none">Приключения <span id="adv-badge" class="badge" style="display:none">0</span></button>
+<button class="tab-btn" data-tab="artifacts" id="tab-btn-artifacts" style="display:none">Артефакты <span id="art-count" class="badge">0/4</span></button>
+<button class="tab-btn" data-tab="techniques" id="tab-btn-techniques" style="display:none">Техники <span id="tech-count" class="badge">0</span></button></nav>
+<div id="tab-cultivation" class="tab-content active">
+<section class="v2-goal"><div class="v2-goal-heading"><div><span class="v2-eyebrow">Культивация</span><h2 id="v2-goal-title">Смертный · начальный</h2></div><div id="v2-goal-checklist" class="v2-checklist"></div></div><p id="v2-next-step" class="v2-next-step"></p>
+                    <div class="qi-section v2-progress">
+                        <h3 id="main-progress-title">Ци для прорыва</h3>
+                        <div class="qi-bar-container">
+                            <div id="qi-bar" class="qi-bar"></div>
+                            <span id="qi-text" class="qi-text">0 / 100</span>
+                        </div>
+                        <div id="dao-bar-section" class="dao-bar-section stat-with-tip" style="display:none">
+                            <span id="tip-dao-bar" class="stat-tip dao-bar-tip"></span>
+                            <div class="dao-bar-container">
+                                <div id="dao-bar" class="dao-bar"></div>
+                                <span id="dao-text" class="dao-text">Постижение Дао: 0/100 (Ур. 0)</span>
+                            </div>
+                            <div id="dao-desc" class="dao-desc"></div>
+                        </div>
+                        <div id="main-progress-info" class="main-progress-info">
+                            <div id="main-progress-meditation">
+                                <div class="qi-per-sec stat-with-tip">+<span id="qi-rate">0</span> ци/сек<div id="tip-qi-rate" class="stat-tip"></div></div>
+                            </div>
+                            <div id="main-progress-stat" style="display:none">
+                                <div class="stat-progress-speed" id="stat-progress-speed"></div>
+                                <div class="stat-progress-breakdown" id="stat-progress-breakdown"></div>
+                            </div>
+                        </div>
+
+                        <div id="breakthrough-guide" class="breakthrough-guide" style="display:none"></div>
+                    </div>
+
+                    <div class="actions">
+                        <span class="stat-with-tip btn-tip-wrap"><button id="btn-breakthrough" class="btn btn-breakthrough" disabled>Совершить прорыв</button><span id="tip-breakthrough" class="stat-tip"></span></span>
+                    <div class="breakthrough-info"><span id="breakthrough-chance" class="stat-with-tip"><span id="bt-chance-text"></span><span id="tip-bt-chance" class="stat-tip"></span></span> <span id="demon-chance" class="stat-with-tip" style="display:none"><span id="demon-chance-text"></span><span id="tip-demon" class="stat-tip"></span></span></div></div>
+
+<p id="v2-breakthrough-risk" class="v2-action-warning" style="display:none"></p>
+<div id="v2-qi-overview" class="v2-qi-overview" hidden><span id="v2-qi-overview-text"></span><span class="v2-qi-track"><span id="v2-qi-overview-bar"></span></span></div>
+</section>
+<section class="activities-section"><div class="v2-section-heading"><h3>Чем заняться</h3><span id="v2-current-activity" class="v2-muted"></span></div><div id="activities-list" class="activities-list"><button type="button" class="activity-row active" data-activity="meditation" onclick="game.setActivity('meditation')" title="Накопите ци для прорыва. Во время похода медитация приостановлена." aria-pressed="true"><span class="activity-header"><span class="activity-name">Медитация</span><span class="activity-info" id="activity-info-meditation">Накопление ци</span></span><span class="activity-bar-container"><span class="activity-bar" id="activity-bar-meditation"></span></span></button>
+<button type="button" class="activity-row" data-activity="body" onclick="game.setActivity('body')" title="Сила повышает боевую мощь и ускоряет медитацию." aria-pressed="false"><span class="activity-header"><span class="activity-name">Тренировка силы</span><span class="activity-info" id="activity-info-body">Сила</span></span><span class="activity-bar-container"><span class="activity-bar" id="activity-bar-body"></span></span></button>
+<button type="button" class="activity-row" data-activity="dao" onclick="game.setActivity('dao')" title="Дух ускоряет медитацию и обучение техник. Это характеристика, а путь секты (Дао) — отдельный прогресс." aria-pressed="false"><span class="activity-header"><span class="activity-name">Развитие духа</span><span class="activity-info" id="activity-info-dao">Дух</span></span><span class="activity-bar-container"><span class="activity-bar" id="activity-bar-dao"></span></span></button>
+<button type="button" class="activity-row" data-activity="fate" id="activity-fate" style="display:none" onclick="game.setActivity('fate')" title="Удача повышает шанс прорыва и улучшает добычу." aria-pressed="false"><span class="activity-header"><span class="activity-name">Испытание судьбы</span><span class="activity-info" id="activity-info-fate">Удача</span></span><span class="activity-bar-container"><span class="activity-bar" id="activity-bar-fate"></span></span></button>
+</div><p id="v2-activity-help" class="v2-inline-help">Выбранное занятие работает автоматически.</p></section>
+<section id="v2-supplies" class="v2-supplies" hidden><div class="v2-section-heading"><h3>Пилюли</h3><span class="v2-muted">Быстрый запас ци</span></div><div class="pill-table" id="pill-table"></div></section>
+<section id="formations-section" class="formations-section" style="display:none"><h3>Формации <span id="v2-formation-summary" class="v2-muted"></span></h3><div id="formations-list" class="formations-list"></div></section>
+</div>
+<div id="tab-sect" class="tab-content">
+                    <div id="sects-list" class="sects-list"></div>
+                </div><div id="tab-expeditions" class="tab-content">
+                    <div id="expeditions-list" class="expeditions-list"></div>
+                </div><div id="tab-adventures" class="tab-content">
+                    <div id="adventures-list" class="adventures-list"></div>
+                </div><div id="tab-artifacts" class="tab-content">
+                    <div id="artifacts-list" class="artifacts-list"></div>
+                </div><div id="tab-techniques" class="tab-content">
+                    <div id="techniques-list" class="techniques-list"></div>
+                </div><div id="tab-milestones" class="tab-content">
+                    <div id="milestones-list" class="milestones-list"></div>
+                </div>
+<div id="tab-options" class="tab-content">
+                    <div class="options-section">
+                        <h3>Сохранение второй версии</h3>
+                        <div class="options-list">
+                            <button id="btn-save" class="btn btn-small btn-secondary">Сохранить</button>
+                            <button class="btn btn-small btn-secondary" onclick="exportSave()">Скачать сохранение</button>
+                            <button class="btn btn-small btn-secondary" onclick="exportDetailedSave()">Сохранить отчёт</button>
+                            <button class="btn btn-small btn-secondary" onclick="importSave()">Загрузить сохранение</button>
+                        </div>
+                        <p class="options-hint">Игра сохраняется сама каждые 30 секунд. Сохранение второй версии отдельное: первая версия продолжит с прежнего места. При первом открытии сюда копируется её прогресс, если он есть.</p>
+                    </div>
+                    <div class="options-section">
+                        <h3>Скорость</h3>
+                        <div class="options-list debug-speed-list">
+                            <button class="btn btn-small btn-secondary debug-speed-btn active" onclick="setDebugSpeed(1)">x1</button>
+                            <button class="btn btn-small btn-secondary debug-speed-btn" onclick="setDebugSpeed(2)">x2</button>
+                            <button class="btn btn-small btn-secondary debug-speed-btn" onclick="setDebugSpeed(3)">x3</button>
+                            <button class="btn btn-small btn-secondary debug-speed-btn" onclick="setDebugSpeed(10)">x10</button>
+                            <button class="btn btn-small btn-secondary debug-speed-btn" onclick="setDebugSpeed(50)">x50</button>
+                            <button class="btn btn-small btn-secondary debug-speed-btn" onclick="setDebugSpeed(100)">x100</button>
+                        </div>
+                        <p class="options-hint">Ускоряет течение времени. x10+ для тестирования.</p>
+                    </div>
+                    <div class="options-section">
+                        <h3>Интерфейс</h3>
+                        <div class="options-list">
+                            <label><input type="checkbox" id="opt-death-timer" onchange="game._showDeathTimer = this.checked; updateUI();"> Показывать таймер до смерти</label>
+                        </div>
+                    </div>
+                    <div class="options-section">
+                        <details class="v2-details"><summary>Инструменты тестирования</summary>
+
+                        <p class="options-hint" style="margin-bottom:4px">Автоматизация (тогглы):</p>
+                        <div class="options-list debug-toggles">
+                            <label><input type="checkbox" onchange="debugToggle('breakthrough', this.checked)"> Авто-прорыв (без демона)</label>
+                            <label><input type="checkbox" onchange="debugToggle('sectMissions', this.checked)"> Авто-задания секты</label>
+                            <label><input type="checkbox" onchange="debugToggle('expeditions', this.checked)"> Автоповтор походов</label>
+                            <label><input type="checkbox" onchange="debugToggle('insight', this.checked)"> Автообучение техник</label>
+                        </div>
+                        <p class="options-hint" style="margin-top:8px;margin-bottom:4px">Читы:</p>
+                        <div class="options-list debug-grid">
+                            <button class="btn btn-small btn-secondary" onclick="debugAddStats()">+1 к характеристикам</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugAddStats(10)">+10 к характеристикам</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugMaxQi()">Макс ци</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugMaxDao()">Заполнить путь секты</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugBreakthrough()">Прорыв (1x)</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugSetRealm()">Задать ступень...</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugSectRankUp()">Ранг секты</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugCompleteExpedition()">Завершить поход</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugGiveResources()">+1000 ресурсов</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugGiveArtifact()">Случайный артефакт</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugGiveKarma()">+100 кармы</button>
+                            <button class="btn btn-small btn-secondary" onclick="debugSkipYears()">+100 лет</button>
+                        </div>
+                    </details></div>
+                    <div class="options-section">
+                        <h3>Новая жизнь с нуля</h3>
+                        <div class="options-list">
+                            <button id="btn-new-game" class="btn btn-danger-btn">Новая игра</button>
+                        </div>
+                    </div>
+
+</div>
+<div id="tab-guide" class="tab-content"><span class="v2-eyebrow">Можно читать по мере игры</span><h2>Понятный путеводитель</h2><p class="v2-inline-help">Цель — расти, продлевать жизнь и открывать новые возможности. Текущая задача всегда указана на экране культивации.</p><div class="v2-faq"><h3>Как играть</h3>
+<details class="v2-details"><summary>Что делать в начале?</summary><p>Выберите медитацию и дождитесь полной шкалы ци. Нажмите «Совершить прорыв» — герой перейдёт на следующий уровень. Если нужна боевая мощь, тренируйте силу; для более быстрой медитации и обучения — дух.</p></details>
+<details class="v2-details"><summary>Тренировки и путь секты — это одно и то же?</summary><p>Тренировки повышают силу, дух и удачу. Выбранная характеристика растёт на полной скорости, остальные — на 15%. Во время медитации все характеристики растут на 15%.</p><p>Путь секты (Дао) появляется с Золотого Ядра. Для него нужна определённая тренировка: она указана рядом со шкалой. Каждый следующий прорыв требует ещё одного уровня пути.</p></details>
+<details class="v2-details"><summary>Почему остановилось накопление ци?</summary><p>Ци от медитации растёт только при выбранной медитации, пока герой не в походе. В походе тренировки характеристик и обучение техник продолжаются. Полная шкала ци ждёт прорыва.</p></details>
+<details class="v2-details"><summary>Что происходит при провале прорыва?</summary><p>Вы теряете ци и накопленный опыт до следующего уровня пути секты. Бонус сохранения ци уменьшает потери. На высоких ступенях возможна потеря характеристик или внутренний демон: он может отбросить на несколько ступеней. Риск и последствия указаны рядом с прорывом; первый демон в каждой жизни автоматически отражается.</p></details>
+<details class="v2-details"><summary>Зачем вступать в секту?</summary><p>Секта открывает свой путь, техники, задания и формации. Задания дают вклад — очки для повышения ранга. С Золотого Ядра путь секты нужен для дальнейших прорывов.</p></details>
+<details class="v2-details"><summary>Что сохранится после рассеивания культивации?</summary><p>Карма, постоянные улучшения, достижения и открытые формации сохранятся. Ступень, характеристики, членство в секте, уровни пути и формаций начинают расти заново. Перенос ресурсов и артефактов зависит от тела и постоянных улучшений; точные потери указаны перед перерождением.</p><p>Рассеивание культивации доступно с Золотого Ядра от 150 лет; «Ранняя Мудрость» снижает этот возраст. Естественная смерть от старости даёт на 50% больше кармы.</p></details>
+<details class="v2-details"><summary>Что такое формации?</summary><p>Постройки с бонусами на эту жизнь. Покупаются за камни. Их максимальный уровень ограничен текущим уровнем пути секты. Выбранную формацию нельзя заменить до перерождения.</p></details>
+<details class="v2-details"><summary>Заточка и слияние артефактов</summary><p>Заточка усиливает эффекты на ×1.2 за каждый уровень, до +10. Попытка расходует эссенцию и пыль. При провале с текущего уровня +4 и выше предмет теряет один уровень, если вы не защитили его камнями или бонусом тела.</p><p>Свитки заточки добавляют по 2 процентных пункта к шансу, до 10 свитков (+20 п.п.). Их бонус сохраняется при провале и сбрасывается при успехе. Слияние требует материалов и второго подходящего артефакта; второй предмет расходуется.</p></details>
+</div><h3>Словарь</h3><div id="v2-glossary" class="v2-glossary"></div></div>
+</main>
+<aside class="panel v2-event-panel v2-chronicles" aria-label="События мира">
+<div class="v2-event-heading"><h2>Хроники</h2><button id="btn-log-time-toggle" class="log-time-toggle" title="Показывать мировой год или возраст героя">Мир</button></div>
+<div id="v2-event-attention" class="v2-event-attention" hidden><span id="v2-event-attention-text"></span><button class="btn btn-small" onclick="switchTab('adventures')">К приключениям</button></div>
+<div class="v2-log-filters" role="group" aria-label="Фильтр событий"><button class="btn btn-small btn-secondary active" data-log-filter="all" aria-pressed="true">Все</button><button class="btn btn-small btn-secondary" data-log-filter="important" aria-pressed="false">Важное</button><button id="v2-log-latest" class="btn btn-small" hidden>↓ Новое</button></div>
+<div id="event-log" class="event-log" role="log" aria-label="Хроники жизни"></div>
+<div id="v2-log-details" class="v2-log-footer"><span id="v2-log-count" class="v2-muted"></span><span class="v2-muted">Время мира / возраст</span></div><div id="v2-recent-events" hidden></div>
+</aside>
+</div>
+
+<footer class="v2-footer"><span>Интерфейс 2 · отдельное сохранение</span><a href="index.html" target="_blank" rel="noopener">Открыть первую версию ↗</a></footer>
+</div>
+    <!-- Data -->
+    <script src="data/core.js"></script>
+    <script src="data/world.js"></script>
+    <script src="data/techniques.js"></script>
+    <script src="data/milestones.js"></script>
+    <script src="data/events/_base.js"></script>
+    <script src="data/events/early.js"></script>
+    <script src="data/events/sects.js"></script>
+    <script src="data/events/mid.js"></script>
+    <script src="data/events/late.js"></script>
+    <script src="data/events/chains.js"></script>
+    <script src="data/events/cameos.js"></script>
+    <script src="data/events/rebirth.js"></script>
+    <script src="data/events/xianxia_early.js"></script>
+    <script src="data/events/xianxia_mid.js"></script>
+    <script src="data/events/fillers_early.js"></script>
+    <script src="data/events/fillers_mid.js"></script>
+    <script src="data/events/fillers_anomaly.js"></script>
+    <script src="data/events/dao_pressure.js"></script>
+    <script src="data/events/artifact_find.js"></script>
+    <script src="data/prestige.js"></script>
+    <script src="data/artifacts.js"></script>
+    <script src="data/formations.js"></script>
+    <script src="data/sects/definitions.js"></script>
+    <script src="data/sects/techniques.js"></script>
+    <script src="data/sects/missions.js"></script>
+    <script src="data/locations.js"></script>
+    <script src="data/adventures/_base.js"></script>
+    <script src="data/adventures/early.js"></script>
+    <script src="data/adventures/mid.js"></script>
+    <script src="data/adventures/late.js"></script>
+    <script src="data/adventures/ascension.js"></script>
+
+    <!-- Save -->
+    <script src="ui/v2/vocabulary.js"></script>
+    <script src="ui/v2/save.js"></script>
+
+    <!-- Game logic -->
+    <script src="game/state.js"></script>
+    <script src="game/formulas.js"></script>
+    <script src="game/techniques.js"></script>
+    <script src="game/actions.js"></script>
+    <script src="game/world.js"></script>
+    <script src="game/prestige.js"></script>
+    <script src="game/sects.js"></script>
+    <script src="game/expeditions.js"></script>
+    <script src="game/adventures.js"></script>
+    <script src="game/artifacts.js"></script>
+    <script src="game/formations.js"></script>
+    <script src="game/lifecycle.js"></script>
+
+    <!-- UI -->
+    <script src="ui/scenery.js"></script>
+    <script src="ui/v2/update.js"></script>
+    <script src="ui/v2/tabs.js"></script>
+    <script src="ui/v2/artifacts.js"></script>
+<script src="ui/v2/formations.js"></script>
+    <script src="ui/v2/sects.js"></script>
+    <script src="ui/v2/expeditions.js"></script>
+    <script src="ui/v2/adventures.js"></script>
+    <script src="ui/v2/modals.js"></script>
+    <script src="ui/v2/init.js"></script>
+<script src="ui/v2/interface.js"></script>
+<script src="ui/v2/sections.js"></script>
+<script src="ui/v2/tooltips.js"></script>
+<script src="ui/v2/breakthrough-lore.js"></script>
+
+</body></html>

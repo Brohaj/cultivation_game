@@ -39,6 +39,8 @@ const game = {
     equippedTechniques: [], // id экипированных техник (ограничено слотами)
     techLevels: {},       // { techId: level }
     techXP: {},           // { techId: currentXP } — XP техник (jobs)
+    _pendingInsightXP: null, // совместимость: остаток оплаченного XP из старого сейва
+    _insightTicksLeft: 0,    // legacy; новые покупки выдаются немедленно
     spiritualRoot: null,
     milestones: [],
     totalMeditations: 0,
@@ -55,14 +57,15 @@ const game = {
     sectMissionTimer: 0,        // лет до нового задания
 
     // Экспедиции
-    expedition: null,           // { locationId, startYear, duration } или null
-    ascendedLocations: {},      // { locationId: true } — вознесённые локации (×2 награды, сброс при перерождении)
+    expedition: null,           // { locationId, startYear, baseDuration, rewardMultipliers } или null
+    ascendedLocations: {},      // { locationId: 1|2 } — ступени вознесения, сброс при перерождении
     expeditionCompletions: {},  // { locationId: count } — счётчик завершений по локации
 
     // Приключения
     adventureRumors: [],        // [{id, appearedYear}]
     activeAdventures: [],       // [{id, currentStep, stepStartYear, stepDuration, flags, awaitingChoice, completedSteps}]
     completedAdventures: [],    // [id, id, ...] — одноразовые, сбрасываются при перерождении
+    adventureDiscovery: { poolKey: "", waitYears: 0, lastCompleteYear: null },
 
     // Артефакты
     artifacts: [],              // инвентарь артефактов (массив объектов)
@@ -75,6 +78,7 @@ const game = {
     // Перерождение (сохраняется между жизнями)
     prestige: {
         karma: 0,
+        karmaSpent: 0,           // сумма фактически оплаченной кармы
         totalRebirths: 0,
         permanentMilestones: [],
         karmaUpgrades: {},
@@ -85,6 +89,7 @@ const game = {
         unlockedFormations: []   // [formationId, ...] — разблокированные формации (перманентно)
     },
     _minRootTier: null, // временное: мин. тир корня от тела
+    pendingRebirth: null, // { karmaEarned, naturalDeath, bodyId } — незавершённое перерождение
 
     // Таймеры
     tickTimer: null,

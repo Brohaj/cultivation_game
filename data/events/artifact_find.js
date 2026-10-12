@@ -9,13 +9,12 @@ EVENTS.push(
         id: "find_weapon",
         text: "В расщелине скалы что-то блеснуло. Вы протянули руку — и пальцы сомкнулись на рукояти старого оружия. Оно тёплое, будто ждало именно вас.",
         type: "reward",
-        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.weapon && !g.flags.found_weapon,
+        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.weapon && !g.flags.found_weapon && g.artifacts.length < ARTIFACT_MAX_INVENTORY,
         effect: (g) => {
-            g.flags.found_weapon = true;
             const art = g.generateArtifact(null, "weapon");
-            if (art) {
-                g.addArtifact(art);
-                g.equippedArtifacts.weapon = art;
+            if (art && g.addArtifact(art)) {
+                g.flags.found_weapon = true;
+                g.equipArtifact(art.id);
                 return `Найдено оружие: ${art.name}! Экипировано.`;
             }
             return "Оружие рассыпалось в руках...";
@@ -25,13 +24,12 @@ EVENTS.push(
         id: "find_armor",
         text: "Старая мантия висела на ветке мёртвого дерева. Ни пыли, ни дыр — словно кто-то оставил её вчера. Ткань мягко легла на плечи.",
         type: "reward",
-        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.armor && !g.flags.found_armor,
+        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.armor && !g.flags.found_armor && g.artifacts.length < ARTIFACT_MAX_INVENTORY,
         effect: (g) => {
-            g.flags.found_armor = true;
             const art = g.generateArtifact(null, "armor");
-            if (art) {
-                g.addArtifact(art);
-                g.equippedArtifacts.armor = art;
+            if (art && g.addArtifact(art)) {
+                g.flags.found_armor = true;
+                g.equipArtifact(art.id);
                 return `Найдена броня: ${art.name}! Экипирована.`;
             }
             return "Мантия рассыпалась при прикосновении...";
@@ -41,13 +39,12 @@ EVENTS.push(
         id: "find_accessory",
         text: "На берегу ручья лежал амулет. Камень в нём пульсировал в такт вашему сердцу. Вы надели его — и ци потекла ровнее.",
         type: "reward",
-        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.accessory && !g.flags.found_accessory,
+        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.accessory && !g.flags.found_accessory && g.artifacts.length < ARTIFACT_MAX_INVENTORY,
         effect: (g) => {
-            g.flags.found_accessory = true;
             const art = g.generateArtifact(null, "accessory");
-            if (art) {
-                g.addArtifact(art);
-                g.equippedArtifacts.accessory = art;
+            if (art && g.addArtifact(art)) {
+                g.flags.found_accessory = true;
+                g.equipArtifact(art.id);
                 return `Найден аксессуар: ${art.name}! Экипирован.`;
             }
             return "Амулет потух...";
@@ -57,13 +54,12 @@ EVENTS.push(
         id: "find_treasure",
         text: "Под корнями древнего дуба — свёрток, обёрнутый в истлевший шёлк. Внутри — предмет, испускающий слабое свечение. Он гудит от накопленной ци.",
         type: "reward",
-        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.treasure && !g.flags.found_treasure,
+        condition: (g) => g.realmIndex >= 1 && g.characterAge() <= 200 && !g.equippedArtifacts.treasure && !g.flags.found_treasure && g.artifacts.length < ARTIFACT_MAX_INVENTORY,
         effect: (g) => {
-            g.flags.found_treasure = true;
             const art = g.generateArtifact(null, "treasure");
-            if (art) {
-                g.addArtifact(art);
-                g.equippedArtifacts.treasure = art;
+            if (art && g.addArtifact(art)) {
+                g.flags.found_treasure = true;
+                g.equipArtifact(art.id);
                 return `Найдено сокровище: ${art.name}! Экипировано.`;
             }
             return "Предмет рассыпался в пыль...";

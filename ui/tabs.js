@@ -27,6 +27,7 @@ function _techSpeedBreakdown(techId) {
 
 // === ТЕХНИКИ TAB ===
 function renderTechniques() {
+    if (deferUIRender(renderTechniques)) return;
     const container = document.getElementById("techniques-list");
     if (!container) return;
     container.innerHTML = "";
@@ -42,15 +43,19 @@ function renderTechniques() {
     const countInfo = document.createElement("p");
     countInfo.className = "slots-info";
     countInfo.innerHTML = `Слоты: <b>${usedSlots}/${maxSlots}</b> | Изучено: ${game.techniques.length} | <span style="color:#c89aff">\u2726</span> Эссенция Дао: <span style="color:#c89aff">${game.daoEssence}</span>`;
+    countInfo.title = "Карточки показывают полный эффект каждой техники. Для каждого эффекта бонусы сортируются: сильнейший 100%, затем 60%, 40%, 25%, остальные 15%. Только экипированные техники действуют и получают XP.";
     container.appendChild(countInfo);
 
     // Свиток Озарения
     const insightDiv = document.createElement("div");
     insightDiv.className = "insight-section";
     const iCost = game.getInsightCost();
+    const bulkPurchase = game.getInsightPurchaseInfo(10);
+    const canBuy10 = game.canBuyInsight(10);
     insightDiv.innerHTML = `
-        <button id="btn-insight" class="btn btn-small btn-secondary" onclick="game.buyInsight(); renderTechniques();">Свиток Озарения (${iCost} эссенции)</button>
-        <span id="tip-insight" class="insight-tip">+10% XP к экипированным техникам. Цена растёт с каждым использованием (исп.: ${game._insightUses || 0}).</span>
+        <button id="btn-insight" class="btn btn-small btn-secondary" onclick="game.buyInsight(); renderTechniques();" ${game.canBuyInsight() ? "" : "disabled"}>Свиток Озарения (${iCost} эсс.)</button>
+        <button id="btn-insight-multi10" class="btn btn-small btn-secondary" onclick="game.buyInsight(10); renderTechniques();" ${canBuy10 ? "" : "disabled"} title="${bulkPurchase.count} ${_plural(bulkPurchase.count, 'озарение', 'озарения', 'озарений')}: ${bulkPurchase.cost} эссенции">До 10</button>
+        <span id="tip-insight" class="insight-tip">Сразу +10% XP текущего уровня экипированным техникам. Цена растёт (исп.: ${game._insightUses || 0}).</span>
     `;
     container.appendChild(insightDiv);
 
@@ -83,6 +88,7 @@ function renderTechniques() {
         const card = document.createElement("div");
         card.className = `tech-card tech-${tech.tier}${isEquipped ? "" : " tech-unequipped"}`;
         card.id = `tech-card-${techId}`;
+        card.dataset.lastLevel = level;
 
         // Элементный индикатор
         const elemData = tech.element ? ELEMENTS.find(e => e.id === tech.element) : null;
@@ -90,7 +96,6 @@ function renderTechniques() {
             ? `<span class="tech-elem-icon" title="Элемент: ${elemData.name}">${elemData.icon}</span> `
             : "";
         const hasAffinity = tech.element && game.spiritualRoot?.elements?.includes(tech.element);
-        const tierMult = TIER_MULTIPLIERS[tech.tier] || 1;
 
         // Ascend info — компактная кнопка
         const ascendInfo = game.getTechAscendInfo(techId);
@@ -99,7 +104,10 @@ function renderTechniques() {
             const canAfford = game.daoEssence >= ascendInfo.essence;
             if (ascendInfo.locked) {
                 const realmName = REALMS[ascendInfo.realmReq] ? REALMS[ascendInfo.realmReq].name : "ступень " + ascendInfo.realmReq;
-                ascendHtml = `<span class="tech-ascend-inline ascend-locked stat-with-tip">\uD83D\uDD12<span class="stat-tip">Вознесение доступно с «${realmName}»</span></span>`;
+                const reason = ascendInfo.insightPending ? "Дождитесь завершения озарения"
+                    : ascendInfo.eraLocked ? `Достигните эпохи «${ERAS.find(era => era.id === ascendInfo.eraReq)?.name || ascendInfo.eraReq}»`
+                    : `Вознесение доступно с «${realmName}»`;
+                ascendHtml = `<span class="tech-ascend-inline ascend-locked stat-with-tip">\uD83D\uDD12<span class="stat-tip">${reason}</span></span>`;
             } else {
                 ascendHtml = `<span class="tech-ascend-inline stat-with-tip"><button class="btn btn-tiny btn-ascend" onclick="event.stopPropagation();ascendTechniqueUI('${techId}')" ${canAfford ? "" : "disabled"}>\u2728</button><span class="stat-tip">Вознести \u2192 ${tierNames[ascendInfo.to]} (${ascendInfo.essence} \u2726)</span></span>`;
             }
@@ -156,25 +164,25 @@ function toggleTechEquip(techId) {
 
 function formatTechEffects(tech, level, hasAffinity) {
     const parts = [];
-    const affinityMult = hasAffinity ? 1.50 : 1;
-    const tierMult = TIER_MULTIPLIERS[tech.tier] || 1;
-    for (const [key, val] of Object.entries(tech.effects)) {
-        const total = val * level * tierMult * affinityMult;
+    for (const key of Object.keys(tech.effects)) {
+        const total = game.getTechniqueEffectBonus(tech, key, level);
         const names = {
             qi: "Ци",
-            strength: "Сила",
+            strength: "Множитель силы для ци",
             combatPower: "Боевая мощь",
             qiRetention: "Удержание ци",
             lifespan: "Долголетие",
             breakthroughBonus: "Шанс прорыва",
             luck: "Удача",
-            spirit: "Дух",
+            spirit: "Множитель духа для ци",
             timeSpeed: "Скорость времени",
             statXpSpeed: "Совершенствование",
             techXpSpeed: "Скорость техник",
             daoSpeed: "Скорость Дао"
         };
-        if (key === "combatPower") {
+        if (key === "luck") {
+            parts.push(`+${total.toFixed(2)}% шанс прорыва от удачи`);
+        } else if (key === "combatPower") {
             parts.push(`×${(1 + total).toFixed(2)} ${names[key]}`);
         } else {
             parts.push(`+${(total * 100).toFixed(0)}% ${names[key] || key}`);
@@ -221,11 +229,12 @@ function _spawnAscendParticles(card) {
 
 // === ДОСТИЖЕНИЯ TAB ===
 function renderMilestones() {
+    if (deferUIRender(renderMilestones)) return;
     const container = document.getElementById("milestones-list");
     if (!container) return;
     container.innerHTML = "";
 
-    const achievedCount = game.milestones.length;
+    const achievedCount = game.milestones.filter(id => MILESTONES.some(m => m.id === id)).length;
     const total = MILESTONES.length;
     const counter = document.createElement("p");
     counter.className = "mile-counter";

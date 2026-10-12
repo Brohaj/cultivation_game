@@ -338,10 +338,10 @@ const SECTS = [
 // Базовые ранги секты (contribution масштабируется difficulty.rankMult)
 const SECT_RANKS_BASE = [
     { id: "outer",   name: "Внешний Ученик",           baseContribution: 0,    bonusMult: 1.0, realmOffset: 0 },
-    { id: "inner",   name: "Внутренний Ученик",         baseContribution: 150,  bonusMult: 1.5, realmOffset: 0 },
-    { id: "core",    name: "Ядровой Ученик",             baseContribution: 750,  bonusMult: 2.0, realmOffset: 1, unlockTechnique: true },
-    { id: "elder",   name: "Старейшина",                baseContribution: 3000, bonusMult: 3.0, realmOffset: 2 },
-    { id: "hall",    name: "Глава Секты",                baseContribution: 12000, bonusMult: 4.0, realmOffset: 4 },
+    { id: "inner",   name: "Внутренний Ученик",         baseContribution: 150,  bonusMult: 1.25, realmOffset: 0 },
+    { id: "core",    name: "Ядровой Ученик",             baseContribution: 750,  bonusMult: 1.5, realmOffset: 1, unlockTechnique: true },
+    { id: "elder",   name: "Старейшина",                baseContribution: 3000, bonusMult: 1.75, realmOffset: 2 },
+    { id: "hall",    name: "Глава Секты",                baseContribution: 12000, bonusMult: 2.0, realmOffset: 4 },
 ];
 
 // Обратная совместимость — SECT_RANKS как alias

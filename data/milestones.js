@@ -152,15 +152,15 @@ const MILESTONES = [
     // ==============================
 
     // --- Культивация ---
-    { id: "realm_6", name: "Слияние с Пустотой", description: "Достичь ступени Слияние с Пустотой",
+    { id: "realm_6", name: "Душа Сформирована", description: "Достичь ступени Формирование Души",
       tier: "gold", category: "cultivation",
       check: (g) => g.realmIndex >= 5 },
 
-    { id: "realm_7", name: "Слияние Тела", description: "Достичь ступени Слияние Тела",
+    { id: "realm_7", name: "Слияние с Пустотой", description: "Достичь ступени Слияние с Пустотой",
       tier: "gold", category: "cultivation",
       check: (g) => g.realmIndex >= 6 },
 
-    { id: "realm_8", name: "Небесная Кара", description: "Преодолеть Небесную Кару",
+    { id: "realm_8", name: "Единство Тела и Духа", description: "Достичь ступени Слияние Тела",
       tier: "gold", category: "cultivation",
       check: (g) => g.realmIndex >= 7 },
 

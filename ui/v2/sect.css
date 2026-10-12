@@ -1,0 +1,76 @@
+/* Секта: основная часть и отдельная панель пожертвований. */
+.ui-v2 #sects-list.v2-sect-screen { font-size: 13px; line-height: 1.45; }
+.ui-v2 #sects-list.v2-sect-member { display: block; }
+.ui-v2 #sects-list .v2-sect-main { min-width: 0; }
+.ui-v2 #sects-list .sect-active-header { margin: 0 0 5px; }
+.ui-v2 #sects-list .sect-title-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 12px; }
+.ui-v2 #sects-list .sect-name { font-size: 17px; line-height: 1.3; margin: 0; }
+.ui-v2 #sects-list .sect-rank-name { font-size: 12px; font-weight: 500; color: var(--v2-gold); }
+.ui-v2 #sects-list .sect-lore-prose { margin: 4px 0 5px; color: #c1ccc2; font-size: 13px; line-height: 1.5; font-style: italic; }
+.ui-v2 #sects-list .sect-rank-info { margin: 0; display: flex; gap: 3px 14px; flex-wrap: wrap; font-size: 12px; }
+.ui-v2 #sects-list .sect-contribution { color: #b9c5d2; white-space: nowrap; }
+.ui-v2 #sects-list .sect-next-rank { color: var(--v2-muted); }
+.ui-v2 #sects-list .sect-rank-bar-container { height: 13px; margin: 5px 0 8px; border-radius: 4px; background: #202a2a; border-color: #34403b; }
+.ui-v2 #sects-list .sect-rank-bar { background: #8b9570; border-radius: 3px; }
+.ui-v2 #sects-list .sect-rank-bar-text { font-size: 11px; }
+.ui-v2 #sects-list .sect-active-bonuses { margin: 0 0 9px; padding: 6px 9px; background: #1b2926; border: 1px solid #30413a; border-radius: 6px; }
+.ui-v2 #sects-list .sect-path-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 10px; }
+.ui-v2 #sects-list .sect-path-line h4 { font-size: 13px; color: #c2d1be; margin: 0; font-weight: 500; }
+.ui-v2 #sects-list .sect-path-lore { font-size: 12px; color: #c1ccc2; font-style: italic; line-height: 1.45; margin: 4px 0; }
+.ui-v2 #sects-list .sect-training-hint { margin: 0; font-size: 12px; color: var(--v2-muted); }
+.ui-v2 #sects-list .sect-bonus-list { display: flex; flex-wrap: wrap; gap: 2px 13px; margin-top: 3px; }
+.ui-v2 #sects-list .sect-bonus-item { font-size: 12px; margin: 0; color: #b9cbb7; }
+.ui-v2 #sects-list .sect-bonus-negative { color: #d09d95; }
+.ui-v2 #sects-list .sect-mission-section { margin: 0 0 6px; }
+.ui-v2 #sects-list .sect-section-line { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px; margin: 0 0 5px; }
+.ui-v2 #sects-list .sect-section-line h4 { font-size: 14px; font-weight: 500; color: var(--v2-text); margin: 0; }
+.ui-v2 #sects-list .sect-section-line > span { font-size: 12px; color: var(--v2-muted); }
+.ui-v2 #sects-list .sect-mission-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 5px 10px; min-height: 0; padding: 8px 10px; margin: 0 0 5px; border-color: var(--v2-line); background: #192426; border-radius: 6px; }
+.ui-v2 #sects-list .sect-mission-main { min-width: 0; position: relative; }
+.ui-v2 #sects-list .sect-mission-text { font-size: 14px; color: #dce2d6; font-weight: 500; line-height: 1.4; margin: 0 0 2px; }
+.ui-v2 #sects-list .sect-mission-desc { font-size: 12px; font-weight: 400; line-height: 1.45; margin: 0 0 2px; color: #bfcbc2; }
+.ui-v2 #sects-list .sect-check-ready { color: #b7d1bd; }
+.ui-v2 #sects-list .sect-check-pending { color: #d3c3a5; }
+.ui-v2 #sects-list .sect-mission-reward { font-size: 12px; line-height: 1.45; margin: 0; color: #adc8bc; }
+.ui-v2 #sects-list .sect-mission-action { align-self: center; min-width: 83px; }
+.ui-v2 #sects-list .sect-mission-action .btn { min-height: 32px; padding: 5px 9px; font-size: 12px; width: 100%; white-space: nowrap; }
+.ui-v2 #sects-list .sect-mission-cooldown { opacity: .72; }
+.ui-v2 #sects-list .sect-donations { border: 1px solid var(--v2-line); border-radius: 7px; background: #192426; margin: 8px 0 0; padding: 8px 10px; }
+.ui-v2 #sects-list .sect-donations > h4 { margin: 0; padding: 3px 0; font-size: 13px; font-weight: 500; color: #bcc7be; }
+.ui-v2 #sects-list .sect-donate-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 6px 0; }
+.ui-v2 #sects-list .sect-donate-item { display: flex; align-items: center; justify-content: space-between; gap: 5px; flex-wrap: wrap; min-width: 0; }
+.ui-v2 #sects-list .sect-donate-label { display: block; min-width: 0; font-size: 13px; }
+.ui-v2 #sects-list .sect-donate-rate { display: block; color: var(--v2-muted); font-size: 12px; line-height: 1.4; }
+.ui-v2 #sects-list .sect-donate-buttons { gap: 4px; }
+.ui-v2 #sects-list .sect-donate-buttons .btn { font-size: 12px; min-height: 30px; padding: 4px 8px; }
+.ui-v2 #sects-list .sect-leave { text-align: right; margin: 5px 0 0; padding-top: 5px; border-top: 1px solid var(--v2-line); }
+.ui-v2 #sects-list .sect-leave > .btn { font-size: 12px; min-height: 30px; background: transparent; padding: 4px 10px; }
+.ui-v2 #sects-list .inline-confirm-panel { text-align: left; }
+.ui-v2 #sects-list .sect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 8px; }
+.ui-v2 #sects-list .sect-card { padding: 11px; margin: 0; }
+.ui-v2 #sects-list .sect-card .sect-name { font-size: 15px; }
+.ui-v2 #sects-list .sect-card .sect-training-hint { margin: 4px 0; }
+.ui-v2 #sects-list .sect-card .sect-bonuses, .ui-v2 #sects-list .sect-card .sect-req { font-size: 12px; line-height: 1.45; margin: 5px 0; }
+.ui-v2 #sects-list .sect-card details { margin: 6px 0; padding: 4px 0 0; }
+.ui-v2 #sects-list .sect-card details > summary { padding: 2px 0; }
+@media (min-width: 1150px) {
+    .ui-v2 #sects-list.v2-sect-member { display: grid; grid-template-columns: minmax(0, 1fr) 205px; align-items: start; gap: 12px; }
+    .ui-v2 #sects-list .v2-sect-main { grid-column: 1; grid-row: 1; }
+    .ui-v2 #sects-list .sect-donations { grid-column: 2; grid-row: 1; margin: 0; }
+    .ui-v2 #sects-list .sect-donations > h4 { font-size: 14px; padding: 0; }
+    .ui-v2 #sects-list .sect-donate-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 9px 0 0; }
+    .ui-v2 #sects-list .sect-donate-item { display: block; }
+    .ui-v2 #sects-list .sect-donate-buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .ui-v2 #sects-list .sect-mission-card { padding: 7px 8px; gap: 4px 8px; }
+    .ui-v2 #sects-list .sect-mission-text { font-size: 13px; line-height: 1.4; }
+    .ui-v2 #sects-list .sect-mission-desc,
+    .ui-v2 #sects-list .sect-mission-reward { line-height: 1.35; }
+}
+@media (max-width: 600px) {
+    .ui-v2 #sects-list .sect-title-line { gap: 4px; }
+    .ui-v2 #sects-list .sect-grid { grid-template-columns: minmax(0, 1fr); }
+    .ui-v2 #sects-list .sect-path-line { gap: 3px 8px; }
+    .ui-v2 #sects-list .sect-donate-grid { grid-template-columns: minmax(0, 1fr); }
+    .ui-v2 #sects-list .sect-mission-card { gap: 5px 8px; padding: 9px; }
+    .ui-v2 #sects-list .sect-mission-action { min-width: 75px; }
+}

@@ -27,7 +27,7 @@ EVENTS.push(
     // --- 2. Надменный молодой мастер ---
     {
         id: "arrogant_young_master",
-        text: "Разряженный юнец в шёлковых одеждах перегородил вам дорогу. «На колени, деревенщина! Ты стоишь на пути наследника клана Лю!» Его охранники ухмыляются за спиной.",
+        text: "Разряженный юнец в шёлковых одеждах перегородил вам дорогу. «На колени, деревенщина! Ты стоишь на пути наследника рода Лю!» Его охранники ухмыляются за спиной.",
         type: "danger",
         condition: (g) => g.realmIndex >= 1 && g.realmIndex <= 4,
         effect: (g) => {
@@ -64,8 +64,9 @@ EVENTS.push(
         id: "wandering_physician",
         text: "Оборванный старик с тыквой-горлянкой покачивался на дороге. «Дай-ка пульс проверю, молодёжь...» Не дожидаясь ответа, он ткнул иглой вам в шею. Удивительно, но стало легче.",
         type: "reward",
-        condition: (g) => g.realmIndex <= 3,
+        condition: (g) => g.realmIndex <= 3 && !g.flags.wandering_physician,
         effect: (g) => {
+            g.flags.wandering_physician = true;
             g.spirit += 1;
             const qiGain = eventQiBonus(g,0.05);
             g.qi = Math.min(g.qi + qiGain, g.qiNeeded());

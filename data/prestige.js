@@ -53,8 +53,8 @@ const REBIRTH_BODIES = [
         startRealm: 0,
         startTechniques: ["iron_body", "body_masters_legacy"],
         karmaBonus: 0,
-        perk: "xpSpeed",          // эксклюзивная техника +15% XP статов/техник
-        perkDesc: "Техника «Наследие Мастера» (+15% XP статов и техник)",
+        perk: "xpSpeed",          // эксклюзивная техника усиливает совершенствование и XP техник
+        perkDesc: "Техника «Наследие Мастера» (совершенствование и опыт техник)",
         color: "#8ac"
     },
 
@@ -71,7 +71,7 @@ const REBIRTH_BODIES = [
         startTechniques: [],
         karmaBonus: 0.05,
         perk: "alchemist",        // рефайн 4:1, перенос 50% пыли/эссенции, разбор +50%
-        perkDesc: "Рефайн пилюль 4:1, перенос 50% пыли/эссенции, разбор артефактов +50%",
+        perkDesc: "Рефайн пилюль 4:1, перенос 50% пыли/эссенции, базовая добыча при разборе +50%",
         color: "#8c8"
     },
     {
@@ -85,8 +85,8 @@ const REBIRTH_BODIES = [
         startRealm: 0,
         startTechniques: ["thunder_fist"],
         karmaBonus: 0.05,
-        perk: "warrior",          // экспедиции -30%, боевая мощь x1.3, Пространственное Кольцо
-        perkDesc: "Экспедиции -30% время, боевая мощь x1.3. Пространственное Кольцо: артефакты переносятся в следующую жизнь (разблокируется вознесением)",
+        perk: "warrior",          // экспедиции -5%, боевая мощь x1.3, Пространственное Кольцо
+        perkDesc: "Скорость экспедиций +5%, боевая мощь x1.3. Пространственное Кольцо: артефакты переносятся в следующую жизнь (разблокируется вознесением)",
         color: "#c66"
     },
 
@@ -167,7 +167,7 @@ const REBIRTH_BODIES = [
         startTechniques: [],
         karmaBonus: 0.1,
         perk: "masterSmith",      // failstacks сохраняются, заточка +10%, разбор x2
-        perkDesc: "Воля Дао сохраняется, заточка +10% шанс, разбор x2 ресурсов",
+        perkDesc: "Воля Дао сохраняется, заточка +10% шанс, базовая добыча при разборе x2",
         color: "#c93"
     },
     {
@@ -181,8 +181,8 @@ const REBIRTH_BODIES = [
         startRealm: 1,
         startTechniques: ["body_fortune_star"],
         karmaBonus: 0.15,
-        perk: "heavenExplorer",   // экспедиции -40%, артефакт тир +1 при дропе
-        perkDesc: "Экспедиции -40% время, артефакты из экспедиций +1 тир",
+        perk: "heavenExplorer",   // экспедиции -10%, артефакт тир +1 при дропе
+        perkDesc: "Скорость экспедиций +10%, артефакты из экспедиций +1 тир в пределах локации",
         color: "#ec8"
     },
 
@@ -227,20 +227,20 @@ const BODY_ASCENSIONS = {
     // --- Тир 2 ---
     alchemist_heir: [
         { level: 1, cost: 40,  name: "Мастер Зелий", desc: "75% пыли и эссенции переносится в следующую жизнь", perkUpgrade: { carryOver: 0.75, disassembleBonus: 0.5 } },
-        { level: 2, cost: 80,  name: "Великий Алхимик", desc: "100% переносится, разбор артефактов возвращает все ресурсы", perkUpgrade: { carryOver: 1.0, disassembleBonus: 1.0 } },
-        { level: 3, cost: 150, name: "Архиалхимик", desc: "100% переносится, разбор даёт двойные ресурсы, авто-рефайн пилюль", perkUpgrade: { carryOver: 1.0, disassembleBonus: 2.0, autoRefine: true } },
+        { level: 2, cost: 80,  name: "Великий Алхимик", desc: "100% переносится, базовая добыча при разборе x2", perkUpgrade: { carryOver: 1.0, disassembleBonus: 1.0 } },
+        { level: 3, cost: 150, name: "Архиалхимик", desc: "100% переносится, базовая добыча при разборе x3, авто-рефайн пилюль", perkUpgrade: { carryOver: 1.0, disassembleBonus: 2.0, autoRefine: true } },
     ],
     wandering_warrior: [
-        { level: 1, cost: 40,  name: "Закалённый Воин", desc: "Экспедиции на 40% быстрее, Пространственное Кольцо: 10 артефактов в след. жизнь", perkUpgrade: { expeditionSpeed: 0.4, carryArtifacts: 10 } },
-        { level: 2, cost: 80,  name: "Полководец Дорог", desc: "Экспедиции на 50% быстрее, Пространственное Кольцо: 20 артефактов", perkUpgrade: { expeditionSpeed: 0.5, carryArtifacts: 20 } },
-        { level: 3, cost: 150, name: "Бессмертный Странник", desc: "Экспедиции на 50% быстрее, Пространственное Кольцо: 30 артефактов, авто-экспедиции", perkUpgrade: { expeditionSpeed: 0.5, carryArtifacts: 30, autoExpedition: true } },
+        { level: 1, cost: 40,  name: "Закалённый Воин", desc: "Скорость экспедиций +10%, Пространственное Кольцо: 10 артефактов в след. жизнь", perkUpgrade: { expeditionSpeed: 0.10, carryArtifacts: 10 } },
+        { level: 2, cost: 80,  name: "Полководец Дорог", desc: "Скорость экспедиций +20%, Пространственное Кольцо: 20 артефактов", perkUpgrade: { expeditionSpeed: 0.20, carryArtifacts: 20 } },
+        { level: 3, cost: 150, name: "Бессмертный Странник", desc: "Скорость экспедиций +30%, Пространственное Кольцо: 30 артефактов, авто-экспедиции", perkUpgrade: { expeditionSpeed: 0.30, carryArtifacts: 30, autoExpedition: true } },
     ],
 
     // --- Тир 3 ---
     demon_heir: [
         { level: 1, cost: 60,  name: "Пробуждение Демонической Ци", desc: "+30% карма, боевая мощь x1.8, демон жрёт 50% статов", perkUpgrade: { karmaBonus: 0.30, combatMult: 1.8, demonStatPct: 0.5 } },
         { level: 2, cost: 120, name: "Владыка Внутреннего Демона", desc: "+40% карма, мощь x2.0, демон жрёт 50% статов, мин. корень: Редкий", perkUpgrade: { karmaBonus: 0.40, combatMult: 2.0, demonStatPct: 0.5, minRoot: "rare" } },
-        { level: 3, cost: 200, name: "Небесный Демон", desc: "+50% карма, мощь x2.5, демон жрёт 50% статов, старт с 1 ступени", perkUpgrade: { karmaBonus: 0.50, combatMult: 2.5, demonStatPct: 0.5, startRealm: 1 } },
+        { level: 3, cost: 200, name: "Небесный Демон", desc: "+50% карма, мощь x2.5, демон жрёт 50% статов, старт с 1 ступени, мин. корень: Редкий", perkUpgrade: { karmaBonus: 0.50, combatMult: 2.5, demonStatPct: 0.5, startRealm: 1, minRoot: "rare" } },
     ],
     dao_hermit: [
         { level: 1, cost: 60,  name: "Мудрец Дао", desc: "Вознесение техник стоит на 40% меньше эссенции", perkUpgrade: { ascendDiscount: 0.4 } },
@@ -267,15 +267,15 @@ const BODY_ASCENSIONS = {
         { level: 3, cost: 500, name: "Создатель Легенд", desc: "Заточка +25%, безопасно до +7, слияние на 40% дешевле", perkUpgrade: { enhanceBonus: 0.25, safeEnhance: 7, fusionDiscount: 0.4 } },
     ],
     heavens_child: [
-        { level: 1, cost: 120, name: "Посланник Небес", desc: "Экспедиции на 50% быстрее, тир найденных артефактов +1, мин. корень: Редкий", perkUpgrade: { expeditionSpeed: 0.5, artifactTierBonus: 1, minRoot: "rare" } },
-        { level: 2, cost: 250, name: "Наследник Небес", desc: "Экспедиции -50%, тир +1, доп. артефакт из экспедиций", perkUpgrade: { expeditionSpeed: 0.5, artifactTierBonus: 1, extraArtifact: true, minRoot: "rare" } },
-        { level: 3, cost: 500, name: "Небесный Владыка", desc: "Экспедиции -60%, тир +2, доп. артефакт, старт со 2 ступени", perkUpgrade: { expeditionSpeed: 0.6, artifactTierBonus: 2, extraArtifact: true, minRoot: "rare", startRealm: 2 } },
+        { level: 1, cost: 120, name: "Посланник Небес", desc: "Скорость экспедиций +20%, тир артефактов +1 в пределах локации, мин. корень: Редкий", perkUpgrade: { expeditionSpeed: 0.20, artifactTierBonus: 1, minRoot: "rare" } },
+        { level: 2, cost: 250, name: "Наследник Небес", desc: "Скорость экспедиций +30%, тир +1 в пределах локации, доп. артефакт из экспедиций", perkUpgrade: { expeditionSpeed: 0.30, artifactTierBonus: 1, extraArtifact: true, minRoot: "rare" } },
+        { level: 3, cost: 500, name: "Небесный Владыка", desc: "Скорость экспедиций +40%, тир +2 в пределах локации, доп. артефакт, старт со 2 ступени", perkUpgrade: { expeditionSpeed: 0.40, artifactTierBonus: 2, extraArtifact: true, minRoot: "rare", startRealm: 2 } },
     ],
 
     // --- Тир 6 ---
     ancient_reincarnation: [
         { level: 1, cost: 200, name: "Пробуждённый Древний", desc: "Формации начинаются с 3 уровня, мин. корень: Эпический", perkUpgrade: { formationBonus: 3, minRoot: "epic" } },
-        { level: 2, cost: 400, name: "Вечный Древний", desc: "Формации с 5 уровня, старт с 3 ступени", perkUpgrade: { formationBonus: 5, startRealm: 3 } },
+        { level: 2, cost: 400, name: "Вечный Древний", desc: "Формации с 5 уровня, старт с 3 ступени, мин. корень: Эпический", perkUpgrade: { formationBonus: 5, startRealm: 3, minRoot: "epic" } },
         { level: 3, cost: 800, name: "Изначальный", desc: "Формации с 7 уровня, 4-й слот формаций, старт с 3 ступени, мин. корень: Эпический, +20 ко всем статам", perkUpgrade: { formationBonus: 7, formationSlots: 1, startRealm: 3, minRoot: "epic", bonusStats: 20 } },
     ],
     golden_arhat: [
@@ -294,12 +294,12 @@ const KARMA_UPGRADES = [
     { id: "statSpeed",     name: "Совершенствование",       description: "+5% множитель духа", cost: 20,  maxLevel: 6,  effect: {} },
     { id: "enlightenment", name: "Просветление",           description: "+5% множитель ци",          cost: 20,  maxLevel: 8,  effect: { qiMultiplier: 0.05 } },
     { id: "talent",        name: "Врождённый Талант",       description: "+10% скорость XP техник",   cost: 25,  maxLevel: 6,  effect: { techXpSpeed: 0.10 } },
-    { id: "artifactMemory", name: "Память Артефактов",       description: "Сохранить лучшие артефакты при перерождении (+1/ур.). Приоритет: тир, затем заточка.", cost: 50, maxLevel: 4, effect: {},
+    { id: "artifactMemory", name: "Память Артефактов",       description: "Сохранить лучшие экипированные артефакты при перерождении (+1/ур.). Приоритет: слияние, заточка, тир.", cost: 50, maxLevel: 4, effect: {},
         requirement: (g) => g.prestige.permanentMilestones.includes("realm_3"),
-        requirementHint: "Требуется: достичь Золотого Ядра" },
+        requirementHint: "Требуется: достичь Закладки Основания" },
     { id: "timeFlow",       name: "Ускорение Потока",        description: "+25% скорость течения времени", cost: 100, maxLevel: 5, effect: { timeFlow: 0.25 },
         requirement: (g) => g.prestige.permanentMilestones.includes("realm_5"),
-        requirementHint: "Требуется: достичь Формирования Души" },
+        requirementHint: "Требуется: достичь Зарождающейся Души" },
     { id: "earlyRebirth",   name: "Ранняя Мудрость",        description: "Снижение минимального возраста рассеивания на 10 лет", cost: 15, maxLevel: 10, effect: {} },
     { id: "techSlots",      name: "Расширение Сознания",    description: "+1 слот техники", costs: [20, 40, 60, 80, 100], maxLevel: 5, effect: {} },
     { id: "pathMemory",     name: "Память Пути",             description: "Начать жизнь на более высокой ступени", costs: [10, 100, 200, 300], maxLevel: 4, effect: { startRealm: 1 },
@@ -314,7 +314,7 @@ const KARMA_UPGRADES = [
         requirementHint: "Требуется: достичь Золотого Ядра" },
     { id: "ancestorLegacy", name: "Наследие Предков",        description: "Стартовая техника начинает на высшем тире", costs: [30, 80, 200, 500], maxLevel: 4, effect: { startTechTier: 1 },
         requirement: (g) => g.prestige.permanentMilestones.includes("realm_3"),
-        requirementHint: "Требуется: достичь Золотого Ядра" },
+        requirementHint: "Требуется: достичь Закладки Основания" },
     { id: "elementChoice",  name: "Память Стихий",           description: "Выбирать элементы духовного корня при перерождении", cost: 80, maxLevel: 1, effect: { elementChoice: true },
         requirement: (g) => g.prestige.permanentMilestones.includes("sect_all_visited"),
         requirementHint: "Требуется: вступить в 3 разные секты" },

@@ -126,7 +126,7 @@ const ARTIFACT_EFFECT_POOLS = {
 // Могут появиться только как второй стат на epic+ артефактах с малым шансом
 const ARTIFACT_RARE_EFFECTS = {
     treasure: [
-        { key: "expeditionSpeed", min: 3, max: 6, name: "Скорость экспедиций (%)", chance: 0.15 },
+        { key: "expeditionSpeed", min: 0.05, max: 0.15, name: "Скорость экспедиций (%)", chance: 0.15 },
         { key: "daoSpeed", min: 1, max: 3, name: "Скорость Дао (%)", chance: 0.15 },
     ],
     armor:    { key: "demonReduction",  min: 2, max: 5, name: "Снижение демонов (%)",    chance: 0.15 },
@@ -282,10 +282,9 @@ const ENHANCE_TABLE = [
     { essence: 350, dust: 350, chance: 0.08, croneStones: 2500 },  // → +10
 ];
 
-// Провал: +1..+3 без даунгрейда, +4..+6 50% даунгрейд, +7..+10 гарантированный даунгрейд
+// Провал: +1..+3 без даунгрейда, +4+ гарантированный даунгрейд
 function getEnhanceDowngradeChance(currentLevel) {
     if (currentLevel <= 3) return 0;
-    if (currentLevel <= 6) return 0.5;
     return 1.0;
 }
 
@@ -310,4 +309,5 @@ const TECH_ASCEND_TABLE = [
     { from: "uncommon", to: "rare",      essence: 150,  realmReq: 5 },
     { from: "rare",     to: "epic",      essence: 400,  realmReq: 7 },
     { from: "epic",     to: "legendary", essence: 700,  realmReq: 9 },
+    { from: "legendary", to: "divine",   essence: 1500, realmReq: 12, eraReq: "awakening" },
 ];

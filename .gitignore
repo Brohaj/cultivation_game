@@ -3,3 +3,6 @@
 *.tmp
 .DS_Store
 Thumbs.db
+node_modules/
+ui/v2/previews/
+.claude/settings.local.json

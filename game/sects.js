@@ -30,7 +30,8 @@ Object.assign(game, {
 
         // Гений Секты (вознесение): стартовый ранг
         const bodyPerks = this.getActiveBodyPerks();
-        const startRank = bodyPerks.startRank || 0;
+        const ranks = getSectRanks(sectId);
+        const startRank = Math.max(0, Math.min(bodyPerks.startRank || 0, ranks.length - 1));
 
         this.sect = {
             id: sectId,
@@ -47,6 +48,8 @@ Object.assign(game, {
             this.learnTechnique(techData.id);
             addLog(`Изучена техника секты: ${techData.name}!`, "reward");
         }
+        // Стартовый ранг тела действует и при раннем вступлении с реалма 0.
+        this._syncSectRank(false);
 
         // Разблокировать формации секты навсегда
         if (sect.formations) {
@@ -187,9 +190,12 @@ Object.assign(game, {
             }
         }
 
+        // Сдача уже выполнила требование задания: выдаём его обычную награду
+        // после повышения от пожертвования, чтобы учесть актуальный ранг.
+        const completedDonationMissions = this._completePillDonationMissions();
         this.checkMilestones();
         updateUI();
-        if (newRankIdx > oldRankIdx) {
+        if (completedDonationMissions > 0 || this.getSectRankIndex() > oldRankIdx) {
             if (typeof renderSects === "function") renderSects();
         } else {
             if (typeof updateSectRankBar === "function") updateSectRankBar();
@@ -348,11 +354,37 @@ Object.assign(game, {
 
     // === РАНГИ (динамические пороги по difficulty) ===
 
+    _syncSectRank(announce = true) {
+        if (!this.sect) return false;
+        const ranks = getSectRanks(this.sect.id);
+        const rankIdx = this.getSectRankIndex();
+        const oldRankIdx = this.sect.rank || 0;
+        let changed = rankIdx !== oldRankIdx;
+        this.sect.rank = rankIdx;
+        if (announce && rankIdx > oldRankIdx) {
+            addLog(`Повышение! Новый ранг: ${ranks[rankIdx].name}`, "breakthrough");
+        }
+        // Ранг может открыться после прорыва реалма или перескочить Ядрового ученика.
+        if (ranks.slice(0, rankIdx + 1).some(r => r.unlockTechnique)) {
+            const sect = SECTS.find(s => s.id === this.sect.id);
+            const tech = sect && SECT_TECHNIQUES[sect.advancedTechnique];
+            if (tech && !this.hasTechnique(tech.id)) {
+                if (!TECHNIQUES.find(t => t.id === tech.id)) TECHNIQUES.push(tech);
+                this.learnTechnique(tech.id);
+                addLog(`Изучена продвинутая техника секты: ${tech.name}!`, "reward");
+                changed = true;
+            }
+        }
+        return changed;
+    },
+
     getCurrentSectRank() {
         if (!this.sect) return null;
         const ranks = getSectRanks(this.sect.id);
-        let rank = ranks[0];
-        for (const r of ranks) {
+        const startRank = Math.max(0, Math.min(this.getActiveBodyPerks().startRank || 0, ranks.length - 1));
+        let rank = ranks[startRank];
+        // Только подаренный ранг обходит требования; дальнейшие повышения — по обычным порогам.
+        for (const r of ranks.slice(startRank + 1)) {
             if (this.sect.contribution >= r.contribution && this.realmIndex >= r.realmReq) rank = r;
         }
         return rank;
@@ -374,12 +406,9 @@ Object.assign(game, {
         return ranks[idx + 1];
     },
 
-    // Кулдаун заданий (зависит от ранга)
+    // Ранг улучшает вклад, но не увеличивает частоту кликов по заданиям.
     getSectMissionCooldown() {
-        const rankIdx = this.getSectRankIndex();
-        // Внешний=12, Внутренний=10, Ядровой=8, Старейшина=6, Глава=6
-        const cooldowns = [12, 10, 8, 6, 6];
-        let cd = cooldowns[rankIdx] || 15;
+        let cd = 20;
         // Гений Секты (вознесение): снижение кулдауна миссий
         const perks = this.getActiveBodyPerks();
         if (perks.missionCdReduction) {
@@ -390,7 +419,7 @@ Object.assign(game, {
         if (missionCdMult && missionCdMult !== 0) {
             cd = Math.max(1, Math.round(cd * missionCdMult));
         }
-        return cd;
+        return Math.max(12, cd);
     },
 
     // === БОНУСЫ СЕКТЫ (через Дао) ===
@@ -503,13 +532,10 @@ Object.assign(game, {
                 mission.reward.stones += Math.floor(contrib * 0.5 * (1 + r * 0.1));
                 // Убираем вклад — он бесполезен
                 delete mission.reward.contribution;
-                // Дополнительные бонусы в зависимости от размера вклада
-                if (contrib >= 40) {
-                    if (!mission.reward.daoScroll) mission.reward.daoScroll = 0;
-                    mission.reward.daoScroll += 1;
-                }
+                // Небольшой бонус пилюль; свитки остаются только явной
+                // наградой конкретного задания.
                 if (contrib >= 25) {
-                    const pillBonus = Math.floor(r * 0.5);
+                    const pillBonus = Math.floor(r * 0.25);
                     if (pillBonus > 0) {
                         if (!mission.reward.pills) mission.reward.pills = 0;
                         mission.reward.pills += pillBonus;
@@ -581,6 +607,40 @@ Object.assign(game, {
         return true;
     },
 
+    // Только это поручение подтверждает уже совершённое пожертвование.
+    // Обычные готовые задания остаются на ручном выполнении.
+    _completePillDonationMissions() {
+        if (!this.sect || this.gameOver || this.pendingRebirth) return 0;
+        let completed = 0;
+        for (let i = 0; i < this.sectMissions.length; i++) {
+            const mission = this.sectMissions[i];
+            if (mission?.templateId === "donate_pills_sect" && mission.check?.pillsDonated > 0
+                && this.completeSectMission(i)) completed++;
+        }
+        return completed;
+    },
+
+    getSectMissionContribution(baseContribution) {
+        const rank = this.getCurrentSectRank();
+        const rankMult = rank ? rank.bonusMult : 1;
+        const bodyMult = this.getActiveBodyPerks().contributionMult || 1;
+        return Math.floor(baseContribution * rankMult * bodyMult);
+    },
+
+    getSectMissionArtifactReward(mission) {
+        if (!mission || !mission.reward || !mission.reward.artifact) return null;
+        // Флаг сохраняется при загрузке/смене секты и сбрасывается при перерождении.
+        const flag = "sectMissionArtifact_" + (mission.templateId || "legacy");
+        const firstReward = !this.flags[flag];
+        let tier = mission.reward.artifact;
+        if (!firstReward) {
+            const tiers = ["common", "uncommon", "rare", "epic", "legendary", "divine"];
+            const maxIdx = tiers.indexOf(SECT_MISSION_REPEAT_ARTIFACT_MAX_TIER);
+            if (tiers.indexOf(tier) > maxIdx) tier = tiers[maxIdx];
+        }
+        return { tier, chance: firstReward ? 1 : SECT_MISSION_REPEAT_ARTIFACT_CHANCE, firstReward, flag };
+    },
+
     completeSectMission(index) {
         if (!this.canCompleteSectMission(index)) return false;
         const m = this.sectMissions[index];
@@ -596,15 +656,10 @@ Object.assign(game, {
         // Запомнить старый ранг до добавления вклада
         const oldRankIdx = this.getSectRankIndex();
 
-        // Награда (масштабируется с рангом)
-        const rank = this.getCurrentSectRank();
-        const rankRewardMult = rank ? rank.bonusMult : 1;
+        // Вклад масштабируется с рангом и телом; предметные награды не умножаются.
         const rewardParts = [];
         if (m.reward.contribution) {
-            // Гений Секты: множитель вклада
-            const bodyPerks = this.getActiveBodyPerks();
-            const contribMult = bodyPerks.contributionMult || 1;
-            const contrib = Math.floor(m.reward.contribution * rankRewardMult * contribMult);
+            const contrib = this.getSectMissionContribution(m.reward.contribution);
             this.sect.contribution += contrib;
             rewardParts.push(`+${contrib} вклад`);
         }
@@ -620,10 +675,11 @@ Object.assign(game, {
             const added = this.addDaoScroll(m.reward.daoScroll);
             if (added > 0) rewardParts.push(`+${added} Свиток Воли Дао`);
         }
-        if (m.reward.artifact) {
-            const art = this.generateArtifact(m.reward.artifact);
-            if (art) {
-                this.artifacts.push(art);
+        const artifactReward = this.getSectMissionArtifactReward(m);
+        if (artifactReward && (artifactReward.firstReward || Math.random() < artifactReward.chance)) {
+            const art = this.generateArtifact(artifactReward.tier);
+            if (art && this.addArtifact(art)) {
+                this.flags[artifactReward.flag] = true;
                 rewardParts.push(`артефакт: ${art.name}`);
             }
         }
@@ -665,13 +721,14 @@ Object.assign(game, {
 
         // Поставить слот на кулдаун (не удалять — раздельный КД)
         this.sectMissions[index] = { cooldown: this.getSectMissionCooldown() };
-        // updateUI() вызывается из completeSectMissionUI() с анимацией
+        // UI обновляет вызывающее действие: ручное выполнение или пожертвование.
         return true;
     },
 
     // Вызывается из passYear() — раздельный кулдаун для каждого слота
     tickSectMission() {
         if (!this.sect) return;
+        if (this._syncSectRank()) updateUI();
 
         // Кулдаун после вступления — тикаем таймер и генерируем миссии когда он истечёт
         if ((!this.sectMissions || this.sectMissions.length === 0) && this.sectMissionTimer > 0) {
@@ -703,8 +760,15 @@ Object.assign(game, {
                 }
             }
         }
+        // Старое сохранение могло оставить оплаченный квест на ручном получении.
+        // Проверяем после кулдаунов: новый квест отсчитывает только новые сдачи,
+        // а только что завершённый получает полный кулдаун без лишнего вычета.
+        const completedDonationMissions = this._completePillDonationMissions();
         if (newMissions.length > 0) {
             addLog(`Новые задания секты (${newMissions.length})`, "event");
+        }
+        if (newMissions.length > 0 || completedDonationMissions > 0) {
+            if (completedDonationMissions > 0) this.checkMilestones();
             updateUI();
         }
     },

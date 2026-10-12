@@ -10,12 +10,15 @@ function softcap(x, threshold, power = 0.5) {
 }
 
 // Бонус ци от событий: % от qiNeeded с софт-капом для поздних реалмов
-// На realm 0-5: без ограничений. На realm 6+: кап = 10 минут медитации
+// На realm 0-5: без ограничений. На realm 6+: потолок = max(10 минут медитации, 10% исходной награды).
 function eventQiBonus(game, pct) {
     const raw = Math.floor(game.qiNeeded() * pct);
+    // На вершине пути qiNeeded=Infinity означает отсутствие следующей ступени,
+    // но награда должна оставаться сериализуемым конечным числом.
+    const qps = typeof game.getMeditationQiPerSec === "function" ? game.getMeditationQiPerSec() : game.qiPerSec();
+    if (!Number.isFinite(raw)) return Math.max(0, qps * 600);
     if (game.realmIndex <= 5) return raw;
-    // Кап: не больше чем 10 минут медитации (600 секунд × qiPerSec)
-    const qps = typeof game.qiPerSec === "function" ? game.qiPerSec() : 0;
+    // Ориентир потолка: 10 минут медитации (600 секунд × расчётный qiPerSec).
     if (qps <= 0) return raw;
     const cap = qps * 600;
     return Math.min(raw, Math.max(cap, raw * 0.1)); // минимум 10% от raw чтобы не обнулить
@@ -68,7 +71,7 @@ Object.assign(game, {
     getElementalResonance() {
         if (!this.spiritualRoot || !this.spiritualRoot.elements || this.spiritualRoot.elements.length === 0) return 0;
         let matches = 0;
-        for (const techId of this.techniques) {
+        for (const techId of this.equippedTechniques) {
             const tech = TECHNIQUES.find(t => t.id === techId);
             if (tech && tech.element && this.spiritualRoot.elements.includes(tech.element)) {
                 matches++;
@@ -92,16 +95,37 @@ Object.assign(game, {
         const karmaPerf = ((this.prestige.karmaUpgrades.statSpeed || 0) + (_spPerks.freeUpgradeLevel || 0)) * 0.05;
         // Софт-кап на perfBonus: после +300% уходит в sqrt
         const totalPerf = 1 + softcap(rawPerfBonus + karmaPerf, 3.0, 0.5);
-        // Софт-кап на spirit: линейно до 100, sqrt после
-        const spiritBonus = softcap(total, 100, 0.5) * 0.06;
-        return (1 + spiritBonus) * totalPerf;
+        // Софт-кап на spirit: линейно до порога (100/150/200 по эпохе), sqrt после
+        const statCap = this.getEraStatSoftcap();
+        const spiritBonus = softcap(total, statCap, 0.5) * 0.06;
+        return (1 + spiritBonus + this.getTechBonus("spirit")) * totalPerf;
     },
 
     // Множитель силы (пассивный бонус ци)
     getStrengthMultiplier() {
         const totalStr = this.strength + this.getArtifactBonus("strength");
-        // Софт-кап на strength: линейно до 100, sqrt после
-        return 1 + softcap(totalStr, 100, 0.5) * 0.03 + this.getTechBonus("strength");
+        const statCap = this.getEraStatSoftcap();
+        return 1 + softcap(totalStr, statCap, 0.5) * 0.03 + this.getTechBonus("strength");
+    },
+
+    // Суммарная удача (база + артефакт + формация)
+    getTotalLuck() {
+        return this.luck + this.getFormationBonus("luck") + this.getArtifactBonus("luck");
+    },
+
+    // Удача улучшает добычу, но не превращает награду в новый множитель разгона.
+    // При малой удаче рост близок к прежнему sqrt; предел — +50%.
+    getRewardLuckBonus() {
+        const luck = Math.max(0, this.getTotalLuck());
+        return 0.5 * (1 - Math.exp(-Math.sqrt(luck) * 0.16));
+    },
+
+    getDangerRewardBonus() {
+        const bonus = this.getSectBonus("dangerReward")
+            + this.getArtifactBonus("dangerReward") * 0.01
+            + this.getFormationBonus("dangerReward")
+            + (this.getActiveBodyPerks().dangerReward || 0);
+        return Math.max(0, Math.min(3, bonus));
     },
 
     // Множитель кармы (мудрость прошлых жизней ускоряет культивацию)
@@ -113,6 +137,10 @@ Object.assign(game, {
 
     qiPerSec() {
         if (this.currentActivity !== "meditation") return 0;
+        return Math.floor(this.getMeditationQiPerSec() * this.getAdventureMeditationMultiplier());
+    },
+
+    getMeditationQiPerSec() {
         const base = 5 + this.realmIndex * 3;
         const formationMult = 1 + this.getFormationBonus("qi");
         const artifactMult = 1 + this.getArtifactBonus("qi") * 0.01;
@@ -146,10 +174,10 @@ Object.assign(game, {
 
     // === ТЕХНИКИ ===
 
-    techXpNeeded(techId) {
+    techXpNeeded(techId, atLevel = null) {
         const tech = TECHNIQUES.find(t => t.id === techId);
         if (!tech) return Infinity;
-        const level = this.techLevels[techId] || 1;
+        const level = atLevel ?? this.techLevels[techId] ?? 1;
         const base = TIER_XP_BASE[tech.tier] || 60;
         return Math.floor(base * level * Math.pow(1.2, level));
     },
@@ -176,15 +204,23 @@ Object.assign(game, {
     },
 
     // Свиток Озарения: % от XP нужного для уровня
-    getInsightXpGain(techId) {
-        const xpNeeded = this.techXpNeeded(techId);
+    getInsightXpGain(techId, atLevel = null) {
+        const xpNeeded = this.techXpNeeded(techId, atLevel);
         return Math.floor(xpNeeded * 0.10);
     },
 
     // Стоимость в эссенции Дао, растёт с каждым использованием за жизнь
-    getInsightCost() {
-        const uses = this._insightUses || 0;
+    getInsightCost(uses = this._insightUses || 0) {
         return 10 + this.realmIndex * 3 + uses * 5;
+    },
+
+    getInsightBulkCost(count) {
+        const baseUses = this._insightUses || 0;
+        let cost = 0;
+        for (let i = 0; i < count; i++) {
+            cost += this.getInsightCost(baseUses + i);
+        }
+        return cost;
     },
 
     // === ВОЗРАСТ И БОЙ ===
@@ -231,23 +267,8 @@ Object.assign(game, {
         const parts = [];
         parts.push(`Сила: ${baseStat}`);
         if (artStr > 0) parts.push(`Артефакт (сила): +${artStr.toFixed(1)}`);
-        // Каждая техника отдельно
-        for (const techId of this.techniques) {
-            const tech = TECHNIQUES.find(t => t.id === techId);
-            if (!tech) continue;
-            const level = this.techLevels[techId] || 1;
-            const tierMult = TIER_MULTIPLIERS[tech.tier] || 1;
-            let elemMult = 1;
-            if (tech.element && this.spiritualRoot && this.spiritualRoot.elements && this.spiritualRoot.elements.includes(tech.element)) elemMult = 1.25;
-            if (tech.effects.strength) {
-                const val = tech.effects.strength * level * tierMult * elemMult;
-                parts.push(`${tech.name} (сила): +${(val * 100).toFixed(0)}%`);
-            }
-            if (tech.effects.combatPower) {
-                const val = tech.effects.combatPower * level * tierMult * elemMult;
-                parts.push(`${tech.name}: ×${(1 + val).toFixed(2)}`);
-            }
-        }
+        const techCp = this.getTechBonus("combatPower");
+        if (techCp > 0) parts.push(`Экипированные техники (с учётом ослабления): ×${(1 + techCp).toFixed(2)}`);
         if (artCp > 0) parts.push(`Артефакт (бой): +${artCp.toFixed(1)}`);
         if (sectCp > 0) parts.push(`Секта: +${(sectCp * 100).toFixed(0)}%`);
         const formCp = this.getFormationBonus("combatPower");
@@ -279,7 +300,7 @@ Object.assign(game, {
 
     // === ПРОРЫВ ===
 
-    getBreakthroughChance() {
+    getBreakthroughChance(includePillBonus = true) {
         if (this.realmIndex < 3) return 1.0;
 
         // Штраф: -2.5% за подуровень внутри реалма, -10% за полный смертный реалм (3-9), -15% за бессмертный (10+)
@@ -292,9 +313,7 @@ Object.assign(game, {
         realmPenalty += (this.subLevel - 1) * 0.025;
         const baseChance = 0.70 - realmPenalty;
 
-        const luckFromFormation = this.getFormationBonus("luck");
-        const luckFromArtifact = this.getArtifactBonus("luck");
-        const totalLuck = this.luck + luckFromFormation + luckFromArtifact;
+        const totalLuck = this.getTotalLuck();
 
         const luckBonus = Math.sqrt(totalLuck) * 0.006;
 
@@ -312,19 +331,20 @@ Object.assign(game, {
         const dreamBonus = this.flags.prophetic_dream ? 0.05 : 0;
 
         // Бонус от духовной пилюли (расходуется при попытке)
-        const pillBonus = this.flags._pillBreakthroughBonus || 0;
+        const pillBonus = includePillBonus ? this.flags._pillBreakthroughBonus || 0 : 0;
 
         const chance = baseChance + luckBonus
             + techBonus + artifactBonus + sectBonus + techLuckBonus + formationBonus + bodyBonus + dreamBonus + pillBonus;
 
-        return Math.max(0.01, Math.min(chance, 0.95));
+        return Math.max(0.01, Math.min(chance, this.getEraBreakthroughCap()));
     },
 
     // === ВНУТРЕННИЙ ДЕМОН ===
 
     // Шанс встречи с внутренним демоном (только при провале прорыва, когда шанс < 65%)
     getDemonChance() {
-        const btChance = this.getBreakthroughChance();
+        // При провале пилюльный бонус уже израсходован до проверки демона.
+        const btChance = this.getBreakthroughChance(false);
         // Давление Дао снижает порог (65% → 70/75/80%)
         const daoLevel = this.daoLevel || 0;
         let threshold = 0.65;
@@ -376,30 +396,9 @@ Object.assign(game, {
     },
 
     _getTotalKarmaSpent() {
-        let spent = 0;
-        for (const upgrade of KARMA_UPGRADES) {
-            const level = this.prestige.karmaUpgrades[upgrade.id] || 0;
-            for (let i = 0; i < level; i++) {
-                if (upgrade.costs) {
-                    // Массив фиксированных стоимостей по уровням
-                    spent += upgrade.costs[i] || 0;
-                } else {
-                    // Единая стоимость с масштабированием
-                    spent += Math.ceil(upgrade.cost * (1 + i * 0.5));
-                }
-            }
-        }
-        // Вознесение тел
-        if (this.prestige.bodyAscensions) {
-            for (const [bodyId, level] of Object.entries(this.prestige.bodyAscensions)) {
-                const ascensions = BODY_ASCENSIONS[bodyId];
-                if (ascensions) {
-                    for (let i = 0; i < level; i++) {
-                        if (ascensions[i]) spent += ascensions[i].cost || 0;
-                    }
-                }
-            }
-        }
-        return spent;
+        // Номинальная цена купленных уровней не подтверждает заработок:
+        // эпоха и тело могли дать скидку. Учитываются только реальные платежи.
+        const spent = this.prestige.karmaSpent;
+        return Number.isFinite(spent) && spent >= 0 ? spent : 0;
     },
 });

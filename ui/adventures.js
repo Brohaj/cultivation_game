@@ -8,7 +8,7 @@ function _getAdventureBossPower(adv) {
     let maxCombat = 0;
     for (const step of adv.steps) {
         for (const choice of step.choices) {
-            const chk = typeof choice.check === "function" ? choice.check({}) : choice.check;
+            const chk = game.getAdventureCheck(adv, choice, {});
             if (chk && chk.combatPower)
                 maxCombat = Math.max(maxCombat, chk.combatPower);
         }
@@ -20,6 +20,7 @@ function _getAdventureBossPower(adv) {
 }
 
 function renderAdventures() {
+    if (deferUIRender(renderAdventures)) return;
     const container = document.getElementById("adventures-list");
     if (!container) return;
     container.innerHTML = "";
@@ -30,7 +31,7 @@ function renderAdventures() {
     const hasLastReward = game.lastAdventureReward && !hasActive;
 
     if (!hasRumors && !hasActive && !hasLastReward) {
-        container.innerHTML = '<div class="adventure-empty">Пока нет слухов о приключениях. Они появятся со временем через события.</div>';
+        container.innerHTML = '<div class="adventure-empty">Пока нет слухов о приключениях. Они появятся со временем, когда будут выполнены условия доступа.</div>';
         return;
     }
 
@@ -80,52 +81,67 @@ function renderAdventures() {
 
                 let choicesHtml = step.choices.map((choice, ci) => {
                     let reqParts = [];
-                    let canChoose = true;
+                    let canChoose = !game.gameOver;
 
-                    // Стоимость
-                    if (choice.cost) {
-                        if (choice.cost.stones) {
-                            const has = game.stones >= choice.cost.stones;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${choice.cost.stones} камней</span>`);
+                    // Стоимость рассчитывается по тем же флагам, что и при выборе.
+                    const cost = typeof choice.cost === "function" ? choice.cost(adventure.flags) : choice.cost;
+                    if (cost) {
+                        if (cost.stones) {
+                            const has = game.stones >= cost.stones;
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.stones} камней</span>`);
                             if (!has) canChoose = false;
                         }
-                        if (choice.cost.essence) {
-                            const has = game.daoEssence >= choice.cost.essence;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${choice.cost.essence} эссенции</span>`);
+                        if (cost.essence) {
+                            const has = game.daoEssence >= cost.essence;
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.essence} эссенции</span>`);
                             if (!has) canChoose = false;
                         }
-                        if (choice.cost.pills) {
-                            const has = game.pills >= choice.cost.pills;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${choice.cost.pills} пилюль</span>`);
+                        if (cost.pills) {
+                            const has = game.pills >= cost.pills;
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.pills} пилюль</span>`);
+                            if (!has) canChoose = false;
+                        }
+                        if (cost.dust) {
+                            const has = game.artifactDust >= cost.dust;
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.dust} пыли</span>`);
                             if (!has) canChoose = false;
                         }
                     }
 
                     // Проверка стата (check может быть функцией от флагов)
-                    const resolvedCheck = typeof choice.check === "function" ? choice.check(adventure.flags) : choice.check;
+                    const resolvedCheck = game.getAdventureCheck(adv, choice, adventure.flags);
                     if (resolvedCheck) {
                         if (resolvedCheck.strength) {
-                            const has = game.strength >= resolvedCheck.strength;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Сила: ${game.strength}/${resolvedCheck.strength}</span>`);
+                            const value = game.strength + game.getArtifactBonus("strength");
+                            const has = value >= resolvedCheck.strength;
+                            if (!has && !choice.fail) canChoose = false;
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Сила: ${Number(value.toFixed(1))}/${resolvedCheck.strength}</span>`);
                         }
                         if (resolvedCheck.spirit) {
-                            const has = game.spirit >= resolvedCheck.spirit;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Дух: ${game.spirit}/${resolvedCheck.spirit}</span>`);
+                            const value = game.spirit + game.getArtifactBonus("spirit");
+                            const has = value >= resolvedCheck.spirit;
+                            if (!has && !choice.fail) canChoose = false;
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Дух: ${Number(value.toFixed(1))}/${resolvedCheck.spirit}</span>`);
                         }
                         if (resolvedCheck.luck) {
-                            const has = game.luck >= resolvedCheck.luck;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Удача: ${game.luck}/${resolvedCheck.luck}</span>`);
+                            const value = game.luck + game.getArtifactBonus("luck");
+                            const has = value >= resolvedCheck.luck;
+                            if (!has && !choice.fail) canChoose = false;
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Удача: ${Number(value.toFixed(1))}/${resolvedCheck.luck}</span>`);
                         }
                         if (resolvedCheck.combatPower) {
                             const has = game.getCombatPower() >= resolvedCheck.combatPower;
+                            if (!has && !choice.fail) canChoose = false;
                             reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Мощь: ${game.getCombatPower()}/${resolvedCheck.combatPower}</span>`);
                         }
                         if (resolvedCheck.hasSect) {
                             const has = !!game.sect;
+                            if (!has && !choice.fail) canChoose = false;
                             reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Секта: ${has ? '\u2713' : '\u2717'}</span>`);
                         }
                         if (resolvedCheck.flag) {
                             const has = adventure.flags[resolvedCheck.flag] || (choice.altCheck && choice.altCheck.flag && adventure.flags[choice.altCheck.flag]);
+                            if (!has && !choice.fail) canChoose = false;
                             reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Особое условие ${has ? '\u2713' : '\u2717'}</span>`);
                         }
                     }
@@ -188,9 +204,11 @@ function renderAdventures() {
             const adv = ADVENTURES.find(a => a.id === rumor.id);
             if (!adv) return;
 
-            const isAscend = rumor.id.startsWith("ascend_");
+            const isAscend = rumor.id.startsWith("ascend_") || rumor.id.startsWith("ascend2_");
             const yearsLeft = isAscend ? Infinity : Math.max(0, 100 - (game.years - rumor.appearedYear));
-            const canAccept = game.activeAdventures.length < 1;
+            const cost = adv.ascendCost || {};
+            const hasEntryCost = (!cost.stones || game.stones >= cost.stones) && (!cost.essence || game.daoEssence >= cost.essence) && (!cost.dust || game.artifactDust >= cost.dust);
+            const canAccept = !game.gameOver && game.activeAdventures.length < 1 && adv.condition(game) && !game.completedAdventures.includes(adv.id) && hasEntryCost;
 
             const bossPower = _getAdventureBossPower(adv);
 
@@ -208,7 +226,7 @@ function renderAdventures() {
                 <div class="adventure-actions">
                     ${canAccept
                         ? `<button class="btn btn-small btn-primary" onclick="acceptAdventureUI('${adv.id}')">Принять</button>`
-                        : '<span class="adventure-busy">Макс. 2 активных</span>'
+                        : `<span class="adventure-busy">${game.activeAdventures.length >= 1 ? "Макс. 1 активное" : !hasEntryCost ? "Недостаточно ресурсов для входа" : "Условия не выполнены"}</span>`
                     }
                 </div>
             `;

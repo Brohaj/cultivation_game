@@ -5,7 +5,7 @@
 // === МОДАЛКА ДУХОВНОГО КОРНЯ ===
 function showSpiritualRootModal() {
     const modal = document.getElementById("root-modal");
-    if (!modal) return;
+    if (!modal || game.spiritualRoot || game.gameOver || game.pendingRebirth) return;
     modal.classList.add("active");
     // Заполнить имя из прошлой жизни
     const nameInput = document.getElementById("cultivator-name-input");
@@ -19,9 +19,10 @@ function renderRootSelection() {
 
     const available = game.getAvailableRoots();
     const availableIds = available.map(r => r.id);
+    const minRootTier = game.getMinRootTier();
     const isFirstLife = (game.prestige.totalRebirths || 0) === 0;
 
-    if (isFirstLife) {
+    if (isFirstLife && availableIds.includes("common")) {
         // Первая жизнь — только обычный корень, без выбора
         const common = SPIRITUAL_ROOTS.find(r => r.id === "common");
         resultDiv.innerHTML = `
@@ -57,6 +58,8 @@ function renderRootSelection() {
         for (const root of SPIRITUAL_ROOTS) {
             const unlocked = availableIds.includes(root.id);
             const rootTierIdx = tierOrder.indexOf(root.tier);
+            // Низшие корни исключены происхождением, а не ожидают открытия.
+            if (minRootTier && rootTierIdx < TIER_ORDER[minRootTier]) continue;
 
             if (!unlocked) {
                 // Показать тизер только для следующего тира
@@ -95,7 +98,8 @@ let _selectedElements = [];
 let _selectedRootId = null;
 
 function selectRootUI(rootId) {
-    const root = SPIRITUAL_ROOTS.find(r => r.id === rootId);
+    if (game.spiritualRoot || game.gameOver || game.pendingRebirth) return;
+    const root = game.getAvailableRoots().find(r => r.id === rootId);
     if (!root) return;
 
     _selectedRootId = rootId;
@@ -145,6 +149,11 @@ function selectRootUI(rootId) {
 }
 
 function toggleElementChoice(elementId, maxElements) {
+    const root = game.getAvailableRoots().find(r => r.id === _selectedRootId);
+    const unlocked = game.getUnlockedElements();
+    if (!root || game.spiritualRoot || !game.canChooseElements() || !unlocked.includes(elementId)) return;
+    maxElements = typeof root.elements === "number" ? root.elements : (Array.isArray(root.elements) ? root.elements.length : 0);
+    _selectedElements = [...new Set(_selectedElements)].filter(id => unlocked.includes(id)).slice(0, maxElements);
     const idx = _selectedElements.indexOf(elementId);
     if (idx >= 0) {
         _selectedElements.splice(idx, 1);
@@ -267,31 +276,28 @@ function playIntro() {
 let selectedRebirthBody = "peasant";
 
 function showRebirthModal(naturalDeath) {
-    game._naturalDeath = !!naturalDeath;
-    // Обновить lastLifeResources ДО рендера модала (чтобы body unlock проверял текущую жизнь)
-    game.prestige.lastLifeResources = {
-        stones: game.stones || 0,
-        pills: game.pills || 0,
-        essence: game.daoEssence || 0,
-        dust: game.artifactDust || 0,
-        realmIndex: game._maxRealmThisLife || game.realmIndex,
-        strength: game.strength,
-        spirit: game.spirit,
-        luck: game.luck
-    };
-    // Начислить карму этой жизни сразу
-    const karmaEarned = game.calculateKarma(naturalDeath);
-    game._pendingKarma = karmaEarned;
-    game.prestige.karma += karmaEarned;
-    // Мержим достижения
-    for (const m of game.milestones) {
-        if (!game.prestige.permanentMilestones.includes(m)) {
-            game.prestige.permanentMilestones.push(m);
-        }
-    }
-    selectedRebirthBody = "peasant";
+    const pending = game.beginRebirth(naturalDeath);
+    selectedRebirthBody = pending.bodyId || "peasant";
     document.getElementById("rebirth-modal").classList.add("active");
     renderRebirthContent();
+}
+
+// Обычная загрузка и импорт одинаково возобновляют незавершённый выбор.
+function resumeLoadedGame() {
+    document.getElementById("rebirth-modal")?.classList.remove("active");
+    document.getElementById("root-modal")?.classList.remove("active");
+    if (game.pendingRebirth) {
+        showRebirthModal(game.pendingRebirth.naturalDeath);
+    } else {
+        if (!game.gameOver) {
+            if (!game.spiritualRoot) {
+                showSpiritualRootModal();
+            } else {
+                game.start();
+            }
+        }
+    }
+    updateUI();
 }
 
 // Запомнить открытые секции аккордеона
@@ -318,7 +324,8 @@ function _restoreAccordionState(state) {
 function renderRebirthContent() {
     const content = document.getElementById("rebirth-content");
     const savedState = _saveAccordionState();
-    const karmaEarned = game._pendingKarma || 0;
+    const karmaEarned = game.pendingRebirth ? game.pendingRebirth.karmaEarned : 0;
+    const naturalDeath = !!game.pendingRebirth?.naturalDeath;
 
     let html = `<h2>Перерождение</h2>`;
     const noKarma = karmaEarned === 0 && game.realmIndex < 3;
@@ -326,9 +333,11 @@ function renderRebirthContent() {
 
     // Карма
     html += `<div class="karma-summary">`;
-    html += `<div class="karma-earned">Карма этой жизни: <strong>+${karmaEarned}</strong>${game._naturalDeath ? ' <span style="color:#6aea8a">(+50% Мудрость Полной Жизни)</span>' : ''}</div>`;
-    const sectKarmaParts = game.sect ? ` | Секта +${game.getSectRankIndex() * 3 + Math.floor((game.sect.contribution || 0) / 100)}` : "";
-    html += `<div class="karma-breakdown">Ступень +${Math.floor(Math.pow(game.realmIndex, 1.8))} | Годы +${Math.floor(game.characterAge() / 100)} | Техники +${game.techniques.length * 2} | Достижения +${game.milestones.length} | Прорывы +${Math.floor(game.totalBreakthroughs * 0.5)}${sectKarmaParts}${game._naturalDeath ? " | Полная жизнь \u00D71.5" : ""}</div>`;
+    html += `<div class="karma-earned">Карма этой жизни: <strong>+${karmaEarned}</strong>${naturalDeath ? ' <span style="color:#6aea8a">(+50% Мудрость Полной Жизни)</span>' : ''}</div>`;
+    const sectKarmaParts = game.sect ? ` Основа от секты: +${game.getSectRankIndex() + game.getSectContributionKarma()} до множителей.` : "";
+    const seedKarmaParts = game.flags.ancient_tree_seed || game.flags.dao_tree_seed
+        ? " Семя: ещё ×1.30 к итоговой карме; два семени не складываются." : "";
+    html += `<div class="karma-breakdown">Карма учитывает ступень, годы жизни, техники, достижения и прорывы после Золотого Ядра, затем бонусы тела, формаций, артефактов и секты.${sectKarmaParts}${naturalDeath ? " Полная жизнь: ×1.5." : ""}${seedKarmaParts}</div>`;
     html += `<div class="karma-total">Доступно кармы: <strong id="karma-available">${game.prestige.karma}</strong></div>`;
     html += `</div>`;
 
@@ -462,7 +471,7 @@ function renderRebirthContent() {
                             }
                         }
                         if (body.requirement.rebirths) {
-                            const has = game.prestige.totalRebirths >= body.requirement.rebirths;
+                            const has = (game.prestige.totalRebirths + 1) >= body.requirement.rebirths;
                             parts.push(`<span class="${has ? "req-met" : "req-unmet"}">${body.requirement.rebirths} перерождений</span>`);
                         }
                         reqText = parts.join(", ");
@@ -545,30 +554,32 @@ function toggleRebirthSection(header) {
 }
 
 function selectBody(bodyId) {
+    if (!game.isBodyUnlocked(bodyId)) return;
     selectedRebirthBody = bodyId;
+    if (game.pendingRebirth) {
+        game.pendingRebirth.bodyId = bodyId;
+        saveGame();
+    }
     renderRebirthContent();
 }
 
 function buyKarmaUpgradeUI(upgradeId) {
     if (game.buyKarmaUpgrade(upgradeId)) {
+        saveGame();
         renderRebirthContent();
     }
 }
 
 function ascendBodyUI(bodyId) {
     if (game.ascendBody(bodyId)) {
+        saveGame();
         renderRebirthContent();
     }
 }
 
 function performRebirth() {
-    // Карма уже начислена в showRebirthModal, но rebirth() добавит снова — вычтем pending
-    game.prestige.karma -= game._pendingKarma || 0;
-    const wasNaturalDeath = game._naturalDeath;
-    game._pendingKarma = 0;
-    game._naturalDeath = false;
-
-    game.rebirth(selectedRebirthBody, wasNaturalDeath);
+    if (!game.pendingRebirth) return;
+    if (!game.rebirth(selectedRebirthBody, game.pendingRebirth.naturalDeath)) return;
 
     document.getElementById("rebirth-modal").classList.remove("active");
     document.getElementById("event-log").innerHTML = "";

@@ -116,7 +116,7 @@ EVENTS.push(
     },
     {
         id: "moon_lake_ritual",
-        text: "Раз в сто лет озеро секты наполняется чистейшей лунной ци. Ученикам разрешено медитировать у берега.",
+        text: "Лунная ци наполнила озеро секты чистейшим сиянием. Ученикам разрешено медитировать у берега.",
         type: "reward",
         condition: (g) => g.sect && g.sect.id === "moon_lake" && g.realmIndex >= 4,
         effect: (g) => {
@@ -205,13 +205,140 @@ EVENTS.push(
     },
     {
         id: "hermit_wind_walk",
-        text: "Старший брат из Скрытой Секты научил вас технике Прогулки Ветра — способу слиться с природой и стать невидимым.",
+        text: "Старший брат из Скрытой Секты показал, как ступать в такт ветру. Шорох ваших шагов потерялся в листве.",
         type: "reward",
         condition: (g) => g.sect && g.sect.id === "hidden_hermit" && g.sect.rank >= 1,
         effect: (g) => {
             g.spirit += 1;
             g.luck += 1;
             return "+1 дух, +1 удача. Вы стали чуть ближе к ветру.";
+        }
+    },
+
+    // === МЕЖСЕКТОВЫЕ СОБЫТИЯ ===
+
+    {
+        id: "jade_vs_crimson",
+        text: "На границе территорий два ученика — в нефритовом и алом — стоят друг напротив друга. Воздух дрожит от сдержанной силы. Пограничный спор.",
+        type: "event",
+        condition: (g) => g.sect && (g.sect.id === "jade_purity" || g.sect.id === "crimson_flame")
+            && g.realmIndex >= 3 && g.realmIndex <= 6
+            && (g.flags.jade_crimson_cd == null || g.years - g.flags.jade_crimson_cd >= 80),
+        effect: (g) => {
+            g.flags.jade_crimson_cd = g.years;
+            if (g.sect.id === "jade_purity") {
+                g.spirit += 1;
+                return "Вы разрешили спор словом, не мечом. Орден отступил — пока. +1 дух";
+            } else {
+                g.strength += 1;
+                return "Ваш клинок говорил за вас. Нефритовые ученики отступили — с уважением. +1 сила";
+            }
+        }
+    },
+    {
+        id: "moon_lake_supplies",
+        text: "Секта Лунного Озера отправила караван с целебными пилюлями в пострадавшие деревни. Местные кланяются.",
+        type: "event",
+        condition: (g) => g.sect && g.realmIndex >= 4 && g.realmIndex <= 7
+            && (!g.flags.moon_supply_cd || g.years - g.flags.moon_supply_cd >= 100),
+        effect: (g) => {
+            g.flags.moon_supply_cd = g.years;
+            if (g.sect.id === "moon_lake") {
+                g.sect.contribution += 10;
+                g.pills += 3;
+                return "Вы возглавили караван. Благодарность простых людей — тоже путь Дао. +10 вклада, +3 пилюли";
+            }
+            g.pills += 1;
+            return "Алхимики Лунного Озера раздают пилюли. Вам тоже досталась. +1 пилюля";
+        }
+    },
+    {
+        id: "abyss_suspicion",
+        text: "Торговец духовными камнями взглянул на вашу мантию, побледнел и захлопнул ставни. «С Бездной дел не имею!»",
+        type: "event",
+        condition: (g) => g.sect && g.sect.id === "abyss_cult"
+            && g.realmIndex >= 5 && g.realmIndex <= 8
+            && (!g.flags.abyss_suspicion_cd || g.years - g.flags.abyss_suspicion_cd >= 120),
+        effect: (g) => {
+            g.flags.abyss_suspicion_cd = g.years;
+            g.luck += 1;
+            return "Страх — тоже форма уважения. +1 удача. Следующий торговец будет сговорчивее.";
+        }
+    },
+    {
+        id: "hermit_whispers",
+        text: "В чайной шепчутся: «Видели его? Говорят, из Скрытой Секты...» «Тише! Они слышат ветер.»",
+        type: "event",
+        condition: (g) => g.sect && g.sect.id === "hidden_hermit"
+            && g.realmIndex >= 7
+            && (!g.flags.hermit_whisper_cd || g.years - g.flags.hermit_whisper_cd >= 150),
+        effect: (g) => {
+            g.flags.hermit_whisper_cd = g.years;
+            g.spirit += 1;
+            return "Вы допили чай и ушли. Никто не заметил, когда. +1 дух";
+        }
+    },
+    {
+        id: "sect_territory_patrol",
+        text: "Секта поручила вам дозор на границе территории. Знакомые горы, знакомый ветер.",
+        type: "event",
+        condition: (g) => g.sect && g.realmIndex >= 3 && g.realmIndex <= 7
+            && (!g.flags.patrol_cd || g.years - g.flags.patrol_cd >= 60),
+        effect: (g) => {
+            g.flags.patrol_cd = g.years;
+            const sectLoc = { jade_purity: "Лес Духовных Трав", crimson_flame: "Пещера Древнего Зверя",
+                              moon_lake: "Руины Забытой Секты", abyss_cult: "Бездна Демонов",
+                              hidden_hermit: "Вершина Ветров" };
+            const loc = sectLoc[g.sect.id] || "священные земли";
+            g.stones += 5;
+            const bonus = eventQiBonus(g, 0.05);
+            g.qi += bonus;
+            return `Дозор у ${loc}. Тишина — лучший знак. +5 камней, +${bonus} ци`;
+        }
+    },
+
+    // === ЭПОХА-ЗАВИСИМЫЕ СОБЫТИЯ ===
+
+    {
+        id: "sect_era_conflict",
+        text: "Эпоха Конфликта. Секта созывает всех учеников. Старейшины стоят у карты: границы горят.",
+        type: "event",
+        condition: (g) => g.sect && g.getCurrentEra && g.getCurrentEra().id === "conflict"
+            && g.realmIndex >= 3
+            && (!g.flags.era_conflict_cd || g.years - g.flags.era_conflict_cd >= 200),
+        effect: (g) => {
+            g.flags.era_conflict_cd = g.years;
+            g.strength += 1;
+            g.sect.contribution += 5;
+            return "Секта мобилизуется. Каждый клинок на счету. +1 сила, +5 вклада";
+        }
+    },
+    {
+        id: "sect_era_invasion",
+        text: "Демоническое Нашествие. Впервые за столетия все пять сект действуют как одна. Бывшие соперники стоят плечом к плечу.",
+        type: "event",
+        condition: (g) => g.sect && g.getCurrentEra && g.getCurrentEra().id === "invasion"
+            && g.realmIndex >= 3
+            && (!g.flags.era_invasion_cd || g.years - g.flags.era_invasion_cd >= 200),
+        effect: (g) => {
+            g.flags.era_invasion_cd = g.years;
+            g.spirit += 1;
+            g.strength += 1;
+            return "Единство перед лицом Бездны. +1 дух, +1 сила";
+        }
+    },
+    {
+        id: "sect_era_golden",
+        text: "Золотая Эра. Секта процветает. Ученики смеются, сокровищница полна, а воздух пропитан чистейшей ци.",
+        type: "reward",
+        condition: (g) => g.sect && g.getCurrentEra && g.getCurrentEra().id === "golden"
+            && g.realmIndex >= 2
+            && (!g.flags.era_golden_cd || g.years - g.flags.era_golden_cd >= 200),
+        effect: (g) => {
+            g.flags.era_golden_cd = g.years;
+            g.stones += 20;
+            g.pills += 3;
+            return "Процветание секты. Щедрые дары из сокровищницы. +20 камней, +3 пилюли";
         }
     },
 );

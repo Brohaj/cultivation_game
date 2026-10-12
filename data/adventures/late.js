@@ -5,6 +5,7 @@ ADVENTURES.push(
     // ── 4. Бездна Кровавой Луны (realm 7+, 3 шага, опасное) ──
     {
         id: "demon_lair",
+        challengeRealm: 7,
         name: "Бездна Кровавой Луны",
         description: "В ночь Кровавой Луны разверзлась Бездна — логово Культа Вечной Ночи. Демоническая ци отравляет землю на десятки ли вокруг. Внутри — тысячелетние запасы секты тёмных культиваторов.",
         condition: (g) => g.realmIndex >= 7 && g.realmIndex <= 10,
@@ -109,6 +110,7 @@ ADVENTURES.push(
     // ── 9. Испытание Небесной Кары (realm 7+, 3 шага) ──
     {
         id: "tribulation_trial",
+        challengeRealm: 7,
         name: "Испытание Небесной Кары",
         description: "Древний Алтарь Небесной Кары активировался. Говорят, тот, кто пройдёт испытание добровольно, получит закалку, равную настоящей Небесной Каре — без риска смерти.",
         condition: (g) => g.realmIndex >= 7 && g.realmIndex <= 10,
@@ -202,6 +204,7 @@ ADVENTURES.push(
     // ── 5. Осколок Небесного Дворца (realm 9+, 4 шага) ──
     {
         id: "fallen_immortal",
+        challengeRealm: 9,
         name: "Осколок Небесного Дворца",
         description: "Пространственная трещина открыла доступ к осколку Небесного Дворца — карманному измерению, где погиб бессмертный эпохи Древних. Его наследие ждёт того, кто сможет выдержать давление Небес.",
         condition: (g) => g.realmIndex >= 9 && g.realmIndex <= 12,
@@ -233,11 +236,11 @@ ADVENTURES.push(
                 ]
             },
             {
-                text: "Внутри — мёртвый мир золота и мрамора. Время застыло: капли воды висят в воздухе, пыль не движется. В центре дворца — трон, а на нём — скелет в истлевших одеждах. Аура Дао исходит от костей, как жар от печи. Это был бессмертный уровня Махаяны... или выше.",
+                text: "Внутри — мёртвый мир золота и мрамора. Время застыло: капли воды висят в воздухе, пыль не движется. В центре дворца — трон, а на нём — скелет в истлевших одеждах. Аура Дао исходит от костей, как жар от печи. Он был как минимум Земным Бессмертным. Определить, насколько выше он поднялся, вы не можете.",
                 choices: [
                     {
                         text: "Сесть напротив мёртвого бога. Слушать тишину",
-                        description: "Долго. Дао само придёт",
+                        description: "Долгая медитация укрепит дух и тело",
                         duration: 18,
                         success: { nextStep: 2, flag: "meditated", effect: (g) => { g.spirit += 3; g.strength += 2; } }
                     },
@@ -259,9 +262,10 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Оружейная. Он ковал это для себя — теперь оно ваше",
-                        description: "Артефакт epic+",
+                        description: (flags) => flags.trial_passed ? "Артефакт не ниже эпического" : "Артефакт не ниже редкого",
                         duration: 0,
                         success: {
+                            nextStep: 3,
                             rewards: (flags) => ({
                                 artifactChance: 1.0,
                                 artifactMinTier: flags.trial_passed ? "epic" : "rare",
@@ -276,6 +280,7 @@ ADVENTURES.push(
                         description: "Ресурсы. Много",
                         duration: 0,
                         success: {
+                            nextStep: 3,
                             rewards: {
                                 stones: { min: 150, max: 300 },
                                 essence: { min: 100, max: 200 },
@@ -292,7 +297,7 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Отдать часть себя. Ци — это просто энергия. Жизнь дороже",
-                        description: "Потеря 25% ци",
+                        description: "Потеря ци: 25% от запаса для прорыва",
                         success: {
                             effect: (g) => { g.qi = Math.max(0, g.qi - Math.floor(g.qiNeeded() * 0.25)); },
                             rewards: (flags) => ({
@@ -327,6 +332,7 @@ ADVENTURES.push(
     // ── 10. Врата Забвения (realm 9+, 4 шага) ──
     {
         id: "oblivion_gate",
+        challengeRealm: 9,
         name: "Врата Забвения",
         description: "На границе Смертного и Бессмертного миров появились Врата Забвения — портал, стирающий память тех, кто слаб. За ними — библиотека Небесного Суда, где записаны техники, забытые смертными.",
         condition: (g) => g.realmIndex >= 9 && g.realmIndex <= 12,
@@ -377,7 +383,7 @@ ADVENTURES.push(
                         description: "Нужен дух",
                         check: { spirit: 52 },
                         success: { nextStep: 2, flag: "guardian_enslaved", effect: (g) => { g.spirit += 3; } },
-                        fail: { nextStep: 2, flag: "stayed_edge", effect: (g) => { g.spirit = Math.max(1, g.spirit - 5); }, failText: "Страж обратил вашу атаку — забвение хлынуло в разум. Вы потеряли воспоминания о нескольких техниках. -5 дух." }
+                        fail: { nextStep: 2, flag: "stayed_edge", effect: (g) => { g.spirit = Math.max(1, g.spirit - 5); }, failText: "Страж обратил вашу атаку — забвение хлынуло в разум. Знакомые движения на миг стали чужими. Вы отступили, собирая рассыпавшиеся мысли. -5 дух." }
                     }
                 ]
             },
@@ -390,10 +396,11 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Прочитать то, что Небеса запретили. Что бы это ни значило",
-                        description: "Шанс техники. Только для прорвавшихся",
+                        description: (flags) => flags.reached_center || flags.guardian_enslaved ? "Техника Память Забвения" : "Обрывки знаний. Шанс случайной техники",
                         check: { flag: "reached_center" },
                         altCheck: { flag: "guardian_enslaved" },
                         success: {
+                            nextStep: 3,
                             effect: (g) => {
                                 if (!g.hasTechnique("oblivion_memory")) {
                                     g.learnTechnique("oblivion_memory");
@@ -408,6 +415,7 @@ ADVENTURES.push(
                             flag: "learned_forbidden"
                         },
                         fail: {
+                            nextStep: 3,
                             rewards: { essence: { min: 30, max: 60 }, techniqueChance: 0.15 },
                             flag: "learned_scraps",
                             failText: "Золотая таблица недоступна с края зала. Вы выучили что смогли."
@@ -418,6 +426,7 @@ ADVENTURES.push(
                         description: "Ресурсы прошлых эпох",
                         duration: 0,
                         success: {
+                            nextStep: 3,
                             rewards: (flags) => ({
                                 stones: { min: (flags.reached_center || flags.guardian_enslaved) ? 180 : 80, max: (flags.reached_center || flags.guardian_enslaved) ? 350 : 150 },
                                 essence: { min: 80, max: 180 },
@@ -435,7 +444,7 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Вспомнить боль. Она выведет обратно",
-                        description: "Потеря 25% ци",
+                        description: "Потеря ци: 25% от запаса для прорыва",
                         success: {
                             effect: (g) => { g.qi = Math.max(0, g.qi - Math.floor(g.qiNeeded() * 0.25)); },
                             rewards: (flags) => ({
@@ -470,6 +479,7 @@ ADVENTURES.push(
     // ── 16. Алтарь Тысячи Душ (realm 8+, 3 шага) ──
     {
         id: "thousand_souls_altar",
+        challengeRealm: 8,
         name: "Алтарь Тысячи Душ",
         description: "В разломе между мирами обнаружен древний алтарь. Души тысяч павших культиваторов всё ещё связаны с ним. Каждая знает фрагмент забытой истории.",
         condition: (g) => g.realmIndex >= 8 && g.realmIndex <= 11,
@@ -487,7 +497,7 @@ ADVENTURES.push(
                     },
                     {
                         text: "Слушать. Каждая душа знает что-то ценное",
-                        description: "Долго. Тысяча историй — какая нужна вам?",
+                        description: "Тысяча историй — услышать ту, что нужна вам",
                         success: { nextStep: 1, flag: "listened" }
                     },
                     {
@@ -554,6 +564,7 @@ ADVENTURES.push(
     // ── 17. Сад Забытых Бессмертных (realm 9+, 3 шага) ──
     {
         id: "forgotten_garden",
+        challengeRealm: 9,
         name: "Сад Забытых Бессмертных",
         description: "В пространственной складке обнаружен сад, посаженный бессмертными до Великого Раскола. Растения здесь — живые хранилища ци и Дао. Но сад защищает себя.",
         condition: (g) => g.realmIndex >= 9 && g.realmIndex <= 12,
@@ -628,12 +639,16 @@ ADVENTURES.push(
                         }
                     },
                     {
-                        text: "Попросить семя. Вырастить своё Древо... когда-нибудь",
-                        description: "Ничего сейчас. Но флаг на будущее",
+                        text: "Попросить семя. Связать эту жизнь со следующей",
+                        legacyTexts: ["Попросить семя. Вырастить своё Древо... когда-нибудь"],
+                        description: "Немного пыли и эссенции. +30% кармы этой жизни при перерождении; семена не складываются",
                         check: (flags) => ({ spirit: flags.waited_garden ? 30 : flags.respectful ? 40 : 55 }),
                         success: {
                             rewards: { dust: { min: 10, max: 20 }, essence: { min: 10, max: 20 } },
-                            effect: (g) => { g.flags.dao_tree_seed = true; },
+                            effect: (g) => {
+                                g.flags.dao_tree_seed = true;
+                                addLog("Семя Древа Дао усилит карму этой жизни на 30% при перерождении. Второе семя не увеличит бонус.", "reward");
+                            },
                             flag: "took_seed"
                         },
                         fail: {

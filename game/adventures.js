@@ -4,11 +4,112 @@
 // ============================================================
 
 Object.assign(game, {
+    // Общий resolver для проверки, превью и UI. Зависит только от контента
+    // и уже принятых решений, не от текущих статов/реалма персонажа.
+    getAdventureCheck(adv, choice, flags = {}) {
+        const raw = typeof choice.check === "function" ? choice.check(flags) : choice.check;
+        if (!raw) return raw;
+        const budget = ADVENTURE_CHALLENGE_SCALING[adv.challengeRealm];
+        if (!budget) return raw;
+        const resolved = { ...raw };
+        for (const key of ["strength", "spirit", "luck", "combatPower"]) {
+            if (resolved[key]) resolved[key] = Math.ceil(resolved[key] * budget[key]);
+        }
+        return resolved;
+    },
+
+    // Временные условия выбранного занятия выводятся из уже сохраняемого этапа.
+    // Несколько одинаковых условий не перемножаются: действует самое сильное.
+    getAdventureMeditationMultiplier() {
+        if (this.gameOver || this.pendingRebirth) return 1;
+        let multiplier = 1;
+        for (const adventure of this.activeAdventures || []) {
+            if (!adventure || adventure.awaitingChoice || !(adventure.stepDuration > 0)) continue;
+            const elapsed = this.years - adventure.stepStartYear;
+            if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed >= adventure.stepDuration) continue;
+            const adv = ADVENTURES.find(item => item.id === adventure.id);
+            const history = adventure.completedSteps || [];
+            const selected = adventure._pendingOutcome || history[history.length - 1];
+            if (!adv || !selected || selected.stepIdx !== adventure.currentStep || selected.passed === false) continue;
+            const step = adv.steps[selected.stepIdx];
+            if (!step) continue;
+            const choiceIdx = Number.isInteger(selected.choiceIdx)
+                ? selected.choiceIdx
+                : step.choices.findIndex(choice => choice.text === selected.choiceText || choice.legacyTexts?.includes(selected.choiceText));
+            const effect = step.choices[choiceIdx]?.waitEffects?.meditationQiMultiplier;
+            if (Number.isFinite(effect) && effect > multiplier) multiplier = effect;
+        }
+        return multiplier;
+    },
+
     // === СЛУХИ ===
+
+    _getAvailableAdventureRumors() {
+        return ADVENTURES.filter(adv =>
+            adv.rumorSource !== "story"
+            && adv.condition(this)
+            && !this.completedAdventures.includes(adv.id)
+            && !this.adventureRumors.some(r => r.id === adv.id)
+            && !this.activeAdventures.some(a => a.id === adv.id)
+        );
+    },
+
+    _syncAdventureDiscovery() {
+        if (!this.adventureDiscovery) {
+            this.adventureDiscovery = { poolKey: "", waitYears: 0, lastCompleteYear: null };
+        }
+        const available = this._getAvailableAdventureRumors();
+        const poolKey = available.length
+            ? `${this.realmIndex}:${available.map(a => a.id).sort().join(",")}`
+            : "";
+        if (this.adventureDiscovery.poolKey !== poolKey) {
+            this.adventureDiscovery.poolKey = poolKey;
+            this.adventureDiscovery.waitYears = 0;
+        }
+        return available;
+    },
+
+    canDiscoverAdventureRumor(adventureId) {
+        if (this.gameOver || this.pendingRebirth) return false;
+        const available = this._syncAdventureDiscovery();
+        if (!available.some(a => a.id === adventureId)) return false;
+        if (this.adventureRumors.length || this.activeAdventures.length) return false;
+        const lastComplete = this.adventureDiscovery.lastCompleteYear;
+        if (lastComplete !== null && this.years - lastComplete < 50) return false;
+        return this.adventureDiscovery.waitYears >= 3;
+    },
+
+    discoverAdventureRumor(adventureId) {
+        if (!this.canDiscoverAdventureRumor(adventureId)) return false;
+        return this.addAdventureRumor(adventureId);
+    },
+
+    // Единственный накопительный таймер слухов: только годы с доступными квестами.
+    tickAdventureRumors() {
+        const previousPool = this.adventureDiscovery ? this.adventureDiscovery.poolKey : "";
+        const available = this._syncAdventureDiscovery();
+        const discovery = this.adventureDiscovery;
+        if (this.gameOver || this.pendingRebirth || !available.length
+            || this.adventureRumors.length || this.activeAdventures.length
+            || (discovery.lastCompleteYear !== null && this.years - discovery.lastCompleteYear < 50)) {
+            discovery.waitYears = 0;
+            return false;
+        }
+        // Новый реалм или пул не наследует ожидание от прежних условий.
+        if (previousPool !== discovery.poolKey) return false;
+        discovery.waitYears++;
+        if (discovery.waitYears < 3) return false;
+        const chance = Math.min(1, (discovery.waitYears - 2) * 0.01);
+        if (Math.random() >= chance) return false;
+        const adv = available[Math.floor(Math.random() * available.length)];
+        if (!this.discoverAdventureRumor(adv.id)) return false;
+        addLog(`До вас дошёл слух: "${adv.rumor}"`, "event");
+        return true;
+    },
 
     addAdventureRumor(adventureId) {
         const adv = ADVENTURES.find(a => a.id === adventureId);
-        if (!adv) return false;
+        if (!adv || !adv.condition(this)) return false;
         // Не дублировать
         if (this.adventureRumors.find(r => r.id === adventureId)) return false;
         if (this.activeAdventures.find(a => a.id === adventureId)) return false;
@@ -20,6 +121,7 @@ Object.assign(game, {
             id: adventureId,
             appearedYear: this.years
         });
+        if (this.adventureDiscovery) this.adventureDiscovery.waitYears = 0;
         return true;
     },
 
@@ -31,7 +133,7 @@ Object.assign(game, {
         if (rumorIdx === -1) return false;
 
         const adv = ADVENTURES.find(a => a.id === adventureId);
-        if (!adv) return false;
+        if (!adv || !adv.condition(this) || this.completedAdventures.includes(adventureId)) return false;
 
         // Стоимость входа (для приключений вознесения)
         if (adv.ascendCost) {
@@ -84,25 +186,18 @@ Object.assign(game, {
         const choice = step.choices[choiceIdx];
         if (!choice) return false;
 
-        // Проверить стоимость
-        if (choice.cost) {
-            if (choice.cost.stones && this.stones < choice.cost.stones) return false;
-            if (choice.cost.essence && this.daoEssence < choice.cost.essence) return false;
-            if (choice.cost.pills && this.pills < choice.cost.pills) return false;
-            if (choice.cost.dust && this.artifactDust < choice.cost.dust) return false;
-        }
-
-        // Списать стоимость
-        if (choice.cost) {
-            if (choice.cost.stones) this.stones -= choice.cost.stones;
-            if (choice.cost.essence) this.daoEssence -= choice.cost.essence;
-            if (choice.cost.pills) this.pills -= choice.cost.pills;
-            if (choice.cost.dust) this.artifactDust -= choice.cost.dust;
+        // Стоимость может зависеть от сведений, полученных на предыдущем шаге.
+        const cost = typeof choice.cost === "function" ? choice.cost(adventure.flags) : choice.cost;
+        if (cost) {
+            if (cost.stones && this.stones < cost.stones) return false;
+            if (cost.essence && this.daoEssence < cost.essence) return false;
+            if (cost.pills && this.pills < cost.pills) return false;
+            if (cost.dust && this.artifactDust < cost.dust) return false;
         }
 
         // Проверить check (может быть объектом или функцией от флагов)
         let passed = true;
-        const check = typeof choice.check === "function" ? choice.check(adventure.flags) : choice.check;
+        const check = this.getAdventureCheck(adv, choice, adventure.flags);
         if (check) {
             if (check.strength && this.strength + this.getArtifactBonus("strength") < check.strength) passed = false;
             if (check.spirit && this.spirit + this.getArtifactBonus("spirit") < check.spirit) passed = false;
@@ -111,10 +206,8 @@ Object.assign(game, {
             if (check.hasSect && !this.sect) passed = false;
             // Проверка флага
             if (check.flag && !adventure.flags[check.flag]) {
-                // Попробовать altCheck
-                if (choice.altCheck && choice.altCheck.flag && adventure.flags[choice.altCheck.flag]) {
-                    passed = true;
-                } else {
+                // Альтернативный флаг заменяет только этот флаг, а не остальные проверки.
+                if (!choice.altCheck?.flag || !adventure.flags[choice.altCheck.flag]) {
                     passed = false;
                 }
             }
@@ -123,13 +216,25 @@ Object.assign(game, {
         const outcome = passed ? choice.success : choice.fail;
         if (!outcome) return false; // Нет fail-ветки = нельзя провалить
 
-        // Применить эффект: если финальный шаг с rewards — отложить до _completeAdventure
-        if (outcome.effect) {
-            if (outcome.rewards) {
-                adventure._pendingEffect = outcome.effect;
-            } else {
-                outcome.effect(this, adventure.flags);
-            }
+        // Списать стоимость только после того, как найден допустимый исход.
+        if (cost) {
+            if (cost.stones) this.stones -= cost.stones;
+            if (cost.essence) this.daoEssence -= cost.essence;
+            if (cost.pills) this.pills -= cost.pills;
+            if (cost.dust) this.artifactDust -= cost.dust;
+        }
+
+        // Ветку с наградами сохраняем ссылкой на данные: функции не переживают JSON-сейв.
+        if (outcome.rewards) {
+            adventure._pendingOutcome = {
+                stepIdx: adventure.currentStep,
+                choiceIdx: choiceIdx,
+                passed: passed
+            };
+        } else if (outcome.effect) {
+            const stepResults = [];
+            outcome.effect(this, adventure.flags, stepResults);
+            if (stepResults.length > 0) addLog(`Награды: ${stepResults.join(", ")}`, "reward");
         }
 
         // Установить флаг
@@ -140,6 +245,7 @@ Object.assign(game, {
         // Сохранить историю шага
         adventure.completedSteps.push({
             stepIdx: adventure.currentStep,
+            choiceIdx: choiceIdx,
             choiceText: choice.text,
             passed: passed,
             failText: (!passed && outcome.failText) ? outcome.failText : null
@@ -153,39 +259,23 @@ Object.assign(game, {
 
         // Определить следующее состояние
         let dur = choice.duration || 0;
+        const isFinalReward = outcome.rewards && outcome.nextStep === undefined;
         // Ascend-приключения: финальный шаг = 20 лет исследования
-        if (adventure.id.startsWith("ascend_") && outcome.rewards && dur === 0) dur = 20;
+        if ((adventure.id.startsWith("ascend_") || adventure.id.startsWith("ascend2_")) && isFinalReward && dur === 0) dur = 20;
         if (outcome.rewards) {
-            // Финальный шаг
-            if (dur === 0) {
-                // Мгновенное завершение
-                adventure._pendingRewards = typeof outcome.rewards === "function"
-                    ? outcome.rewards(adventure.flags)
-                    : outcome.rewards;
-                adventure._finalStep = true;
-                const idx = this.activeAdventures.indexOf(adventure);
-                if (idx >= 0) this._completeAdventure(idx);
-            } else {
-                adventure.awaitingChoice = false;
-                adventure.stepDuration = dur;
-                adventure.stepStartYear = this.years;
-                adventure._pendingRewards = typeof outcome.rewards === "function"
-                    ? outcome.rewards(adventure.flags)
-                    : outcome.rewards;
-                adventure._finalStep = true;
-            }
+            adventure._pendingRewards = typeof outcome.rewards === "function"
+                ? outcome.rewards(adventure.flags)
+                : outcome.rewards;
+        }
+        adventure.awaitingChoice = false;
+        adventure.stepDuration = dur;
+        adventure.stepStartYear = this.years;
+        if (isFinalReward) {
+            adventure._finalStep = true;
+            if (dur === 0) this._completeAdventure(adventureIdx);
         } else if (outcome.nextStep !== undefined) {
-            if (dur === 0) {
-                // Мгновенный переход к следующему шагу (без лога — игрок видит новый выбор сразу)
-                adventure.currentStep = outcome.nextStep;
-                adventure.awaitingChoice = true;
-                adventure.stepDuration = 0;
-            } else {
-                adventure.awaitingChoice = false;
-                adventure.stepDuration = dur;
-                adventure.stepStartYear = this.years;
-                adventure._nextStep = outcome.nextStep;
-            }
+            adventure._nextStep = outcome.nextStep;
+            if (dur === 0) this._advanceAdventureStep(adventureIdx, false);
         }
 
         updateUI();
@@ -197,8 +287,9 @@ Object.assign(game, {
     tickAdventures() {
         // Истечение слухов (100 лет)
         this.adventureRumors = this.adventureRumors.filter(r => {
+            const adv = ADVENTURES.find(a => a.id === r.id);
+            if (!adv || !adv.condition(this) || this.completedAdventures.includes(r.id)) return false;
             if (this.years - r.appearedYear >= 100 && !r.id.startsWith("ascend")) {
-                const adv = ADVENTURES.find(a => a.id === r.id);
                 if (adv) addLog(`Слух о "${adv.name}" развеялся...`, "system");
                 return false;
             }
@@ -221,17 +312,32 @@ Object.assign(game, {
         }
     },
 
-    _advanceAdventureStep(idx) {
+    _advanceAdventureStep(idx, announce = true) {
         const adventure = this.activeAdventures[idx];
-        if (!adventure) return;
-
-        adventure.currentStep = adventure._nextStep;
-        delete adventure._nextStep;
-        adventure.awaitingChoice = true;
-        adventure.stepDuration = 0;
+        if (!adventure || adventure._nextStep === undefined) return;
 
         const adv = ADVENTURES.find(a => a.id === adventure.id);
-        if (adv) {
+        const outcome = adv ? this._getAdventureRewardOutcome(adventure, adv) : null;
+        const rewards = adventure._pendingRewards || (outcome
+            ? (typeof outcome.rewards === "function" ? outcome.rewards(adventure.flags) : outcome.rewards)
+            : null);
+
+        // Погасить переход и награды до эффектов: повторный тик не выдаст их ещё раз.
+        adventure.currentStep = adventure._nextStep;
+        delete adventure._nextStep;
+        delete adventure._pendingOutcome;
+        delete adventure._pendingRewards;
+        delete adventure._pendingEffect;
+        delete adventure._finalStep;
+        adventure.stepDuration = 0;
+
+        if (rewards) {
+            const results = this._grantAdventureRewards(rewards, adventure, outcome);
+            if (results.length > 0) addLog(`Награды: ${results.join(", ")}`, "reward");
+            this.checkMilestones();
+        }
+        adventure.awaitingChoice = true;
+        if (adv && announce) {
             addLog(`${adv.name}: новый этап приключения!`, "event");
         }
         updateUI();
@@ -239,17 +345,50 @@ Object.assign(game, {
 
     // === ЗАВЕРШЕНИЕ ===
 
-    _completeAdventure(idx) {
-        const adventure = this.activeAdventures[idx];
-        if (!adventure) return;
+    hasClaimedLiuSword() {
+        if (this.flags.liu_sword_claimed) return true;
+        // В старых сейвах нет общего флага. Стадия цепочки и завершённый
+        // квест относятся к текущей жизни, даже если меч уже разобран.
+        const legacyClaim = (this.flags.sect_crisis_step || 0) >= 3
+            || this.completedAdventures.includes("elder_betrayal")
+            || this.artifacts.some(art =>
+                (art.uniqueReward === "liu_sword" || ["Меч Старейшины Лю", "Очищенный Меч Лю"].includes(art.name))
+                && (art.rewardBirthYear === undefined || art.rewardBirthYear === this.birthYear)
+            );
+        if (legacyClaim) this.flags.liu_sword_claimed = true;
+        return legacyClaim;
+    },
 
-        const adv = ADVENTURES.find(a => a.id === adventure.id);
-        if (!adv) {
-            this.activeAdventures.splice(idx, 1);
-            return;
-        }
+    grantLiuSword(purified = false, results) {
+        if (this.hasClaimedLiuSword()) return null;
+        const sword = this.generateArtifact("rare", "weapon");
+        if (!sword) return null;
+        sword.name = purified ? "Очищенный Меч Лю" : "Меч Старейшины Лю";
+        sword.uniqueReward = "liu_sword";
+        sword.rewardBirthYear = this.birthYear;
+        if (!this.addArtifact(sword)) return null;
+        this.flags.liu_sword_claimed = true;
+        if (results) results.push(`артефакт: ${sword.name}`);
+        return sword;
+    },
 
-        const rewards = adventure._pendingRewards || {};
+    _getAdventureRewardOutcome(adventure, adv) {
+        // Старые сейвы не содержат ссылки, но сохраняют текст выбора и результат проверки.
+        const history = adventure.completedSteps || [];
+        const selected = adventure._pendingOutcome || history[history.length - 1];
+        if (!selected) return null;
+        const step = adv.steps[selected.stepIdx];
+        if (!step) return null;
+        const choiceIdx = Number.isInteger(selected.choiceIdx)
+            ? selected.choiceIdx
+            : step.choices.findIndex(c => c.text === selected.choiceText || c.legacyTexts?.includes(selected.choiceText));
+        const choice = step.choices[choiceIdx];
+        if (!choice) return null;
+        const outcome = selected.passed === false ? choice.fail : choice.success;
+        return outcome && outcome.rewards ? outcome : null;
+    },
+
+    _grantAdventureRewards(rewards, adventure, outcome) {
         const results = [];
 
         // Камни
@@ -313,11 +452,7 @@ Object.assign(game, {
 
         // Техника
         if (rewards.techniqueChance && Math.random() < rewards.techniqueChance) {
-            const unlearned = TECHNIQUES.filter(t =>
-                !this.hasTechnique(t.id) &&
-                t.source !== "sect" && t.source !== "body" && t.source !== "adventure" &&
-                (!t.requirement || !t.requirement.realm || this.realmIndex >= t.requirement.realm)
-            );
+            const unlearned = this.getRewardTechniquePool();
             if (unlearned.length > 0) {
                 const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                 this.learnTechnique(tech.id);
@@ -344,10 +479,39 @@ Object.assign(game, {
             if (rewards.bonusStats.luck) { this.luck += rewards.bonusStats.luck; results.push(`+${rewards.bonusStats.luck} удача`); }
         }
 
-        // Финальный эффект
-        if (adventure._pendingEffect) {
-            adventure._pendingEffect(this, results);
+        // Эффект выбранной ветки
+        if (outcome && outcome.effect) {
+            outcome.effect(this, adventure.flags, results);
         }
+        return results;
+    },
+
+    _completeAdventure(idx) {
+        const adventure = this.activeAdventures[idx];
+        if (!adventure) return;
+
+        const adv = ADVENTURES.find(a => a.id === adventure.id);
+        if (!adv) {
+            this.activeAdventures.splice(idx, 1);
+            return;
+        }
+
+        const outcome = this._getAdventureRewardOutcome(adventure, adv);
+        // Старый сейв мог пометить промежуточный выбор как финал до исправления данных.
+        if (outcome && outcome.nextStep !== undefined) {
+            adventure._nextStep = outcome.nextStep;
+            this._advanceAdventureStep(idx);
+            return;
+        }
+
+        // Удаляем до вызова эффектов, чтобы повторный тик не выдал награды второй раз.
+        this.activeAdventures.splice(idx, 1);
+        if (this.completedAdventures && this.completedAdventures.includes(adv.id)) return;
+
+        const rewards = adventure._pendingRewards || (outcome
+            ? (typeof outcome.rewards === "function" ? outcome.rewards(adventure.flags) : outcome.rewards)
+            : {});
+        const results = this._grantAdventureRewards(rewards, adventure, outcome);
 
         // Дао прогресс от приключения (+5-15%)
         if (this.realmIndex >= 3 && this.sect) {
@@ -372,6 +536,7 @@ Object.assign(game, {
 
         // Кулдаун для pity-системы
         this._lastAdventureCompleteYear = this.years;
+        this.adventureDiscovery = { poolKey: "", waitYears: 0, lastCompleteYear: this.years };
 
         // Одноразовое — запомнить завершённое (текущая жизнь + перманентно)
         if (!this.completedAdventures) this.completedAdventures = [];
@@ -385,7 +550,6 @@ Object.assign(game, {
         // Счётчик общих завершений (с повторами, за все жизни)
         this.prestige.totalAdventures = (this.prestige.totalAdventures || 0) + 1;
 
-        this.activeAdventures.splice(idx, 1);
         this.checkMilestones();
         updateUI();
     },

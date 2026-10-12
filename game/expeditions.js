@@ -89,10 +89,12 @@ Object.assign(game, {
         }
 
         this._lastExpeditionId = locationId;
+        const rewardMultipliers = this.getExpeditionRewardMultipliers(loc);
         this.expedition = {
             locationId: locationId,
             startYear: this.years,
-            baseDuration: loc.duration
+            baseDuration: loc.duration,
+            rewardMultipliers
         };
 
         const estDuration = this.getAdjustedExpeditionDuration();
@@ -105,10 +107,14 @@ Object.assign(game, {
     getAdjustedExpeditionDuration() {
         if (!this.expedition) return 0;
         const base = this.expedition.baseDuration || this.expedition.duration || 0;
+        return this.getExpeditionDuration({ duration: base });
+    },
+
+    getExpeditionDuration(loc) {
         const speedBonus = this.getFormationBonus("expeditionSpeed")
             + (this.getActiveBodyPerks().expeditionSpeed || 0)
             + this.getArtifactBonus("expeditionSpeed") * 0.01;
-        return Math.max(10, Math.floor(base * (1 - speedBonus)));
+        return Math.max(10, Math.floor(loc.duration / (1 + Math.max(0, speedBonus))));
     },
 
     // === ЭФФЕКТИВНАЯ ОПАСНОСТЬ (с учётом эпохи, мировых событий и вознесения) ===
@@ -181,6 +187,80 @@ Object.assign(game, {
 
     // === РАСЧЁТ НАГРАД ===
 
+    // Общая модель для выдачи наград и их предпросмотра.
+    getExpeditionRewardMultipliers(loc) {
+        if (this.expedition && this.expedition.locationId === loc.id && this.expedition.rewardMultipliers) {
+            return this.expedition.rewardMultipliers;
+        }
+        const era = this.getCurrentEra();
+        const modifiers = (this.worldEvent && this.worldEvent.modifiers) || {};
+        const eraBonus = Math.max(0, (era ? era.rewardWeight || 1 : 1) - 1);
+        const eventBonus = Math.max(0, (modifiers.expeditionReward || 1) - 1);
+        const stoneEventBonus = Math.max(0, (modifiers.stoneIncome || 1) - 1);
+        const dangerBonus = this._getLocDangerBase(loc) > 0 ? this.getDangerRewardBonus() : 0;
+        const ascTier = this.ascendedLocations[loc.id] || 0;
+        const ascendMult = ascTier >= 2 ? 2.5 : ascTier >= 1 ? 2 : 1;
+        const bonus = Math.min(3, eraBonus + eventBonus + dangerBonus);
+        const stoneBonus = Math.min(3, eraBonus + eventBonus + dangerBonus + stoneEventBonus);
+        const total = (1 + bonus) * ascendMult;
+        const stoneTotal = (1 + stoneBonus) * ascendMult;
+        const rewardRealm = Math.max(0, Math.min(this.realmIndex, loc.minRealm + 2 * ascTier, 10));
+        const realmMult = 1 + rewardRealm * 0.3;
+        const luckMult = 1 + this.getRewardLuckBonus();
+        return {
+            eraName: era ? era.name : "",
+            eventName: this.worldEvent ? this.worldEvent.name : "",
+            total, stoneTotal, bonus, stoneBonus, era: eraBonus, event: eventBonus,
+            danger: dangerBonus, ascend: ascendMult, realm: realmMult, luck: luckMult,
+            stones: stoneTotal * realmMult * luckMult,
+            resources: total * luckMult, pills: total,
+        };
+    },
+
+    // Старый сейв не хранит условия отправления: фиксируем доступные при загрузке.
+    ensureExpeditionRewardSnapshot() {
+        if (!this.expedition || this.expedition.rewardMultipliers) return;
+        const loc = LOCATIONS.find(l => l.id === this.expedition.locationId);
+        if (loc) this.expedition.rewardMultipliers = this.getExpeditionRewardMultipliers(loc);
+    },
+
+    getExpeditionArtifactReward(loc) {
+        const rewards = loc.rewards;
+        const ascData = this.ascendedLocations[loc.id] && loc.ascend ? loc.ascend : null;
+        const tiers = ["common", "uncommon", "rare", "epic", "legendary", "divine"];
+        const maxTier = (ascData && ascData.artifactMaxTier) || rewards.artifactMaxTier || null;
+        let minTier = (ascData && ascData.artifactMinTier) || rewards.artifactMinTier || null;
+        const tierBonus = this.getActiveBodyPerks().artifactTierBonus || 0;
+        if (tierBonus) {
+            const minIdx = minTier ? tiers.indexOf(minTier) : 0;
+            minTier = tiers[Math.min(tiers.length - 1, minIdx + tierBonus)];
+        }
+        // Повышение тира телом соблюдает верхнюю границу самой локации.
+        if (minTier && maxTier && tiers.indexOf(minTier) > tiers.indexOf(maxTier)) minTier = maxTier;
+        const luck = Math.max(0, this.getTotalLuck());
+        const totalChance = (rewards.artifactChance || 0) * (1 + 0.5 * luck / (luck + 50));
+        return {
+            minTier, maxTier,
+            firstChance: Math.min(1, totalChance),
+            secondChance: Math.min(1, Math.max(0, totalChance - 1)),
+            extraArtifact: !!(rewards.artifactChance && this.getActiveBodyPerks().extraArtifact),
+        };
+    },
+
+    getExpeditionScrollReward(loc) {
+        const ascTier = this.ascendedLocations[loc.id] || 0;
+        const ascChance = ascTier >= 1 && loc.ascend ? loc.ascend.scrollChance || 0 : 0;
+        return { guaranteed: ascTier >= 2 ? 1 : 0, chance: loc.rewards.scrollChance || ascChance };
+    },
+
+    getExpeditionDaoReward(loc) {
+        if (this.realmIndex < 3 || !this.sect || loc.daoSect === "no_dao") return { min: 0, max: 0, sectMultiplier: 1 };
+        const sectMultiplier = loc.daoSect === this.sect.id || loc.daoSect === "current_sect" ? 2 : 1;
+        const base = 15 + this.realmIndex * 8 + (this.subLevel - 1) * 3;
+        const min = base * sectMultiplier * this.getDaoSpeedMultiplier();
+        return { min, max: min * 1.5, sectMultiplier };
+    },
+
     _completeExpedition() {
         if (!this.expedition) return;
         const loc = LOCATIONS.find(l => l.id === this.expedition.locationId);
@@ -193,41 +273,12 @@ Object.assign(game, {
         const rewards = loc.rewards;
         const results = [];
 
-        // Множитель эпохи и мирового события
         const era = this.getCurrentEra();
-        const eraRewardMult = era ? (era.rewardWeight || 1) : 1;
-        const eventRewardMult = (this.worldEvent && this.worldEvent.modifiers.expeditionReward) || 1;
+        const mult = this.getExpeditionRewardMultipliers(loc);
 
-        // Бонус за опасность (секта + техники + артефакты + формации + тело)
-        const dangerBonus = this.getSectBonus("dangerReward")
-            + this.getArtifactBonus("dangerReward") * 0.01
-            + this.getFormationBonus("dangerReward")
-            + (this.getActiveBodyPerks().dangerReward || 0);
-
-        // Бонус за превышение боевой мощи (плавная асимптота к 1.5)
-        let powerBonus = 0;
-        const effectiveDanger = this.getEffectiveDangerLevel(loc);
-        if (effectiveDanger > 0) {
-            const power = this.getCombatPower();
-            if (power > effectiveDanger) {
-                const x = Math.max(0, (power - effectiveDanger) / effectiveDanger * 0.6);
-                powerBonus = 1.5 * (1 - Math.exp(-x));
-            }
-        }
-
-        const ascTier = this.ascendedLocations[loc.id] || 0;
-        const ascendMult = ascTier >= 2 ? 3 : ascTier >= 1 ? 2 : 1;
-        // danger + power — аддитивны между собой, era — мультипликативна
-        const totalRewardMult = eraRewardMult * eventRewardMult * (1 + dangerBonus + powerBonus) * ascendMult;
-
-        // Камни (+ бонус stoneIncome от мирового события)
-        // realm кап на 10, luck через sqrt
-        const _realmBonus = 1 + Math.min(this.realmIndex, 10) * 0.3;
-        const _luckBonus = 1 + Math.sqrt(this.luck) * 0.08;
         if (rewards.stones && rewards.stones.max > 0) {
             const stoneBase = rewards.stones.min + Math.random() * (rewards.stones.max - rewards.stones.min);
-            const stoneEventMult = (this.worldEvent && this.worldEvent.modifiers.stoneIncome) || 1;
-            const stoneReward = Math.floor(stoneBase * _realmBonus * _luckBonus * totalRewardMult * stoneEventMult);
+            const stoneReward = Math.floor(stoneBase * mult.stones);
             this.stones += stoneReward;
             results.push(`+${stoneReward} камней`);
         }
@@ -235,7 +286,7 @@ Object.assign(game, {
         // Эссенция Дао
         if (rewards.essence && rewards.essence.max > 0) {
             const essBase = rewards.essence.min + Math.random() * (rewards.essence.max - rewards.essence.min);
-            const essReward = Math.floor(essBase * _luckBonus * totalRewardMult);
+            const essReward = Math.floor(essBase * mult.resources);
             this.daoEssence += essReward;
             results.push(`+${essReward} эссенции`);
         }
@@ -243,7 +294,7 @@ Object.assign(game, {
         // Пыль артефактов
         if (rewards.dust && rewards.dust.max > 0) {
             const dustBase = rewards.dust.min + Math.random() * (rewards.dust.max - rewards.dust.min);
-            const dustReward = Math.floor(dustBase * _luckBonus * totalRewardMult);
+            const dustReward = Math.floor(dustBase * mult.resources);
             if (dustReward > 0) {
                 this.artifactDust += dustReward;
                 results.push(`+${dustReward} пыли`);
@@ -253,32 +304,19 @@ Object.assign(game, {
         // Пилюли
         if (rewards.pills) {
             const pillBase = rewards.pills.min + Math.random() * (rewards.pills.max - rewards.pills.min);
-            const pillReward = Math.floor(pillBase * totalRewardMult);
+            const pillReward = Math.floor(pillBase * mult.pills);
             if (pillReward > 0) {
                 this.pills += pillReward;
                 results.push(`+${pillReward} пилюль`);
             }
         }
 
-        // Перк тела для артефактов экспедиций
-        const bodyPerks = this.getActiveBodyPerks();
-
         // Артефакт (шанс масштабируется удачей; если >100%, остаток — шанс второго)
         if (rewards.artifactChance) {
             const tierOrder = ["common", "uncommon", "rare", "epic", "legendary", "divine"];
-            const ascData = this.ascendedLocations[loc.id] && loc.ascend ? loc.ascend : null;
-            let minTier = (ascData && ascData.artifactMinTier) || rewards.artifactMinTier || null;
-
-            // Дитя Небес: бонус тира артефакта
-            if (bodyPerks.artifactTierBonus && minTier) {
-                const minIdx = tierOrder.indexOf(minTier);
-                const boosted = Math.min(tierOrder.length - 1, minIdx + bodyPerks.artifactTierBonus);
-                minTier = tierOrder[boosted];
-            }
-
-            const maxTier = (ascData && ascData.artifactMaxTier) || rewards.artifactMaxTier || null;
+            const artifactReward = this.getExpeditionArtifactReward(loc);
+            const { minTier, maxTier } = artifactReward;
             const rollArt = () => {
-                let art;
                 let tier = this._rollArtifactTier();
                 // Кап тира сверху
                 if (maxTier) {
@@ -292,51 +330,42 @@ Object.assign(game, {
                     const rolledIdx = tierOrder.indexOf(tier);
                     if (rolledIdx < minIdx) tier = minTier;
                 }
-                art = this.generateArtifact(tier);
-                return art;
+                return this.generateArtifact(tier);
             };
 
-            let totalChance = rewards.artifactChance * (1 + this.luck * 0.01);
-
             // Первый артефакт
-            const firstChance = Math.min(totalChance, 1);
-            if (Math.random() < firstChance) {
+            if (Math.random() < artifactReward.firstChance) {
                 const art = rollArt();
                 if (this.addArtifact(art)) {
                     results.push(`артефакт: ${art.name}`);
                 }
             }
 
-            // Второй артефакт: базовый шанс локации + остаток сверх 100%
-            if (totalChance > 1) {
-                const secondChance = rewards.artifactChance + (totalChance - 1);
-                if (Math.random() < secondChance) {
+            // Второй артефакт: только остаток сверх 100%.
+            if (artifactReward.secondChance > 0) {
+                if (Math.random() < artifactReward.secondChance) {
                     const art = rollArt();
                     if (this.addArtifact(art)) {
                         results.push(`артефакт (бонус): ${art.name}`);
                     }
                 }
             }
-        }
 
-        // Дитя Небес (вознесение 3): дополнительный артефакт
-        if (bodyPerks.extraArtifact && rewards.artifactChance) {
-            const extraArt = this.generateArtifact();
-            if (this.addArtifact(extraArt)) {
-                results.push(`доп. артефакт: ${extraArt.name}`);
+            // Дополнительный артефакт соблюдает те же границы тира локации.
+            if (artifactReward.extraArtifact) {
+                const extraArt = rollArt();
+                if (this.addArtifact(extraArt)) {
+                    results.push(`доп. артефакт: ${extraArt.name}`);
+                }
             }
         }
 
         // Свиток Воли Дао (шанс, включая ascend)
-        const scrollAscTier = this.ascendedLocations[loc.id] || 0;
-        const ascScrollChance = (scrollAscTier >= 1 && loc.ascend && loc.ascend.scrollChance) ? loc.ascend.scrollChance : 0;
-        const effectiveScrollChance = rewards.scrollChance || ascScrollChance;
-        // Ascend тир 2+: гарантированные свитки (1-3)
-        if (scrollAscTier >= 2) {
-            const scrollCount = 1 + Math.floor(Math.random() * 3); // 1-3
-            const added = this.addDaoScroll(scrollCount);
+        const scrollReward = this.getExpeditionScrollReward(loc);
+        if (scrollReward.guaranteed) {
+            const added = this.addDaoScroll(scrollReward.guaranteed);
             if (added > 0) results.push(`+${added} Свиток Воли Дао`);
-        } else if (effectiveScrollChance && Math.random() < effectiveScrollChance) {
+        } else if (scrollReward.chance && Math.random() < scrollReward.chance) {
             const added = this.addDaoScroll(1);
             if (added > 0) {
                 results.push(`+1 Свиток Воли Дао`);
@@ -346,11 +375,7 @@ Object.assign(game, {
         // Техника (редкий шанс)
         if (rewards.techniqueChance && Math.random() < rewards.techniqueChance) {
             // Найти технику, которой у игрока нет
-            const unlearned = TECHNIQUES.filter(t =>
-                !this.hasTechnique(t.id) &&
-                t.source !== "sect" && t.source !== "body" && t.source !== "adventure" &&
-                (!t.requirement || !t.requirement.realm || this.realmIndex >= t.requirement.realm)
-            );
+            const unlearned = this.getRewardTechniquePool();
             if (unlearned.length > 0) {
                 const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                 this.learnTechnique(tech.id);
@@ -358,29 +383,20 @@ Object.assign(game, {
             }
         }
 
-        // Дао прогресс от экспедиции (не для "no_dao" локаций)
-        if (this.realmIndex >= 3 && this.sect && loc.daoSect !== "no_dao") {
-            // Фиксированный Дао: база по реалму, не от daoNeeded
-            const baseDaoByRealm = 15 + this.realmIndex * 8 + (this.subLevel - 1) * 3;
-            const baseDao = baseDaoByRealm * (1 + Math.random() * 0.5); // ×1.0-1.5 разброс
-            let daoMult = 1;
-            const daoSect = loc.daoSect;
-            if (daoSect === this.sect.id || daoSect === "current_sect") {
-                daoMult = 2;
-            }
-            const daoSpeedBonus = this.getDaoSpeedMultiplier();
-            // Дао не зависит от эпохи и превосходства — только секта и скорость Дао
-            const daoGain = baseDao * daoMult * daoSpeedBonus;
+        const daoReward = this.getExpeditionDaoReward(loc);
+        if (daoReward.max > 0) {
+            const daoGain = daoReward.min + Math.random() * (daoReward.max - daoReward.min);
             this.daoProgress += daoGain;
             this._checkDaoLevelUp();
-            results.push(`+${Math.floor(daoGain)} постижение Дао${daoMult > 1 ? " (×2 секта)" : ""}`);
+            results.push(`+${Math.floor(daoGain)} постижение Дао${daoReward.sectMultiplier > 1 ? " (×2 секта)" : ""}`);
         }
 
         addLog(`Экспедиция в "${loc.name}" завершена!`, "breakthrough");
         const bonusParts = [];
-        if (eraRewardMult > 1.01) bonusParts.push(`${era.name} ×${eraRewardMult.toFixed(1)}`);
-        if (dangerBonus > 0.01) bonusParts.push(`опасность +${Math.round(dangerBonus * 100)}%`);
-        if (powerBonus > 0.01) bonusParts.push(`превосходство +${Math.round(powerBonus * 100)}%`);
+        if (mult.era > 0.01) bonusParts.push(`${mult.eraName || era.name} +${Math.round(mult.era * 100)}%`);
+        if (mult.event > 0.01) bonusParts.push(`${mult.eventName || "мировое событие"} +${Math.round(mult.event * 100)}%`);
+        if (mult.danger > 0.01) bonusParts.push(`опасность +${Math.round(mult.danger * 100)}%`);
+        if (mult.bonus > 0.01) bonusParts.push(`итого ×${mult.total.toFixed(2)}`);
         const bonusSuffix = bonusParts.length > 0 ? ` (${bonusParts.join(", ")})` : "";
         addLog(`Награды: ${results.join(", ")}${bonusSuffix}`, "reward");
 
@@ -442,17 +458,13 @@ Object.assign(game, {
         if (Math.random() > 0.20) return;
         if (this.adventureRumors.length >= 5) return;
 
-        const available = ADVENTURES.filter(a =>
-            a.condition(this)
-            && !this.adventureRumors.find(r => r.id === a.id)
-            && !this.activeAdventures.find(aa => aa.id === a.id)
-            && !(this.completedAdventures && this.completedAdventures.includes(a.id))
-        );
+        const available = this._getAvailableAdventureRumors().filter(a => this.canDiscoverAdventureRumor(a.id));
         if (available.length === 0) return;
 
         const adv = available[Math.floor(Math.random() * available.length)];
-        this.addAdventureRumor(adv.id);
-        addLog(`Во время экспедиции вы услышали слух: "${adv.rumor}"`, "event");
+        if (this.discoverAdventureRumor(adv.id)) {
+            addLog(`Во время экспедиции вы услышали слух: "${adv.rumor}"`, "event");
+        }
     },
 
     // Прогресс экспедиции (0-1)

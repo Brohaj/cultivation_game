@@ -17,17 +17,18 @@ EVENTS.push(
         id: "sect_barrier_breach",
         text: "Вы почувствовали вибрацию защитной формации секты — кто-то пытается прорвать барьер!",
         type: "danger",
-        condition: (g) => g.realmIndex >= 4 && g.realmIndex <= 7,
+        condition: (g) => g.sect && g.realmIndex >= 4 && g.realmIndex <= 7,
         effect: (g) => {
+            const sectName = g.sect ? (SECTS.find(s => s.id === g.sect.id)?.name || "секты") : "секты";
             if (g.getCombatPower() >= 15 + g.realmIndex * 5) {
                 const reward = 10 + g.realmIndex * 5;
                 g.stones += reward;
                 g.flags.wonCombat = true;
-                return `Вы отразили вторжение! +${reward} камней`;
+                return `Вы отразили вторжение на территорию ${sectName}! +${reward} камней`;
             }
             const loss = Math.floor(g.qi * 0.15);
             g.qi = Math.max(0, g.qi - loss);
-            return `Враг прорвался. Вы получили ранения. -${loss} ци`;
+            return `Враг прорвался сквозь барьер ${sectName}. Вы получили ранения. -${loss} ци`;
         }
     },
     {
@@ -68,8 +69,12 @@ EVENTS.push(
         effect: (g) => {
             const bonus = eventQiBonus(g,0.15);
             g.qi += bonus;
-            const stones = 10 + Math.floor(g.luck * 3);
+            const stones = 10 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 3);
             g.stones += stones;
+            if (g.sect && g.sect.id === "moon_lake") {
+                g.daoEssence = (g.daoEssence || 0) + 10;
+                return `Символы на стенах знакомы — это записи алхимиков, предшественников Лунного Озера. +${bonus} ци, +${stones} камней, +10 эссенции`;
+            }
             return `+${bonus} ци из остаточных формаций, +${stones} камней среди руин`;
         }
     },
@@ -112,7 +117,7 @@ EVENTS.push(
         condition: (g) => g.realmIndex >= 4 && g.realmIndex <= 8 && g.pills >= 3,
         effect: (g) => {
             g.pills -= 3;
-            const stones = 15 + Math.floor(g.luck * 2);
+            const stones = 15 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 2);
             g.stones += stones;
             return `-3 пилюли, +${stones} камней. Справедливый обмен.`;
         }
@@ -134,6 +139,12 @@ EVENTS.push(
         type: "danger",
         condition: (g) => g.realmIndex >= 4 && g.realmIndex <= 8,
         effect: (g) => {
+            // Культ Бездны — демон узнаёт своего
+            if (g.sect && g.sect.id === "abyss_cult") {
+                g.stones += 8;
+                if (g.sect.contribution) g.sect.contribution += 5;
+                return `Демонический культиватор остановился. «Адепт Бездны...» Он склонил голову и предложил дань. +8 камней, +5 вклада`;
+            }
             const power = 18 + g.realmIndex * 6;
             if (g.getCombatPower() >= power) {
                 const reward = 12 + g.realmIndex * 4;
@@ -181,44 +192,36 @@ EVENTS.push(
         id: "rumor_ancient_tomb",
         text: "Землетрясение обнажило древние руины на окраине. Знаки на камнях указывают на гробницу великого культиватора.",
         type: "event",
-        condition: (g) => g.realmIndex >= 5 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "ancient_tomb")
-            && !g.activeAdventures.find(a => a.id === "ancient_tomb"),
+        condition: (g) => g.canDiscoverAdventureRumor("ancient_tomb") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("ancient_tomb") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("ancient_tomb") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_demon_lair",
         text: "Алые молнии бьют из-под земли у Чёрного Утёса. Старейшины говорят — это Бездна Кровавой Луны открылась.",
         type: "event",
-        condition: (g) => g.realmIndex >= 7 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "demon_lair")
-            && !g.activeAdventures.find(a => a.id === "demon_lair"),
+        condition: (g) => g.canDiscoverAdventureRumor("demon_lair") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("demon_lair") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("demon_lair") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_mirror_lake",
         text: "Рыбак вернулся с озера в горах седым за одну ночь. Твердит одно: «Вода показала мне меня — но это был не я...»",
         type: "event",
-        condition: (g) => g.realmIndex >= 5 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "mirror_lake")
-            && !g.activeAdventures.find(a => a.id === "mirror_lake"),
+        condition: (g) => g.canDiscoverAdventureRumor("mirror_lake") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("mirror_lake") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("mirror_lake") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_tribulation_trial",
-        text: "На Пике Девяти Молний молнии бьют без остановки уже третий месяц. Говорят, там открылось Испытание Небес — войти может каждый, выйти — лишь достойный.",
+        text: "На Пике Сломанного Неба молнии бьют без остановки уже третий месяц. Говорят, там открылось Испытание Небес — войти может каждый, выйти — лишь достойный.",
         type: "event",
-        condition: (g) => g.realmIndex >= 7 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "tribulation_trial")
-            && !g.activeAdventures.find(a => a.id === "tribulation_trial"),
+        condition: (g) => g.canDiscoverAdventureRumor("tribulation_trial") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("tribulation_trial") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("tribulation_trial") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
 );

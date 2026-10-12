@@ -1,0 +1,246 @@
+{
+  "generator": "built-in image_gen",
+  "styleReference": "assets/art/reference/forest-master.png",
+  "images": [
+    {
+      "id": "beast_cave-0",
+      "file": "assets/art/expeditions/beast_cave-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 176186
+    },
+    {
+      "id": "beast_cave-1",
+      "file": "assets/art/expeditions/beast_cave-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 168770
+    },
+    {
+      "id": "beast_cave-2",
+      "file": "assets/art/expeditions/beast_cave-2.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 192948
+    },
+    {
+      "id": "demon_abyss-0",
+      "file": "assets/art/expeditions/demon_abyss-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 136486
+    },
+    {
+      "id": "demon_abyss-1",
+      "file": "assets/art/expeditions/demon_abyss-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 143524
+    },
+    {
+      "id": "forgotten_ruins-0",
+      "file": "assets/art/expeditions/forgotten_ruins-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 200104
+    },
+    {
+      "id": "forgotten_ruins-1",
+      "file": "assets/art/expeditions/forgotten_ruins-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 156390
+    },
+    {
+      "id": "forgotten_ruins-2",
+      "file": "assets/art/expeditions/forgotten_ruins-2.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 141706
+    },
+    {
+      "id": "heavenly_auction-0",
+      "file": "assets/art/expeditions/heavenly_auction-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 158512
+    },
+    {
+      "id": "heavenly_auction-1",
+      "file": "assets/art/expeditions/heavenly_auction-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 133358
+    },
+    {
+      "id": "immortal_palace-0",
+      "file": "assets/art/expeditions/immortal_palace-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 173304
+    },
+    {
+      "id": "immortal_palace-1",
+      "file": "assets/art/expeditions/immortal_palace-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 188084
+    },
+    {
+      "id": "sect-abyss_cult-0",
+      "file": "assets/art/expeditions/sect-abyss_cult-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 159532
+    },
+    {
+      "id": "sect-abyss_cult-1",
+      "file": "assets/art/expeditions/sect-abyss_cult-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 127952
+    },
+    {
+      "id": "sect-crimson_flame-0",
+      "file": "assets/art/expeditions/sect-crimson_flame-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 196618
+    },
+    {
+      "id": "sect-crimson_flame-1",
+      "file": "assets/art/expeditions/sect-crimson_flame-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 179986
+    },
+    {
+      "id": "sect-hidden_hermit-0",
+      "file": "assets/art/expeditions/sect-hidden_hermit-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 218544
+    },
+    {
+      "id": "sect-hidden_hermit-1",
+      "file": "assets/art/expeditions/sect-hidden_hermit-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 155972
+    },
+    {
+      "id": "sect-jade_purity-0",
+      "file": "assets/art/expeditions/sect-jade_purity-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 214506
+    },
+    {
+      "id": "sect-jade_purity-1",
+      "file": "assets/art/expeditions/sect-jade_purity-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 210472
+    },
+    {
+      "id": "sect-moon_lake-0",
+      "file": "assets/art/expeditions/sect-moon_lake-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 195750
+    },
+    {
+      "id": "sect-moon_lake-1",
+      "file": "assets/art/expeditions/sect-moon_lake-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 169066
+    },
+    {
+      "id": "spirit_forest-0",
+      "file": "assets/art/expeditions/spirit_forest-0.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 183148
+    },
+    {
+      "id": "spirit_forest-1",
+      "file": "assets/art/expeditions/spirit_forest-1.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 199174
+    },
+    {
+      "id": "spirit_forest-2",
+      "file": "assets/art/expeditions/spirit_forest-2.webp",
+      "group": "expeditions",
+      "width": 1024,
+      "height": 683,
+      "bytes": 170914
+    },
+    {
+      "id": "abyss_cult",
+      "file": "assets/art/sects/abyss_cult.webp",
+      "group": "sects",
+      "width": 1024,
+      "height": 683,
+      "bytes": 151736
+    },
+    {
+      "id": "crimson_flame",
+      "file": "assets/art/sects/crimson_flame.webp",
+      "group": "sects",
+      "width": 1024,
+      "height": 683,
+      "bytes": 185914
+    },
+    {
+      "id": "hidden_hermit",
+      "file": "assets/art/sects/hidden_hermit.webp",
+      "group": "sects",
+      "width": 1024,
+      "height": 683,
+      "bytes": 180720
+    },
+    {
+      "id": "jade_purity",
+      "file": "assets/art/sects/jade_purity.webp",
+      "group": "sects",
+      "width": 1024,
+      "height": 683,
+      "bytes": 207158
+    },
+    {
+      "id": "moon_lake",
+      "file": "assets/art/sects/moon_lake.webp",
+      "group": "sects",
+      "width": 1024,
+      "height": 683,
+      "bytes": 198826
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+/* Компактные походы; цвета ресурсов и редкости задаёт общая палитра. */
+.ui-v2 #expeditions-list .v2-expedition-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.ui-v2 #expeditions-list .expedition-card { display: flex; flex-direction: column; min-width: 0; min-height: 210px; padding: 11px 13px; margin: 0; }
+.ui-v2 #expeditions-list .expedition-header { gap: 8px; margin-bottom: 3px; align-items: baseline; }
+.ui-v2 #expeditions-list .expedition-name { font-size: 15px; }
+.ui-v2 #expeditions-list .expedition-duration { flex-shrink: 0; }
+.ui-v2 #expeditions-list .v2-expedition-lore {
+    color: #c1c9bc;
+    font-size: 12px;
+    font-style: italic;
+    line-height: 1.4;
+    margin: 3px 0 8px;
+}
+.ui-v2 #expeditions-list .v2-expedition-facts { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 18px; row-gap: 3px; font-size: 12px; }
+.ui-v2 #expeditions-list .v2-expedition-facts .expedition-danger { margin: 0; padding: 0; }
+.ui-v2 #expeditions-list .v2-expedition-main-rewards { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 7px 0; padding: 0; border: 0; background: none; }
+.ui-v2 #expeditions-list .v2-expedition-main-rewards .reward-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 0; font-size: 12px; white-space: nowrap; }
+.ui-v2 #expeditions-list .v2-expedition-main-rewards strong { font-weight: 600; }
+.ui-v2 #expeditions-list .v2-expedition-footer { display: flex; justify-content: flex-start; align-items: flex-end; margin-top: auto; padding-top: 8px; }
+.ui-v2 #expeditions-list .v2-expedition-artifact-preview { color: var(--v2-muted); font-size: 12px; margin: 2px 0 7px; }
+.ui-v2 #expeditions-list .expedition-req { margin: 4px 0 6px; }
+.ui-v2 #expeditions-list .expedition-actions { padding-top: 1px; }
+.ui-v2 #expeditions-list .expedition-active { padding: 10px 13px; margin-bottom: 8px; }
+.ui-v2 #expeditions-list .expedition-active-name { font-size: 15px; }
+.ui-v2 #expeditions-list .expedition-last-reward { padding: 8px 11px; margin-bottom: 8px; }
+.ui-v2 #expeditions-list .expedition-last-items { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--v2-text); line-height: 1.4; font-size: 12px; }
+.ui-v2 #expeditions-list .v2-expedition-result { display: inline-block; }
+.ui-v2 #expeditions-list .v2-resource-dao { color: var(--v2-jade); }
+@media (min-width: 1150px) {
+    .ui-v2 #expeditions-list .v2-expedition-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+    .ui-v2 #expeditions-list .expedition-card { padding: 10px; }
+    .ui-v2 #expeditions-list .v2-expedition-facts { column-gap: 12px; }
+    .ui-v2 #expeditions-list .v2-expedition-main-rewards { column-gap: 13px; }
+    .ui-v2 #expeditions-list .v2-expedition-footer { column-gap: 7px; }
+}

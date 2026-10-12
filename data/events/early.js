@@ -61,7 +61,7 @@ EVENTS.push(
         type: "reward",
         condition: (g) => g.realmIndex <= 6,
         effect: (g) => {
-            const amount = 5 + Math.floor(g.luck * 2 * Math.random());
+            const amount = 5 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 2 * Math.random());
             g.stones += amount;
             return `+${amount} духовных камней`;
         }
@@ -187,11 +187,7 @@ EVENTS.push(
             const totalSpirit = g.spirit + g.getArtifactBonus("spirit");
             if (_eventCheck(totalSpirit, 8 + g.realmIndex * 6)) {
                 // Spirit-чек: техника
-                const unlearned = TECHNIQUES.filter(t =>
-                    !g.hasTechnique(t.id) && t.source !== "sect" &&
-                    ["common", "uncommon", "rare"].includes(t.tier) &&
-                    (!t.requirement || !t.requirement.realm || g.realmIndex >= t.requirement.realm)
-                );
+                const unlearned = g.getRewardTechniquePool(["common", "uncommon", "rare"]);
                 if (unlearned.length > 0) {
                     const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                     g.learnTechnique(tech.id);
@@ -215,7 +211,7 @@ EVENTS.push(
         type: "reward",
         condition: (g) => g.realmIndex >= 3,
         effect: (g) => {
-            const amount = 15 + Math.floor(g.luck * 3);
+            const amount = 15 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 3);
             g.stones += amount;
             return `+${amount} духовных камней`;
         }
@@ -252,7 +248,7 @@ EVENTS.push(
         type: "reward",
         condition: (g) => g.realmIndex >= 2 && g.realmIndex <= 7,
         effect: (g) => {
-            const stones = 8 + Math.floor(g.luck * 2);
+            const stones = 8 + Math.floor(Math.min(100, Math.max(0, g.luck)) * 2);
             g.stones += stones;
             const totalSpirit = g.spirit + g.getArtifactBonus("spirit");
             if (_eventCheck(totalSpirit, 6 + g.realmIndex * 4) && !g.flags.star_prophecy) {
@@ -351,7 +347,7 @@ EVENTS.push(
     },
     {
         id: "campfire_sparring",
-        text: "На горной дороге — знакомая фигура с мечом. Тот мечник у костра! Он возмужал, аура стала плотнее. «Помнишь меня? Давай проверим, кто вырос больше.»",
+        text: "На горной дороге — знакомая фигура с мечом. Тот мечник у костра! Он держится ещё прямее, аура стала плотнее. «Помнишь меня? Давай проверим, кто вырос больше.»",
         type: "danger",
         condition: (g) => g.flags.campfire_friend && !g.flags.campfire_sparred && g.years - (g.flags.campfire_friend_year || 0) >= 60,
         effect: (g) => {
@@ -422,11 +418,7 @@ EVENTS.push(
             g.flags.scroll_fragment_2 = true;
             const totalSpirit = g.spirit + g.getArtifactBonus("spirit");
             if (_eventCheck(totalSpirit, 5 + g.realmIndex * 5)) {
-                const unlearned = TECHNIQUES.filter(t =>
-                    !g.hasTechnique(t.id) && t.source !== "sect" &&
-                    ["common", "uncommon"].includes(t.tier) &&
-                    (!t.requirement || !t.requirement.realm || g.realmIndex >= t.requirement.realm)
-                );
+                const unlearned = g.getRewardTechniquePool(["common", "uncommon"]);
                 if (unlearned.length > 0) {
                     const tech = unlearned[Math.floor(Math.random() * unlearned.length)];
                     g.learnTechnique(tech.id);
@@ -471,7 +463,7 @@ EVENTS.push(
     },
     {
         id: "children_playing",
-        text: "Деревенские дети играли в «культиваторов», размахивая палками. Один подбежал: «Дядя, покажи настоящую технику!»",
+        text: "У обочины дороги трое детей старательно копировали позы культиваторов — подсмотренные, кривые, неуклюжие. Но одна девочка, сама того не зная, стояла в идеальной стойке «Корня Каменного Дуба».",
         type: "event",
         condition: (g) => g.realmIndex >= 1 && g.realmIndex <= 4,
         effect: (g) => {
@@ -481,7 +473,7 @@ EVENTS.push(
                 g.strength += 1;
                 const stones = 3 + Math.floor(Math.random() * 3);
                 g.stones += stones;
-                return `Вы показали простой приём. Дети визжали от восторга. Один протянул «сокровище» — камешек, который оказался духовным камнем! +1 сила, +1 удача, +${stones} камней`;
+                return `Вы замерли. Стойка была безупречна — интуитивная, необъяснимая. Дети разбежались, но образ остался. Ваше тело вспомнило то, что знало всегда. +1 сила, +1 удача, +${stones} камней`;
             }
             // XP бонус к случайной технике
             if (g.techniques.length > 0) {
@@ -489,7 +481,7 @@ EVENTS.push(
                 const needed = g.techXpNeeded(tid);
                 g.techXP[tid] = (g.techXP[tid] || 0) + needed * 0.05;
                 const tech = TECHNIQUES.find(t => t.id === tid);
-                return `Объясняя ребёнку базовые формы, вы вдруг поняли что-то о собственной технике. +1 удача, +5% XP к ${tech ? tech.name : "технике"}`;
+                return `Глядя на ребёнка, выполняющего движение без единой мысли, вы осознали нечто о собственной практике. Пустой разум — начало мастерства. +1 удача, +5% XP к ${tech ? tech.name : "технике"}`;
             }
             return "+1 удача. Невинность — тоже форма Дао.";
         }
@@ -732,7 +724,6 @@ EVENTS.push(
 
     // --- Техники через события ---
     // iron_body убрана из случайных событий — будет наградой за приключение (см. бэклог)
-    {
     // thunder_fist → ascend_beast_cave (тир 2)
     // stone_meditation → ascend_spirit_forest (тир 2)
     // wood_rejuvenation → ascend2_spirit_forest (тир 3)
@@ -743,44 +734,51 @@ EVENTS.push(
         id: "rumor_lost_caravan",
         text: "На рынке обсуждают пропавший караван с редкими пилюлями. Купец обещает щедрую награду за находку.",
         type: "event",
-        condition: (g) => g.realmIndex >= 2 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "lost_caravan")
-            && !g.activeAdventures.find(a => a.id === "lost_caravan"),
+        condition: (g) => g.canDiscoverAdventureRumor("lost_caravan") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("lost_caravan") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("lost_caravan") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_abandoned_temple",
         text: "Путник рассказал о странном сиянии в Нефритовых горах — там, где стоял древний храм...",
         type: "event",
-        condition: (g) => g.realmIndex >= 3 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "abandoned_temple")
-            && !g.activeAdventures.find(a => a.id === "abandoned_temple"),
+        condition: (g) => g.canDiscoverAdventureRumor("abandoned_temple") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("abandoned_temple") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("abandoned_temple") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_root_eater",
         text: "Крестьяне в панике: духовные посевы гибнут за одну ночь. Что-то под землёй пожирает корни, и оно растёт...",
         type: "event",
-        condition: (g) => g.realmIndex >= 2 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "root_eater")
-            && !g.activeAdventures.find(a => a.id === "root_eater"),
+        condition: (g) => g.canDiscoverAdventureRumor("root_eater") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("root_eater") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("root_eater") ? "Новый слух! Проверьте вкладку Приключения." : "";
         }
     },
     {
         id: "rumor_hundred_schools",
         text: "На стене таверны — объявление, написанное золотыми чернилами: «Поединок Ста Школ. Вход свободный. Выход — только для победителей.»",
         type: "event",
-        condition: (g) => g.realmIndex >= 3 && Math.random() < 0.20
-            && !g.adventureRumors.find(r => r.id === "hundred_schools")
-            && !g.activeAdventures.find(a => a.id === "hundred_schools"),
+        condition: (g) => g.canDiscoverAdventureRumor("hundred_schools") && Math.random() < 0.20,
         effect: (g) => {
-            return g.addAdventureRumor("hundred_schools") ? "Новый слух! Проверьте вкладку Приключения." : "";
+            return g.discoverAdventureRumor("hundred_schools") ? "Новый слух! Проверьте вкладку Приключения." : "";
+        }
+    },
+
+    // --- Алхимик Чжоу Вэй (сеет NPC для приключения lost_caravan) ---
+    {
+        id: "zhou_wei_caravan",
+        text: "По дороге прошёл караван из трёх повозок, гружённых пузатыми глиняными кувшинами. Впереди шагал худой мужчина в прожжённом халате — алхимик Чжоу Вэй, известный тем, что снабжает травами три секты сразу. Он кивнул вам и прошёл мимо.",
+        type: "event",
+        weight: 0.5,
+        condition: (g) => g.realmIndex >= 1 && g.realmIndex <= 3 && !g.flags.zhou_wei_seen
+            && (g.years - (g.flags.zhou_wei_cd || 0)) >= 100,
+        effect: (g) => {
+            g.flags.zhou_wei_seen = true;
+            g.flags.zhou_wei_cd = g.years;
+            return "Запах целебных трав повис в воздухе ещё долго после того, как караван скрылся за холмом.";
         }
     },
 );

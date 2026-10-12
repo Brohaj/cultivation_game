@@ -6,15 +6,31 @@
 Object.assign(game, {
     // === ДУХОВНЫЙ КОРЕНЬ ===
 
+    getMinRootTier() {
+        const body = REBIRTH_BODIES.find(b => b.id === this.prestige.lastBody);
+        const perks = this.getActiveBodyPerks();
+        // Минимум берётся из действующего происхождения и его вознесения.
+        // Выбранный в этой жизни корень остаётся неизменным.
+        const tiers = [this._minRootTier, body?.minRootTier, perks.minRoot]
+            .filter(tier => SPIRITUAL_ROOTS.some(root => root.tier === tier));
+        return tiers.sort((a, b) => TIER_ORDER[b] - TIER_ORDER[a])[0] || null;
+    },
+
     getAvailableRoots() {
+        const minTier = this.getMinRootTier();
         const available = SPIRITUAL_ROOTS.filter(root => {
+            if (minTier) {
+                if (TIER_ORDER[root.tier] < TIER_ORDER[minTier]) return false;
+                // Сам минимум гарантирован телом; более высокие корни нужно открыть.
+                if (root.tier === minTier) return true;
+            }
             const req = root.unlock;
             if (!req) return true;
             if (req.rebirths && (this.prestige.totalRebirths || 0) < req.rebirths) return false;
             if (req.milestone && !(this.prestige.permanentMilestones || []).includes(req.milestone)) return false;
             return true;
         });
-        if (!available.some(r => r.id === "common")) {
+        if (!minTier && !available.some(r => r.id === "common")) {
             const common = SPIRITUAL_ROOTS.find(r => r.id === "common");
             if (common) available.unshift(common);
         }
@@ -32,7 +48,7 @@ Object.assign(game, {
         };
         const unlocked = [];
         for (const [key, elem] of Object.entries(map)) {
-            if (this.prestige.permanentMilestones.includes(key)) {
+            if ((this.prestige.permanentMilestones || []).includes(key)) {
                 unlocked.push(elem);
             }
         }
@@ -41,19 +57,23 @@ Object.assign(game, {
 
     // Может ли игрок выбирать элементы (кармический апгрейд + есть разблокированные)
     canChooseElements() {
-        return (this.prestige.karmaUpgrades.elementChoice || 0) >= 1 && this.getUnlockedElements().length > 0;
+        return ((this.prestige.karmaUpgrades || {}).elementChoice || 0) >= 1 && this.getUnlockedElements().length > 0;
     },
 
     selectSpiritualRoot(rootId, chosenElements) {
-        const chosen = SPIRITUAL_ROOTS.find(r => r.id === rootId);
+        if (this.spiritualRoot || this.gameOver || this.pendingRebirth) return null;
+        const chosen = this.getAvailableRoots().find(r => r.id === rootId);
         if (!chosen) return null;
 
         let elements = [];
         const maxElements = typeof chosen.elements === "number" ? chosen.elements : (Array.isArray(chosen.elements) ? chosen.elements.length : 0);
 
-        if (chosenElements && chosenElements.length > 0 && this.canChooseElements()) {
-            // Игрок выбрал элементы — ограничить количеством слотов корня
-            elements = chosenElements.slice(0, maxElements);
+        const unlocked = this.getUnlockedElements();
+        const selected = Array.isArray(chosenElements) && this.canChooseElements()
+            ? [...new Set(chosenElements)].filter(id => unlocked.includes(id) && ELEMENTS.some(e => e.id === id)).slice(0, maxElements)
+            : [];
+        if (selected.length > 0) {
+            elements = selected;
         } else if (typeof chosen.elements === "number" && chosen.elements > 0) {
             const shuffled = [...ELEMENTS].sort(() => Math.random() - 0.5);
             elements = shuffled.slice(0, Math.min(chosen.elements, ELEMENTS.length)).map(e => e.id);
@@ -124,7 +144,7 @@ Object.assign(game, {
                 perks.disassembleBonus = 0.5;
                 break;
             case "warrior":
-                perks.expeditionSpeed = 0.3;
+                perks.expeditionSpeed = 0.05;
                 perks.combatMult = 1.3;
                 break;
             case "demonPact":
@@ -149,7 +169,7 @@ Object.assign(game, {
                 perks.disassembleBonus = 1.0;
                 break;
             case "heavenExplorer":
-                perks.expeditionSpeed = 0.4;
+                perks.expeditionSpeed = 0.10;
                 perks.artifactTierBonus = 1;
                 break;
             case "ancientPower":
@@ -174,6 +194,17 @@ Object.assign(game, {
 
     // === ПЕРЕРОЖДЕНИЕ ===
 
+    getSectContributionKarma() {
+        if (!this.sect) return 0;
+        const ranks = getSectRanks(this.sect.id);
+        const headThreshold = ranks.length ? ranks[ranks.length - 1].contribution : 0;
+        if (headThreshold <= 0) return 0;
+        const progress = Math.max(0, Math.min(1, (this.sect.contribution || 0) / headThreshold));
+        // Сложность секты уже учтена в её пороге. Излишек вклада за закрытым
+        // реалмом ранга не обходит фактически достигнутый ранг.
+        return Math.floor(Math.min(2 * this.getSectRankIndex(), 8 * Math.sqrt(progress)));
+    },
+
     calculateKarma(naturalDeath) {
         // Минимум realm 3 (Золотое Ядро) для получения кармы
         if (this.realmIndex < 3) return 0;
@@ -183,7 +214,7 @@ Object.assign(game, {
         karma += this.realmIndex;
         karma += Math.floor(this.characterAge() / 500);
         karma += Math.floor(this.techniques.length * 0.3);
-        karma += Math.floor(this.milestones.length * 0.2);
+        karma += Math.floor(this.milestones.filter(id => MILESTONES.some(m => m.id === id)).length * 0.2);
         // Прорывы: считаем только с реалма 3+, после Махаяны каждый прорыв ценен
         let btKarma = 0;
         const subLevels = 4; // SUB_LEVELS
@@ -195,10 +226,10 @@ Object.assign(game, {
             btKarma += this.subLevel * (this.realmIndex >= 9 ? 5 + (this.realmIndex - 9) * 3 : 0.5);
         }
         karma += Math.floor(btKarma);
-        // Бонус от секты: ранг + вклад
+        // Бонус от секты: ранг + нормализованный вклад (до +8 у Главы).
         if (this.sect) {
             karma += this.getSectRankIndex();
-            karma += Math.floor((this.sect.contribution || 0) / 300);
+            karma += this.getSectContributionKarma();
         }
         // Бонус кармы от тела (базовый + вознесённый) + формации
         const perks = this.getActiveBodyPerks();
@@ -231,12 +262,18 @@ Object.assign(game, {
         if (naturalDeath) {
             karma = Math.floor(karma * 1.5);
         }
+        // Одно семя связывает нынешнюю жизнь с будущей. Второе не удваивает дар.
+        // Флаги живут до перерождения; уже начисленная pendingRebirth не пересчитывается.
+        if (this.flags.ancient_tree_seed || this.flags.dao_tree_seed) {
+            karma = Math.floor(karma * 1.30);
+        }
         return karma;
     },
 
     isBodyUnlocked(bodyId) {
         const body = REBIRTH_BODIES.find(b => b.id === bodyId);
-        if (!body || !body.requirement) return true;
+        if (!body) return false;
+        if (!body.requirement) return true;
         const req = body.requirement;
         if (req.milestones) {
             for (const mId of req.milestones) {
@@ -244,9 +281,9 @@ Object.assign(game, {
                 const realmMatch = mId.match(/^realm_(\d+)$/);
                 if (realmMatch || mId === "immortal") {
                     const milestone = MILESTONES.find(m => m.id === mId);
-                    if (milestone && !milestone.check(this)) return false;
+                    if (!milestone || !milestone.check(this)) return false;
                 } else {
-                    if (!this.prestige.permanentMilestones.includes(mId)) return false;
+                    if (!this.prestige.permanentMilestones.includes(mId) && !this.milestones.includes(mId)) return false;
                 }
             }
         }
@@ -295,16 +332,12 @@ Object.assign(game, {
             this.daoLevel = Math.max(this.daoLevel, daoCallLevel);
         }
 
-        // Небесные пилюли: перманентные статы
-        if (this.prestige.heavenlyStats) {
-            if (this.prestige.heavenlyStats.strength) this.strength += this.prestige.heavenlyStats.strength;
-            if (this.prestige.heavenlyStats.spirit) this.spirit += this.prestige.heavenlyStats.spirit;
-            if (this.prestige.heavenlyStats.luck) this.luck += this.prestige.heavenlyStats.luck;
-        }
+        // Небесные пилюли: больше не перманентные (v0.61)
     },
 
     // Обмен ресурсов (Торговец)
     exchangeResources(from, to, amount) {
+        if (!Number.isSafeInteger(amount) || amount <= 0 || this.gameOver || this.pendingRebirth) return false;
         const perks = this.getActiveBodyPerks();
         if (!perks.canExchange) return false;
         const rates = {
@@ -327,9 +360,40 @@ Object.assign(game, {
         return true;
     },
 
-    rebirth(bodyId, naturalDeath) {
+    beginRebirth(naturalDeath) {
+        this.stop();
+        // Карма начисляется однажды при входе в модалку, а покупки меняют
+        // уже зафиксированный баланс. Повторное открытие лишь продолжает её.
+        if (this.pendingRebirth) return this.pendingRebirth;
         const karmaEarned = this.calculateKarma(naturalDeath);
+        this.pendingRebirth = { karmaEarned, naturalDeath: !!naturalDeath, bodyId: "peasant" };
         this.prestige.karma += karmaEarned;
+        this.prestige.lastLifeResources = {
+            stones: this.stones || 0,
+            pills: this.pills || 0,
+            essence: this.daoEssence || 0,
+            dust: this.artifactDust || 0,
+            realmIndex: this._maxRealmThisLife || this.realmIndex,
+            strength: this.strength,
+            spirit: this.spirit,
+            luck: this.luck
+        };
+        for (const milestone of this.milestones) {
+            if (!this.prestige.permanentMilestones.includes(milestone)) {
+                this.prestige.permanentMilestones.push(milestone);
+            }
+        }
+        saveGame();
+        return this.pendingRebirth;
+    },
+
+    rebirth(bodyId, naturalDeath) {
+        // Отказ атомарен: неизвестное/закрытое происхождение не начисляет
+        // карму, не завершает жизнь и не увеличивает счётчик перерождений.
+        if (!this.isBodyUnlocked(bodyId)) return false;
+        // Прямой вызов (без модалки) также поддерживается. При продолжении
+        // сохранённой модалки сумма уже начислена и не пересчитывается.
+        if (!this.pendingRebirth) this.prestige.karma += this.calculateKarma(naturalDeath);
         this.prestige.totalRebirths++;
         // Сохранить достижения
         for (const m of this.milestones) {
@@ -348,7 +412,7 @@ Object.assign(game, {
         if (oldPerks.carryArtifacts && oldPerks.carryArtifacts > 0) {
             const tierOrder = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, divine: 5 };
             const sorted = [...this.artifacts].sort((a, b) =>
-                (b.enhance || 0) - (a.enhance || 0) || (tierOrder[b.tier] || 0) - (tierOrder[a.tier] || 0)
+                (b.transcend || 0) - (a.transcend || 0) || (b.enhance || 0) - (a.enhance || 0) || (tierOrder[b.tier] || 0) - (tierOrder[a.tier] || 0)
             );
             carryArtifacts = sorted.slice(0, oldPerks.carryArtifacts);
         }
@@ -356,12 +420,12 @@ Object.assign(game, {
         // Перенос failstacks Кузнеца
         const carryFailstacks = oldPerks.keepFailstacks ? this.enhanceFailstacks : 0;
 
-        // Сохранить ресурсы прошлой жизни для событий перерождения
+        // Тайники содержат только остаток после переноса Алхимика.
         this.prestige.lastLifeResources = {
             stones: this.stones || 0,
             pills: this.pills || 0,
-            essence: this.daoEssence || 0,
-            dust: this.artifactDust || 0,
+            essence: Math.max(0, (this.daoEssence || 0) - carryEssence),
+            dust: Math.max(0, (this.artifactDust || 0) - carryDust),
             realmIndex: this._maxRealmThisLife || this.realmIndex,
             strength: this.strength,
             spirit: this.spirit,
@@ -419,7 +483,7 @@ Object.assign(game, {
                 const minIdx = tierOrder.indexOf(newPerks.startTechTier);
                 const candidates = TECHNIQUES.filter(t =>
                     !this.hasTechnique(t.id) &&
-                    t.source !== "sect" && t.source !== "body" &&
+                    t.source !== "sect" && t.source !== "body" && t.source !== "adventure" &&
                     tierOrder.indexOf(t.tier) >= minIdx &&
                     (!t.requirement || !t.requirement.realm || this.realmIndex >= t.requirement.realm)
                 );
@@ -452,6 +516,7 @@ Object.assign(game, {
         if (carryFailstacks > 0) this.enhanceFailstacks = carryFailstacks;
 
         saveGame();
+        return true;
     },
 
     // === ВОЗНЕСЕНИЕ ТЕЛ ===
@@ -471,6 +536,7 @@ Object.assign(game, {
     },
 
     canAscendBody(bodyId) {
+        if (!this.isBodyUnlocked(bodyId)) return false;
         const ascensions = BODY_ASCENSIONS[bodyId];
         if (!ascensions) return false;
         const level = this.getBodyAscensionLevel(bodyId);
@@ -481,6 +547,7 @@ Object.assign(game, {
     ascendBody(bodyId) {
         if (!this.canAscendBody(bodyId)) return false;
         const cost = this.getBodyAscendCost(bodyId);
+        this.prestige.karmaSpent = this._getTotalKarmaSpent() + cost;
         this.prestige.karma -= cost;
         if (!this.prestige.bodyAscensions) this.prestige.bodyAscensions = {};
         this.prestige.bodyAscensions[bodyId] = (this.prestige.bodyAscensions[bodyId] || 0) + 1;
@@ -493,9 +560,18 @@ Object.assign(game, {
         const upgrade = KARMA_UPGRADES.find(u => u.id === upgradeId);
         if (!upgrade) return Infinity;
         const level = this.prestige.karmaUpgrades[upgradeId] || 0;
+        if (level >= upgrade.maxLevel) return Infinity;
         // Фиксированные цены по уровням (если заданы)
-        if (upgrade.costs && upgrade.costs[level] !== undefined) return upgrade.costs[level];
-        return Math.ceil(upgrade.cost * (1 + level * 0.5));
+        let cost;
+        if (upgrade.costs && upgrade.costs[level] !== undefined) {
+            cost = upgrade.costs[level];
+        } else {
+            cost = Math.ceil(upgrade.cost * (1 + level * 0.5));
+        }
+        // Скидка эпохи: Новый Порядок -20%
+        const eraDiscount = this.getEraKarmaDiscount();
+        if (eraDiscount > 0) cost = Math.ceil(cost * (1 - eraDiscount));
+        return cost;
     },
 
     buyKarmaUpgrade(upgradeId) {
@@ -506,6 +582,7 @@ Object.assign(game, {
         if (level >= upgrade.maxLevel) return false;
         const cost = this.getUpgradeCost(upgradeId);
         if (this.prestige.karma < cost) return false;
+        this.prestige.karmaSpent = this._getTotalKarmaSpent() + cost;
         this.prestige.karma -= cost;
         this.prestige.karmaUpgrades[upgradeId] = level + 1;
         return true;

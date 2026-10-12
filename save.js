@@ -43,6 +43,8 @@ function getSaveableState() {
         currentActivity: game.currentActivity,
         activityXP: game.activityXP,
         techXP: game.techXP,
+        _pendingInsightXP: game._pendingInsightXP,
+        _insightTicksLeft: game._insightTicksLeft || 0,
         sect: game.sect,
         sectMissions: game.sectMissions,
         sectMissionTimer: game.sectMissionTimer,
@@ -55,6 +57,7 @@ function getSaveableState() {
         adventureRumors: game.adventureRumors || [],
         activeAdventures: game.activeAdventures || [],
         completedAdventures: game.completedAdventures || [],
+        adventureDiscovery: game.adventureDiscovery,
         lastAdventureReward: game.lastAdventureReward || null,
         artifacts: game.artifacts,
         equippedArtifacts: game.equippedArtifacts,
@@ -62,9 +65,10 @@ function getSaveableState() {
         selectedFormations: game.selectedFormations,
         gameOver: game.gameOver,
         prestige: game.prestige,
+        pendingRebirth: game.pendingRebirth,
         _minRootTier: game._minRootTier || null,
         logEntries: _getLogEntries(),
-        version: 13
+        version: 16
     };
 }
 
@@ -101,13 +105,24 @@ function deleteSave() {
 function applyLoadedState(data) {
     if (!data) return false;
 
+    // Импорт заменяет текущую жизнь: не переносить мутации глобальных техник
+    // из предыдущего сейва. Техники загруженной секты зарегистрируем ниже.
+    for (const tech of new Set([...TECHNIQUES, ...Object.values(SECT_TECHNIQUES)])) {
+        if (TECHNIQUES_ORIGINAL_TIERS[tech.id]) tech.tier = TECHNIQUES_ORIGINAL_TIERS[tech.id];
+        if (TECHNIQUES_ORIGINAL_NAMES[tech.id]) tech.name = TECHNIQUES_ORIGINAL_NAMES[tech.id];
+        if (TECHNIQUES_ORIGINAL_DESCRIPTIONS[tech.id]) tech.description = TECHNIQUES_ORIGINAL_DESCRIPTIONS[tech.id];
+    }
+    for (let i = TECHNIQUES.length - 1; i >= 0; i--) {
+        if (TECHNIQUES[i].source === "sect") TECHNIQUES.splice(i, 1);
+    }
+
     game.name = data.name || "Культиватор";
     game.qi = data.qi || 0;
     game.daoProgress = data.daoProgress || 0;
     game.daoLevel = data.daoLevel || 0;
     game.realmIndex = data.realmIndex || 0;
     game.subLevel = data.subLevel || 1;
-    game.years = data.years || 16;
+    game.years = data.years ?? 16;
     game.birthYear = data.birthYear || 0;
     game.strength = data.strength || 1;
     game.spirit = data.spirit || 1;
@@ -127,15 +142,12 @@ function applyLoadedState(data) {
     game.flags = data.flags || {};
     game.techniques = data.techniques || [];
     game.techLevels = data.techLevels || {};
-    // Восстановить вознесённые тиры и имена техник
-    if (data.techAscendedTiers) game._restoreAscendedTiers(data.techAscendedTiers);
-    // Экипированные техники: миграция старых сейвов — все техники экипированы
-    if (data.equippedTechniques && data.equippedTechniques.length > 0) {
+    // Пустой массив означает осознанно снятые техники; только отсутствующее
+    // поле требует миграции. Лимит старого сейва рассчитаем после prestige.
+    if (Array.isArray(data.equippedTechniques)) {
         game.equippedTechniques = data.equippedTechniques.filter(tid => game.techniques.includes(tid));
     } else {
-        // Старый сейв без equippedTechniques — экипируем все (до лимита слотов)
-        const maxSlots = game.getMaxTechSlots();
-        game.equippedTechniques = game.techniques.slice(0, maxSlots);
+        game.equippedTechniques = [];
     }
     game.spiritualRoot = data.spiritualRoot || null;
     game.milestones = data.milestones || [];
@@ -148,7 +160,6 @@ function applyLoadedState(data) {
         const replaceIn = (arr) => {
             const idx = arr.indexOf(oldId);
             if (idx !== -1) {
-                arr[idx] = newId;
                 if (!arr.includes(newId)) arr[idx] = newId;
                 else arr.splice(idx, 1);
             }
@@ -159,10 +170,20 @@ function applyLoadedState(data) {
     game.meditationYears = data.meditationYears || 0;
     game.totalBreakthroughs = data.totalBreakthroughs || 0;
     game.worldEvent = data.worldEvent || null;
+    if (game.worldEvent && game.worldEvent.id === "secret_realm") {
+        const eventDefinition = WORLD_EVENTS.find(event => event.id === "secret_realm");
+        game.worldEvent.name = eventDefinition.name;
+        game.worldEvent.modifiers = { ...eventDefinition.modifiers };
+    }
+    if (game.worldEvent && game.years >= game.worldEvent.startYear + game.worldEvent.duration) {
+        game.worldEvent = null;
+    }
     game.lastWorldEventYear = data.lastWorldEventYear || 0;
     game.currentActivity = data.currentActivity || "meditation";
     game.activityXP = data.activityXP || { strength: 0, spirit: 0, luck: 0 };
     game.techXP = data.techXP || {};
+    game._pendingInsightXP = data._pendingInsightXP || null;
+    game._insightTicksLeft = data._insightTicksLeft || 0;
     game.sect = data.sect || null;
     // Миграция: старый sectMission (одиночный) → sectMissions (массив)
     if (data.sectMission && !data.sectMissions) {
@@ -186,12 +207,19 @@ function applyLoadedState(data) {
     game.adventureRumors = data.adventureRumors || [];
     game.activeAdventures = data.activeAdventures || [];
     game.completedAdventures = data.completedAdventures || [];
+    game.adventureDiscovery = data.adventureDiscovery || {
+        poolKey: "", waitYears: 0,
+        lastCompleteYear: data.lastAdventureReward ? data.lastAdventureReward.year : null
+    };
+    game._yearsSinceAdventure = 0;
+    game._lastAdventureCompleteYear = game.adventureDiscovery.lastCompleteYear || 0;
     game.lastAdventureReward = data.lastAdventureReward || null;
     game.artifacts = data.artifacts || [];
     game.equippedArtifacts = data.equippedArtifacts || { weapon: null, armor: null, accessory: null, treasure: null };
     game.formations = data.formations || {};
     game.selectedFormations = data.selectedFormations || [];
-    game.prestige = data.prestige || { karma: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
+    game.prestige = data.prestige || { karma: 0, karmaSpent: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
+    game.pendingRebirth = data.pendingRebirth || null;
     // Миграция переименованных milestone ID в permanentMilestones
     if (game.prestige.permanentMilestones) {
         for (const [oldId, newId] of Object.entries(_milestoneRenames)) {
@@ -214,6 +242,10 @@ function applyLoadedState(data) {
     if (game.prestige.worldAge === undefined) game.prestige.worldAge = 0;
     // Миграция bodyAscensions: старые сейвы
     if (!game.prestige.bodyAscensions) game.prestige.bodyAscensions = {};
+    // Не реконструируем расходы по ценам: это завышало заработанную карму.
+    if (!Number.isFinite(game.prestige.karmaSpent) || game.prestige.karmaSpent < 0) {
+        game.prestige.karmaSpent = 0;
+    }
     // Миграция v11→v12: дао уровни и формации
     if (!game.prestige.daoLevels) game.prestige.daoLevels = {};
     if (!game.prestige.unlockedFormations) game.prestige.unlockedFormations = [];
@@ -221,12 +253,10 @@ function applyLoadedState(data) {
     game._minRootTier = data._minRootTier || null;
     // Миграция артефактов: старые сейвы с level/maxLevel → enhance, transcend
     for (const art of game.artifacts) {
-        if (art.enhance === undefined) {
-            art.enhance = 0;
-            art.investedEssence = 0;
-            art.investedDust = 0;
-        }
-        if (art.transcend === undefined) art.transcend = 0;
+        art.enhance ??= 0;
+        art.investedEssence ??= 0;
+        art.investedDust ??= 0;
+        art.transcend ??= 0;
     }
     for (const slot of ARTIFACT_SLOTS) {
         const art = game.equippedArtifacts[slot];
@@ -312,17 +342,30 @@ function applyLoadedState(data) {
                     }
                     if (!game.techniques.includes(advTech.id)) {
                         game.techniques.push(advTech.id);
-                        game.techLevels[advTech.id] = 1;
+                        // Сохранить существующий уровень если есть
+                        if (!game.techLevels[advTech.id]) game.techLevels[advTech.id] = 1;
                     }
                 }
             }
         }
     }
 
+    // Техники секты добавляются динамически, поэтому их тиры восстанавливаем
+    // только после регистрации. Отсутствующая карта означает исходные тиры.
+    game._restoreAscendedTiers(data.techAscendedTiers || {});
+    if (!Array.isArray(data.equippedTechniques)) {
+        game.equippedTechniques = game.techniques.slice(0, game.getMaxTechSlots());
+    }
+    game.ensureExpeditionRewardSnapshot();
+
     // Восстановить хроники
     if (data.logEntries && data.logEntries.length > 0) {
         _restoreLogEntries(data.logEntries);
     }
+
+    // Старый оплаченный опыт выдаётся после восстановления всех техник и тиров.
+    // Новые покупки начисляют XP сразу; сохранённая очередь остаётся миграцией.
+    if (typeof game._flushPendingInsightXP === "function") game._flushPendingInsightXP();
 
     return true;
 }
@@ -845,8 +888,7 @@ function importSave(json) {
         game.stop();
         applyLoadedState(data);
         saveGame();
-        updateUI();
-        game.start();
+        resumeLoadedGame();
         addLog("Сейв успешно загружен!", "system");
         return true;
     } catch (e) {

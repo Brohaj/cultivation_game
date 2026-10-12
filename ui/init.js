@@ -203,6 +203,27 @@ function onNewGameClick() {
 
 // === ИНИЦИАЛИЗАЦИЯ ===
 function initGame() {
+    // Удерживаем интерактивный DOM до native click, включая касания и клавиатуру.
+    document.addEventListener("pointerdown", event => {
+        if (event.target?.closest?.("button, input, select, textarea, [role='button'], [onclick]")) {
+            beginUIInteraction(event.pointerId);
+        }
+    }, true);
+    document.addEventListener("pointerup", event => endUIInteraction(event.pointerId), true);
+    document.addEventListener("pointercancel", event => endUIInteraction(event.pointerId), true);
+    document.addEventListener("keydown", event => {
+        if ((event.key === "Enter" || event.key === " ") && event.target?.closest?.("button, [role='button']")) {
+            beginUIInteraction("key:" + event.key);
+        }
+    }, true);
+    document.addEventListener("keyup", event => {
+        if (event.key === "Enter" || event.key === " ") endUIInteraction("key:" + event.key);
+    }, true);
+    window.addEventListener("blur", () => {
+        _uiHeldControls.clear();
+        endUIInteraction(null);
+    });
+
     // Биндим табы
     document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => switchTab(btn.dataset.tab));
@@ -226,13 +247,10 @@ function initGame() {
         const data = loadGame();
         if (data && applyLoadedState(data)) {
             addLog("Игра загружена.", "system");
-            if (game.gameOver) {
+            resumeLoadedGame();
+            if (game.gameOver && !game.pendingRebirth) {
                 // Персонаж мёртв — не запускаем тики, показываем баннер смерти
-                updateUI();
                 addLog("Ваш персонаж мёртв. Переродитесь для продолжения.", "danger");
-            } else {
-                game.start();
-                updateUI();
             }
             return;
         }

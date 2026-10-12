@@ -3,6 +3,12 @@
 // ============================================================
 
 // Шаблоны заданий секты (по id)
+// 28 определений, 18 входят в текущие пулы SECTS.missions.
+// Остальные сохранены как резерв/legacy: старый сейв может содержать такое задание.
+// Артефакт — памятная награда за первое выполнение; затем редкий подарок.
+const SECT_MISSION_REPEAT_ARTIFACT_CHANCE = 0.05;
+const SECT_MISSION_REPEAT_ARTIFACT_MAX_TIER = "rare";
+
 const SECT_MISSION_TEMPLATES = {
     // === Общие ===
     gather_stones: {
@@ -21,7 +27,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     slay_beast: {
         id: "slay_beast",
-        text: "В окрестностях появился демонический зверь. Секта просит его устранить.",
+        text: "Демонический зверь замечен у границ территории секты. Охотники уже выдвинулись, но нужна поддержка.",
         type: "combat",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -38,7 +44,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     meditate_count: {
         id: "meditate_count",
-        text: "Старейшины просят усердно медитировать для укрепления ауры секты.",
+        text: "Старейшины открыли Нефритовый Сад для коллективной медитации. Каждый ученик укрепляет ауру секты.",
         type: "meditation",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -68,7 +74,7 @@ const SECT_MISSION_TEMPLATES = {
     // === Секта Нефритовой Чистоты (easy) ===
     purify_qi: {
         id: "purify_qi",
-        text: "Очистите свою ци через длительную медитацию. Секта вознаградит вас.",
+        text: "Нефритовые воды ждут. Очистите ци через медитацию у священного истока — секта вознаградит усердие.",
         type: "meditation",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -87,7 +93,7 @@ const SECT_MISSION_TEMPLATES = {
     // === Орден Алого Пламени (medium) ===
     arena_challenge: {
         id: "arena_challenge",
-        text: "Арена секты! Докажите свою силу перед старейшинами.",
+        text: "Арена Тысячи Клинков ждёт! Докажите свою силу в пламени боя перед старейшинами Ордена.",
         type: "combat",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -106,7 +112,7 @@ const SECT_MISSION_TEMPLATES = {
     // === Секта Лунного Озера (medium) ===
     brew_elixir: {
         id: "brew_elixir",
-        text: "Алхимический зал просит помочь с варкой эликсиров. Нужны камни и усердие.",
+        text: "Алхимическая Печь раскалена — Лунное Озеро варит партию эликсиров. Мастера ждут камни и усердие.",
         type: "resource",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -125,7 +131,7 @@ const SECT_MISSION_TEMPLATES = {
     // === Культ Бездны (hard) ===
     devour_essence: {
         id: "devour_essence",
-        text: "Поглотите эссенцию демонического зверя. Опасно, но культ требует.",
+        text: "Бездна жаждет. Поглотите эссенцию демонического зверя у разлома — и обратите его силу в свою.",
         type: "combat",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -142,7 +148,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     dark_ritual: {
         id: "dark_ritual",
-        text: "Культ проводит тёмный ритуал. Нужны духовные камни как подношение.",
+        text: "У Алтаря Поглощения начертаны руны нового ритуала. Камни — плата за знание, которое Бездна готова открыть.",
         type: "resource",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -226,7 +232,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     prove_spirit: {
         id: "prove_spirit",
-        text: "Покажите глубину своего духовного развития.",
+        text: "Тишина ждёт. Покажите глубину духа — путь к мастерству лежит через познание себя.",
         type: "meditation",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -240,7 +246,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     perform_breakthroughs: {
         id: "perform_breakthroughs",
-        text: "Секта ценит прогресс в культивации. Совершите прорывы.",
+        text: "Путь к вершине лежит через прорыв. Каждая преодолённая ступень укрепляет и вас, и секту.",
         type: "cultivation",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -256,7 +262,7 @@ const SECT_MISSION_TEMPLATES = {
     // === Задания за артефакты (Внутренний+) ===
     relic_hunt: {
         id: "relic_hunt",
-        text: "В древних руинах обнаружен реликт. Секта отправляет вас на охоту.",
+        text: "Разведчики обнаружили реликт в тайном царстве. Секта отправляет вас — сила и осторожность понадобятся в равной мере.",
         type: "combat",
         minRank: 1,
         generate: (g, diff) => {

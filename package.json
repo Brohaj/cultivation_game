@@ -1,0 +1,30 @@
+{
+  "name": "cultivation_game",
+  "version": "1.0.0",
+  "description": "",
+  "main": "save.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "node test-all.js",
+    "test:scenery": "node test-scenery.js",
+    "test:ui-v2": "node test-ui-v2.js && node test-ui-v2-desktop.js && node test-ui-v2-density.js",
+    "test:browser": "node test-browser.js && node test-player-ui.js && node test-browser-decisions.js && node test-browser-prestige.js",
+    "balance:simulate": "node simulate-balance.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Brohaj/cultivation_game.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Brohaj/cultivation_game/issues"
+  },
+  "homepage": "https://github.com/Brohaj/cultivation_game#readme",
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

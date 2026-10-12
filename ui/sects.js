@@ -19,6 +19,7 @@ function updateSectRankBar() {
 }
 
 function renderSects() {
+    if (deferUIRender(renderSects)) return;
     const container = document.getElementById("sects-list");
     if (!container) return;
     // Не перерисовывать пока идёт анимация завершения/повышения
@@ -86,6 +87,7 @@ function renderSects() {
             const daoPathText = sect.daoDisplayName || "";
             const daoLevelSaved = "";
             card.innerHTML = `
+                ${renderSceneryImage(getSectScenery(sect.id), 'sect-scenery')}
                 <div class="sect-name" style="color:${sect.color}">${sect.name}</div>
                 <div class="sect-path">${sect.path === "righteous" ? "Праведный" : sect.path === "combat" ? "Боевой" : sect.path === "alchemy" ? "Алхимический" : sect.path === "demonic" ? "Демонический" : "Отшельнический"} путь <span style="color:${diffColors[sect.difficulty] || '#aaa'}" title="Чем сложнее секта — тем больше вклада нужно для повышения ранга, но и бонусы Дао мощнее">(${diffNames[sect.difficulty] || sect.difficulty})</span></div>
                 ${daoPathText ? `<div class="sect-dao-path" style="color:${sect.color}">Дао: ${daoPathText}${daoLevelSaved}</div>` : ""}
@@ -112,6 +114,7 @@ function renderSects() {
         const header = document.createElement("div");
         header.className = "sect-active-header";
         header.innerHTML = `
+            ${renderSceneryImage(getSectScenery(sect.id), 'sect-scenery')}
             <div class="sect-name" style="color:${sect.color}">${sect.name}</div>
             <div class="sect-rank-info">
                 <span class="sect-rank-name">Ранг: ${rank.name}</span>
@@ -147,7 +150,8 @@ function renderSects() {
         const elemObj = sect.element ? ELEMENTS.find(e => e.id === sect.element) : null;
         const bonusDiv = document.createElement("div");
         bonusDiv.className = "sect-active-bonuses";
-        let bonusHtml = `<h4>${sect.daoDisplayName || "Дао"} (ур. ${game.daoLevel}, ранг x${rank.bonusMult.toFixed(1)}${elemAffinity !== 1 ? `, стихия x${elemAffinity.toFixed(1)}` : ""})</h4>`;
+        let bonusHtml = `<h4>${sect.daoDisplayName || "Дао"} (ур. ${game.daoLevel}${elemAffinity !== 1 ? `, стихия x${elemAffinity.toFixed(1)}` : ""})</h4>`;
+        bonusHtml += `<span class="sect-bonus-item">Вклад заданий от ранга: x${Number(rank.bonusMult.toFixed(2))}</span>`;
         if (elemObj) {
             const affinityColor = elemAffinity >= 1.5 ? "#6aea8a" : elemAffinity < 1 ? "#ee7a7a" : "#aaa";
             bonusHtml += `<span class="sect-bonus-item" style="color:${affinityColor}">Стихия: ${elemObj.icon} ${elemObj.name} (x${elemAffinity.toFixed(1)})</span>`;
@@ -212,7 +216,7 @@ function renderSects() {
         // Задания
         const missionDiv = document.createElement("div");
         missionDiv.className = "sect-mission-section";
-        missionDiv.innerHTML = `<h4>Задания секты</h4>`;
+        missionDiv.innerHTML = `<h4>Задания секты</h4><p class="empty-msg">Новое задание через ${game.getSectMissionCooldown()} ${_plural(game.getSectMissionCooldown(), "год", "года", "лет")} после выполнения. Кулдаун не зависит от ранга.</p>`;
         if (game.sectMissions.length > 0) {
             for (let i = 0; i < game.sectMissions.length; i++) {
                 const m = game.sectMissions[i];
@@ -234,6 +238,7 @@ function renderSects() {
                 }
 
                 const canComplete = game.canCompleteSectMission(i);
+                const autoDonation = m.templateId === "donate_pills_sect";
                 let progressText = "";
                 if (m.check && m.check.meditationYears) {
                     const done = game.meditationYears - (m.meditationYearsAtStart || 0);
@@ -252,13 +257,17 @@ function renderSects() {
                     if (m.cost.essence) costParts.push(`<span style="color:#c89aff">\u2726 ${m.cost.essence} эссенции</span>`);
                 }
                 const costText = costParts.length > 0 ? ` | Цена: ${costParts.join(", ")}` : "";
+                const contributionMult = rank.bonusMult * (game.getActiveBodyPerks().contributionMult || 1);
+                const artifactReward = game.getSectMissionArtifactReward(m);
+                const artifactTierNames = {common:"обычный",uncommon:"необычный",rare:"редкий",epic:"эпический",legendary:"легендарный",divine:"божественный"};
+                const artifactText = artifactReward ? `, <span style="color:#cc7a3a">\u2694 ${artifactReward.firstReward ? "первый артефакт гарантирован" : `артефакт: ${Math.round(artifactReward.chance * 100)}%` } (${artifactTierNames[artifactReward.tier] || artifactReward.tier})</span>` : "";
                 card.innerHTML = `
                     <div class="sect-mission-text">${m.text}</div>
                     <div class="sect-mission-desc">${m.description}${progressText}</div>
-                    <div class="sect-mission-reward">Награда: ${m.reward.contribution ? `+${Math.floor(m.reward.contribution * rank.bonusMult)} вклад${rank.bonusMult > 1 ? ` (\u00D7${rank.bonusMult.toFixed(1)})` : ""}` : ""}${m.reward.stones ? `${m.reward.contribution ? ", " : ""}+${m.reward.stones} ${_plural(m.reward.stones, "камень", "камня", "камней")}` : ""}${m.reward.pills ? `, +${m.reward.pills} ${_plural(m.reward.pills, "пилюля", "пилюли", "пилюль")}` : ""}${m.reward.daoScroll ? `, <span style="color:#66ccff">\u2721 +${m.reward.daoScroll} ${_plural(m.reward.daoScroll, "свиток", "свитка", "свитков")}</span>` : ""}${m.reward.artifact ? `, <span style="color:#cc7a3a">\u2694 артефакт (${{common:"обычный",uncommon:"необычный",rare:"редкий",epic:"эпический",legendary:"легендарный",divine:"божественный"}[m.reward.artifact] || m.reward.artifact})</span>` : ""}${game.realmIndex >= 3 ? `, <span style="color:#eebb44" title="2-5% от ${game.daoNeeded()} постижения">\u262F +Дао (2-5%)</span>` : ""}${costText}</div>
-                    <button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>
+                    <div class="sect-mission-reward">Награда: ${m.reward.contribution ? `+${game.getSectMissionContribution(m.reward.contribution)} вклад${contributionMult > 1 ? ` (\u00D7${Number(contributionMult.toFixed(2))})` : ""}` : ""}${m.reward.stones ? `${m.reward.contribution ? ", " : ""}+${m.reward.stones} ${_plural(m.reward.stones, "камень", "камня", "камней")}` : ""}${m.reward.pills ? `, +${m.reward.pills} ${_plural(m.reward.pills, "пилюля", "пилюли", "пилюль")}` : ""}${m.reward.daoScroll ? `, <span style="color:#66ccff">\u2721 +${m.reward.daoScroll} ${_plural(m.reward.daoScroll, "свиток", "свитка", "свитков")}</span>` : ""}${artifactText}${game.realmIndex >= 3 ? `, <span style="color:#eebb44" title="2-5% от ${game.daoNeeded()} постижения">\u262F +Дао (2-5%)</span>` : ""}${costText}</div>
+                    ${autoDonation ? '<span class="sect-mission-auto">Награда автоматически при сдаче пилюль</span>' : `<button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>
                         ${canComplete ? "Выполнить" : "Не готово"}
-                    </button>
+                    </button>`}
                 `;
                 missionDiv.appendChild(card);
             }

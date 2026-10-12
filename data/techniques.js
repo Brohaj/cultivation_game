@@ -1,6 +1,6 @@
 // ============================================================
 // TECHNIQUES.JS — Все техники культивации
-// Зависит от: core.js (TIER_MULTIPLIERS, TIER_XP_BASE)
+// Тиры и XP: core.js; бюджеты эффектов: game/techniques.js
 // ============================================================
 
 const TECHNIQUES = [
@@ -32,7 +32,7 @@ const TECHNIQUES = [
 {
         id: "stone_meditation",
         name: "Медитация Каменного Будды",
-        description: "Неподвижность камня, терпение горы. Идеально для длительной культивации.",
+        description: "Неподвижность камня, терпение горы. Говорят, первый практикующий просидел тридцать лет у подножия Пагоды Закалки, не шелохнувшись. Идеально для длительной культивации.",
         tier: "uncommon",
         type: "cultivation",
         element: "earth",
@@ -50,7 +50,7 @@ const TECHNIQUES = [
     {
         id: "thunder_fist",
         name: "Кулак Грома",
-        description: "Удар, несущий мощь грозы. Сотрясает землю и врагов.",
+        description: "Удар, несущий мощь грозы. Создан культиватором, пережившим небесную кару на горном пике и обратившим молнию в собственную ци.",
         tier: "rare",
         type: "combat",
         element: "thunder",
@@ -67,7 +67,7 @@ const TECHNIQUES = [
     {
         id: "iron_body",
         name: "Техника Железного Тела",
-        description: "Тело становится крепким как железо. Ци не покидает меридианы при провале.",
+        description: "Тело становится крепким как железо. Снижает утечку ци и потерю прогресса Дао при провале прорыва.",
         tier: "uncommon",
         type: "defense",
         element: null,
@@ -102,7 +102,7 @@ const TECHNIQUES = [
     {
         id: "void_perception",
         name: "Восприятие Пустоты",
-        description: "Разум расширяется за пределы материального. Поток ци становится безграничным.",
+        description: "Наследие Мастера Юнь с Пика Облачного Журавля. Разум расширяется за пределы материального, поток ци становится безграничным.",
         tier: "epic",
         type: "cultivation",
         element: null,
@@ -134,7 +134,7 @@ const TECHNIQUES = [
         type: "combat",
         element: null,
         maxLevel: 12,
-        effects: { combatPower: 0.06 },
+        effects: { combatPower: 0.05 },
         requirement: { realm: 5 },
         source: "event",
         ascendNames: {
@@ -149,7 +149,7 @@ const TECHNIQUES = [
         type: "defense",
         element: null,
         maxLevel: 12,
-        effects: { qiRetention: 0.004 },
+        effects: { qiRetention: 0.009 },
         requirement: { realm: 7 },
         source: "event",
         ascendNames: {
@@ -165,7 +165,7 @@ const TECHNIQUES = [
         type: "cultivation",
         element: null,
         maxLevel: 20,
-        effects: { qi: 0.07 },
+        effects: { qi: 0.035 },
         requirement: { realm: 10 },
         source: "chain"
     },
@@ -282,12 +282,12 @@ const TECHNIQUES = [
     {
         id: "body_golden_sutra",
         name: "Золотая Сутра Архата",
-        description: "Буддийская мудрость прошлых жизней. Карма течёт щедрее, а дух непоколебим.",
+        description: "Буддийская мудрость прошлых жизней очищает поток ци и помогает преодолеть барьер ступени.",
         tier: "epic",
         type: "cultivation",
         element: null,
         maxLevel: 12,
-        effects: { qi: 0.06, breakthroughBonus: 0.006 },
+        effects: { qi: 0.04, breakthroughBonus: 0.006 },
         requirement: null,
         source: "body",
         ascendNames: {
@@ -300,8 +300,10 @@ const TECHNIQUES = [
 const TECHNIQUES_ORIGINAL_TIERS = {};
 const TECHNIQUES_ORIGINAL_NAMES = {};
 const TECHNIQUES_ORIGINAL_DESCRIPTIONS = {};
-for (const t of TECHNIQUES) {
-    TECHNIQUES_ORIGINAL_TIERS[t.id] = t.tier;
-    TECHNIQUES_ORIGINAL_NAMES[t.id] = t.name;
-    TECHNIQUES_ORIGINAL_DESCRIPTIONS[t.id] = t.description;
+function rememberTechniqueOriginal(tech) {
+    if (Object.prototype.hasOwnProperty.call(TECHNIQUES_ORIGINAL_TIERS, tech.id)) return;
+    TECHNIQUES_ORIGINAL_TIERS[tech.id] = tech.tier;
+    TECHNIQUES_ORIGINAL_NAMES[tech.id] = tech.name;
+    TECHNIQUES_ORIGINAL_DESCRIPTIONS[tech.id] = tech.description;
 }
+for (const tech of TECHNIQUES) rememberTechniqueOriginal(tech);

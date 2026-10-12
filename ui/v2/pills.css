@@ -1,0 +1,73 @@
+/* Небольшой инвентарь пилюль без растягивания по ширине основной панели. */
+.ui-v2 .v2-supplies {
+    width: min(420px, 100%);
+    max-width: 100%;
+    margin-right: auto;
+}
+.ui-v2 .v2-supplies .pill-table { width: 100%; }
+
+@media (min-width: 860px) {
+    .ui-v2 .v2-supplies .pill-table { gap: 0; }
+    .ui-v2 .v2-supplies .pill-row {
+        grid-template-columns: 100px minmax(0, 1fr) max-content max-content;
+        grid-template-rows: auto;
+        align-items: center;
+        gap: 5px;
+        min-height: 31px;
+        padding: 2px 0;
+        font-size: 12px;
+    }
+    .ui-v2 .v2-supplies .pill-name,
+    .ui-v2 .v2-supplies .pill-count,
+    .ui-v2 .v2-supplies .pill-effect,
+    .ui-v2 .v2-supplies .pill-use-btns,
+    .ui-v2 .v2-supplies .pill-refine {
+        grid-column: auto;
+        grid-row: auto;
+        min-width: 0;
+    }
+    .ui-v2 .v2-supplies .pill-name { font-size: 12px; white-space: nowrap; }
+    .ui-v2 .v2-supplies .pill-count {
+        justify-self: end;
+        text-align: right;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .ui-v2 .v2-supplies .pill-effect {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .ui-v2 .v2-supplies .pill-use-btns,
+    .ui-v2 .v2-supplies .pill-refine { justify-self: end; white-space: nowrap; }
+    .ui-v2 .v2-supplies .pill-use-btns .btn,
+    .ui-v2 .v2-supplies .pill-refine .btn {
+        margin: 0;
+        min-height: 26px;
+        padding: 2px 7px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .ui-v2 .v2-supplies .v2-pill-toolbar {
+        top: -30px;
+        right: 0;
+        max-width: calc(100% - 65px);
+        margin: 0;
+        gap: 7px;
+        font-size: 12px;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+    .ui-v2 .v2-supplies .v2-pill-toolbar label { white-space: nowrap; }
+    .ui-v2 .v2-supplies .v2-pill-toolbar select {
+        padding: 3px 5px;
+        font-size: 12px;
+    }
+    .ui-v2 .v2-supplies .v2-pill-toolbar .btn {
+        min-height: 24px;
+        padding: 2px 6px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+}

@@ -1,0 +1,42 @@
+/* Самостоятельные, всегда открытые карточки формаций V2. */
+.ui-v2 .v2-formations-list { display: block; min-width: 0; padding-bottom: 4px; }
+.ui-v2 .v2-formations-overview { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; font-size: 12px; }
+.ui-v2 .v2-formations-slots { color: var(--v2-jade); font-weight: 600; }
+.ui-v2 .v2-formations-dao { color: var(--v2-text); }
+.ui-v2 .v2-formations-rule { margin: 3px 0 10px; font-size: 12px; color: var(--v2-muted); }
+.ui-v2 .v2-formations-group + .v2-formations-group { margin-top: 12px; }
+.ui-v2 .v2-formations-group-title { margin: 0 0 6px; color: var(--v2-muted); font-size: 12px; font-weight: 500; }
+.ui-v2 .v2-formations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 8px; min-width: 0; }
+.ui-v2 .formation-row.v2-formation-card { display: flex; flex-direction: column; align-items: stretch; min-width: 0; margin: 0; padding: 11px 12px; gap: 0; border: 1px solid var(--v2-line); border-left: 3px solid var(--v2-formation-accent, var(--v2-line)); border-radius: 8px; background: var(--v2-surface); }
+.ui-v2 .v2-formation-card.v2-formation-active { border-top-color: #486559; border-right-color: #486559; border-bottom-color: #486559; }
+.ui-v2 .v2-formation-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 3px 8px; }
+.ui-v2 .v2-formation-name { margin: 0; color: var(--v2-text); font-size: 14px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.ui-v2 .v2-formation-level { color: var(--v2-jade); font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ui-v2 .v2-formation-progress { height: 4px; margin: 7px 0; border-radius: 3px; background: #2b3b3d; overflow: hidden; }
+.ui-v2 .v2-formation-progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--v2-formation-accent, var(--v2-jade)); }
+.ui-v2 .v2-formation-lore { margin: 0 0 7px; color: var(--v2-muted); font-size: 12px; line-height: 1.45; }
+.ui-v2 .v2-formation-bonus { margin: 0 0 9px; color: #c4e6d1; font-size: 13px; font-weight: 500; line-height: 1.4; }
+.ui-v2 .v2-formation-bonus-label { font-weight: 400; color: var(--v2-muted); }
+.ui-v2 .v2-formation-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 7px 10px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--v2-line); }
+.ui-v2 .v2-formation-next { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ui-v2 .v2-formation-condition { color: var(--v2-muted); font-size: 12px; line-height: 1.35; }
+.ui-v2 .v2-formation-ready { color: #b7ceb9; }
+.ui-v2 .v2-formation-needs-dao { color: #edc59c; font-weight: 500; }
+.ui-v2 .v2-formation-complete { color: var(--v2-jade); font-size: 12px; }
+.ui-v2 .v2-formation-button { max-width: 100%; min-height: 32px; padding: 6px 9px; font-size: 12px; line-height: 1.35; white-space: normal; }
+.ui-v2 .v2-formation-button:disabled { opacity: .72; }
+.ui-v2 .v2-formation-price { display: inline-block; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ui-v2 .v2-formation-stone-icon { font-size: 14px; font-weight: 700; }
+.ui-v2 .v2-formations-empty { font-size: 13px; color: var(--v2-muted); margin: 8px 0; }
+@media (max-width: 600px) {
+    .ui-v2 .v2-formations-grid { grid-template-columns: minmax(0, 1fr); }
+    .ui-v2 .formation-row.v2-formation-card { padding: 11px; }
+    .ui-v2 .v2-formation-footer { align-items: flex-start; }
+}
+@media (min-width: 1150px) {
+    .ui-v2 .formation-row.v2-formation-card { padding: 9px 10px; }
+    .ui-v2 .v2-formation-progress { margin: 5px 0; }
+    .ui-v2 .v2-formation-lore { margin-bottom: 4px; }
+    .ui-v2 .v2-formation-bonus { margin-bottom: 6px; }
+    .ui-v2 .v2-formation-footer { padding-top: 6px; }
+}

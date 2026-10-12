@@ -25,7 +25,8 @@ Object.assign(game, {
         }
 
         const karmaFormSlots = this.prestige.karmaUpgrades.formationSlot || 0;
-        const maxSlots = MAX_FORMATION_SLOTS + (this.getActiveBodyPerks().formationSlots || 0) + karmaFormSlots;
+        const eraFormSlots = this.getEraFormationSlotBonus();
+        const maxSlots = MAX_FORMATION_SLOTS + (this.getActiveBodyPerks().formationSlots || 0) + karmaFormSlots + eraFormSlots;
         if (this.selectedFormations.length >= maxSlots) {
             addLog(`Можно выбрать не более ${maxSlots} формаций!`, "danger");
             return false;
@@ -123,7 +124,7 @@ Object.assign(game, {
             return `+${total} удача`;
         }
         if (formation.effectKey === "expeditionSpeed") {
-            return `-${Math.round(total * 100)}% время экспедиций`;
+            return `+${Math.round(total * 100)}% скорость экспедиций`;
         }
         if (formation.effectKey === "demonReduction") {
             return `-${Math.round(total * 100)}% шанс демона`;

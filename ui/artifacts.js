@@ -4,8 +4,11 @@
 
 // === АРТЕФАКТЫ TAB ===
 let _selectedArtifactId = null;
+let _pendingDisassembleId = null;
+let _disassembleKeyHandler = null;
 
 function renderArtifacts() {
+    if (deferUIRender(renderArtifacts)) return;
     const container = document.getElementById("artifacts-list");
     if (!container) return;
     container.innerHTML = "";
@@ -19,13 +22,13 @@ function renderArtifacts() {
     const scrollBonusPct = scrollsUsed * 2;
     currSection.innerHTML = `
         <div class="currency-row">
-            <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#c89aff">\u2726</span> Эссенция: <b>${game.daoEssence}</b><span class="currency-tip">Из экспедиций и разбора. Для заточки и вознесения техник.</span></span>
-            <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#aaa">\u25C6</span> Пыль: <b>${game.artifactDust}</b><span class="currency-tip">Из разбора артефактов. Материал для заточки.</span></span>
+            <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#c89aff">\u2726</span> Эссенция: <b>${game.daoEssence}</b><span class="currency-tip">Из экспедиций и разбора. Для заточки и слияния артефактов, вознесения техник и Свитков Озарения.</span></span>
+            <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#aaa">\u25C6</span> Пыль: <b>${game.artifactDust}</b><span class="currency-tip">Из разбора артефактов. Бонусы усиливают базовую добычу; заточка возвращает 50% материалов успешных попыток.</span></span>
         </div>
         <div class="currency-row">
             <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#eebb44">\u2605</span> Воля Дао: <b>${game.enhanceFailstacks}</b>${game.enhanceFailstacks > 0 ? ` (+${game.enhanceFailstacks * 2}%)` : ""}<span class="currency-tip">Копится при провале заточки. +2% за ед. Сбрасывается при успехе.</span></span>
             <span class="currency-item currency-with-tip"><span class="currency-icon" style="color:#66ccff">\u2721</span> Свитки: <b>${scrollCount}</b>${scrollsUsed > 0 ? ` <span style="color:#66ccff">(+${scrollBonusPct}%)</span>` : ""}<span class="currency-tip">+2% к шансу за свиток. Макс 10 (+20%). Не пропадают при провале, сбрасываются при успехе.</span></span>
-            ${canUseScroll ? `<button class="btn btn-tiny btn-scroll" onclick="useDaoScrollUI()" title="Вложить Свиток Воли Дао в артефакт. Каждый свиток даёт +2% к шансу заточки">Применить свиток (+2%)</button>` : scrollsUsed >= 10 ? `<span style="color:#666;font-size:0.75em">макс</span>` : ""}
+            ${canUseScroll ? `<button class="btn btn-tiny btn-scroll" onclick="useDaoScrollUI()" title="Добавить 2 процентных пункта к шансу заточки. Бонус действует до следующего успеха и не привязан к выбранному артефакту.">Применить свиток (+2%)</button>` : scrollsUsed >= 10 ? `<span style="color:#666;font-size:0.75em">макс</span>` : ""}
         </div>
     `;
     container.appendChild(currSection);
@@ -39,7 +42,7 @@ function renderArtifacts() {
         const artCount = Math.min(game.artifacts.length, perks.carryArtifacts);
         ringSection.innerHTML = `
             <div class="currency-row">
-                <span class="currency-item currency-with-tip" style="color:#c66">💍 Пространственное Кольцо: ${artCount} / ${perks.carryArtifacts} артефактов<span class="currency-tip">При перерождении ${perks.carryArtifacts} лучших артефактов переносятся в следующую жизнь.\nПриоритет: тир → заточка → слияние.\nСтратегия: заточите артефакты → переродитесь Алхимиком → разберите с бонусом → переродитесь Кузнецом → заточите ещё сильнее.</span></span>
+                <span class="currency-item currency-with-tip" style="color:#c66">💍 Пространственное Кольцо: ${artCount} / ${perks.carryArtifacts} артефактов<span class="currency-tip">При перерождении ${perks.carryArtifacts} лучших артефактов переносятся в следующую жизнь.\nПриоритет: слияние → заточка → тир.\nАлхимик усиливает базовую добычу при разборе. Возврат материалов успешной заточки всегда 50%.</span></span>
             </div>
         `;
         container.appendChild(ringSection);
@@ -126,7 +129,15 @@ function renderArtifacts() {
             row.className = `artifact-row ${isSelected ? "artifact-row-selected" : ""} ${isEquipped ? "artifact-row-equipped" : ""}`;
             if (glowClass) row.classList.add(glowClass);
             row.id = `art-card-${art.id}`;
+            row.setAttribute("role", "button");
+            row.tabIndex = 0;
             row.addEventListener("click", () => selectArtifactForForge(art.id));
+            row.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    selectArtifactForForge(art.id);
+                }
+            });
 
             row.innerHTML = `
                 <span class="artrow-name" style="color:${tierData.color}">${slotIcon} ${art.name} ${gradeBadge}</span>
@@ -146,6 +157,14 @@ function renderArtifacts() {
         invSection.appendChild(invList);
     }
     container.appendChild(invSection);
+    if (_pendingDisassembleId) {
+        const art = game.artifacts.find(a => a.id === _pendingDisassembleId);
+        if (art && _selectedArtifactId === art.id && game.equippedArtifacts[art.slot]?.id !== art.id) {
+            disassembleArtifactUI(art.id);
+        } else {
+            cancelDisassembleUI();
+        }
+    }
 }
 
 // Панель заточки — всегда видна, меняется только содержимое
@@ -177,7 +196,7 @@ function _buildForgePanel() {
                 : `<button class="btn btn-small btn-equip" onclick="equipArtifactUI('${art.id}')">Надеть</button>`
             }
             ${!isEquipped
-                ? `<button class="btn btn-small btn-disassemble" onclick="disassembleArtifactUI('${art.id}')" title="+${disReward.dust} пыли${disReward.essence > 0 ? `, +${disReward.essence} эссенции` : ''}">Разобрать</button>`
+                ? `<button class="btn btn-small btn-disassemble" onclick="disassembleArtifactUI('${art.id}')" title="+${disReward.dust} пыли${disReward.essence > 0 ? `, +${disReward.essence} эссенции` : ''}. Возврат 50% материалов успешной заточки; бонусы усиливают базовую добычу.">Разобрать</button>`
                 : ""
             }
         </div>
@@ -190,11 +209,15 @@ function _buildForgePanel() {
         const fsBonus = game.enhanceFailstacks > 0 ? `+${game.enhanceFailstacks * 2}% воля` : "";
         const scBonus = (game.scrollFailstacksApplied || 0) > 0 ? `+${game.scrollFailstacksApplied * 2}% свитки` : "";
         const failstackBonus = (fsBonus || scBonus) ? ` (${[fsBonus, scBonus].filter(Boolean).join(", ")})` : "";
+        const perks = game.getActiveBodyPerks();
+        const downgradeChance = perks.safeEnhance && art.enhance <= perks.safeEnhance ? 0 : getEnhanceDowngradeChance(art.enhance) * (1 - (perks.downgradeReduction || 0));
+        const downgradeHint = downgradeChance > 0 ? `\u26A0 При провале: ${Math.round(downgradeChance * 100)}% шанс -1 уровня` : "\u2714 При провале уровень сохраняется";
         html += `
             <div class="enhance-section">
                 <div class="enhance-info">
                     <span class="enhance-chance ${enhanceChance >= 0.5 ? 'chance-good' : enhanceChance >= 0.25 ? 'chance-mid' : 'chance-low'}">Шанс: ${(enhanceChance * 100).toFixed(0)}%${failstackBonus}</span>
                     <span class="enhance-cost">Цена: ${enhanceCost.essence} эссенции + ${enhanceCost.dust} пыли</span>
+                    <span class="enhance-downgrade-hint" style="color:${downgradeChance > 0 ? '#cc6644' : '#6aea8a'}; font-size:0.85em">${downgradeHint}. Материалы расходуются.</span>
                     <span class="enhance-bonus-preview">${_enhancePreviewText(art)}</span>
                 </div>
                 <div class="enhance-buttons">
@@ -220,7 +243,9 @@ function _buildForgePanel() {
     // Слияние
     if (t < TRANSCEND_MAX && (t > 0 || !enhanceCost)) {
         const candidates = game.getFusionCandidates(art.id);
-        const cost = TRANSCEND_COST[t];
+        const baseCost = TRANSCEND_COST[t];
+        const discount = game.getActiveBodyPerks().fusionDiscount || 0;
+        const cost = { essence: Math.ceil(baseCost.essence * (1 - discount)), dust: Math.ceil(baseCost.dust * (1 - discount)) };
         const canAfford = game.daoEssence >= cost.essence && game.artifactDust >= cost.dust;
         const nextName = TRANSCEND_NAMES[t + 1];
         const nextColor = TRANSCEND_COLORS[t + 1];
@@ -262,7 +287,7 @@ function _enhancePreviewText(art) {
         const rare = ARTIFACT_RARE_EFFECTS[art.slot];
         let name = key;
         if (pool) { const f = pool.find(e => e.key === key); if (f) name = f.name; }
-        if (rare && rare.key === key) name = rare.name;
+        if (rare) { const rares = Array.isArray(rare) ? rare : [rare]; const f = rares.find(r => r.key === key); if (f) name = f.name; }
         const cur = Math.round(val * curMult * 10) / 10;
         const next = Math.round(val * nextMult * 10) / 10;
         parts.push(`${name}: ${cur} \u2192 ${next}`);
@@ -271,6 +296,7 @@ function _enhancePreviewText(art) {
 }
 
 function selectArtifactForForge(artifactId) {
+    if (_pendingDisassembleId) cancelDisassembleUI();
     _selectedArtifactId = (_selectedArtifactId === artifactId) ? null : artifactId;
     renderArtifacts();
 }
@@ -418,6 +444,13 @@ function fuseArtifactUI(keepId, consumeId) {
     updateUI();
 }
 
+function cancelDisassembleUI() {
+    if (_disassembleKeyHandler) document.removeEventListener("keydown", _disassembleKeyHandler);
+    _disassembleKeyHandler = null;
+    _pendingDisassembleId = null;
+    document.querySelector(".disassemble-overlay")?.remove();
+}
+
 function disassembleArtifactUI(artifactId, confirmed) {
     const art = game.artifacts.find(a => a.id === artifactId);
     if (!art) return;
@@ -425,8 +458,8 @@ function disassembleArtifactUI(artifactId, confirmed) {
     if (!confirmed) {
         const panel = document.querySelector(".artifact-forge-panel");
         if (!panel) return;
-        const old = panel.querySelector(".disassemble-overlay");
-        if (old) old.remove();
+        cancelDisassembleUI();
+        _pendingDisassembleId = artifactId;
         const reward = game.getDisassembleReward(art);
         const overlay = document.createElement("div");
         overlay.className = "disassemble-overlay";
@@ -438,23 +471,25 @@ function disassembleArtifactUI(artifactId, confirmed) {
             </div>
             <div class="disassemble-buttons">
                 <button class="btn btn-small btn-disassemble" onclick="disassembleArtifactUI('${artifactId}', true)">Разобрать</button>
-                <button class="btn btn-small btn-secondary" onclick="this.closest('.disassemble-overlay').remove()">Отмена</button>
+                <button class="btn btn-small btn-secondary" onclick="cancelDisassembleUI()">Отмена</button>
             </div>
         `;
         panel.appendChild(overlay);
+        overlay.querySelector(".btn-disassemble")?.focus();
         const keyHandler = (e) => {
-            if (e.key === "Enter") {
-                document.removeEventListener("keydown", keyHandler);
+            if (e.key === "Enter" && e.target?.closest?.(".disassemble-overlay") === overlay && !e.target?.closest?.("button")) {
+                e.preventDefault();
                 disassembleArtifactUI(artifactId, true);
             } else if (e.key === "Escape") {
-                document.removeEventListener("keydown", keyHandler);
-                overlay.remove();
+                cancelDisassembleUI();
             }
         };
+        _disassembleKeyHandler = keyHandler;
         document.addEventListener("keydown", keyHandler);
         return;
     }
 
+    cancelDisassembleUI();
     if (_selectedArtifactId === artifactId) _selectedArtifactId = null;
     game.disassembleArtifact(artifactId);
     renderArtifacts();
@@ -464,7 +499,7 @@ function disassembleArtifactUI(artifactId, confirmed) {
 function openBulkDisassembleMenu() {
     // Убрать старый попап
     const old = document.getElementById("bulk-disassemble-popup");
-    if (old) { old.remove(); return; }
+    if (old) { closeBulkDisassembleMenu(); return; }
 
     const tierOrder = ["common", "uncommon", "rare", "epic", "legendary"];
     const tierNamesRu = { common: "Смертный", uncommon: "Духовный", rare: "Мистический", epic: "Небесный", legendary: "Священный" };
@@ -478,14 +513,16 @@ function openBulkDisassembleMenu() {
         const count = game.artifacts.filter(a => {
             if ((a.enhance || 0) > 0) return false;
             if (ARTIFACT_SLOTS.some(s => game.equippedArtifacts[s]?.id === a.id)) return false;
-            return tierOrder.indexOf(a.tier) <= i;
+            const tierIdx = tierOrder.indexOf(a.tier);
+            return tierIdx >= 0 && tierIdx <= i;
         }).length;
         let totalDust = 0, totalEssence = 0;
         if (count > 0) {
             game.artifacts.filter(a => {
                 if ((a.enhance || 0) > 0) return false;
                 if (ARTIFACT_SLOTS.some(s => game.equippedArtifacts[s]?.id === a.id)) return false;
-                return tierOrder.indexOf(a.tier) <= i;
+                const tierIdx = tierOrder.indexOf(a.tier);
+                return tierIdx >= 0 && tierIdx <= i;
             }).forEach(a => {
                 const r = game.getDisassembleReward(a);
                 totalDust += r.dust;
@@ -508,19 +545,25 @@ function openBulkDisassembleMenu() {
             <div class="bulk-popup-header">Разбор артефактов</div>
             <div class="bulk-popup-hint">Экипированные и заточённые не затрагиваются</div>
             <div class="bulk-rows">${rows}</div>
-            <button class="btn btn-small btn-secondary bulk-popup-close" onclick="document.getElementById('bulk-disassemble-popup').remove()">Закрыть (Esc)</button>
+            <button class="btn btn-small btn-secondary bulk-popup-close" onclick="closeBulkDisassembleMenu()">Закрыть (Esc)</button>
         </div>
     `;
     document.body.appendChild(popup);
 
     const escHandler = (e) => {
         if (e.key === "Escape") {
-            document.removeEventListener("keydown", escHandler);
-            popup.remove();
+            closeBulkDisassembleMenu();
         }
     };
     document.addEventListener("keydown", escHandler);
     popup._escHandler = escHandler;
+}
+
+function closeBulkDisassembleMenu() {
+    const popup = document.getElementById("bulk-disassemble-popup");
+    if (!popup) return;
+    if (popup._escHandler) document.removeEventListener("keydown", popup._escHandler);
+    popup.remove();
 }
 
 function confirmBulkDisassemble(maxTier) {
@@ -529,7 +572,8 @@ function confirmBulkDisassemble(maxTier) {
     const targets = game.artifacts.filter(a => {
         if ((a.enhance || 0) > 0) return false;
         if (ARTIFACT_SLOTS.some(s => game.equippedArtifacts[s]?.id === a.id)) return false;
-        return tierOrder.indexOf(a.tier) <= maxIdx;
+        const tierIdx = tierOrder.indexOf(a.tier);
+        return tierIdx >= 0 && tierIdx <= maxIdx;
     });
     if (targets.length === 0) return;
 
@@ -541,11 +585,7 @@ function confirmBulkDisassemble(maxTier) {
     // Без лога — итог виден в UI
 
     // Закрыть попап и обновить
-    const popup = document.getElementById("bulk-disassemble-popup");
-    if (popup) {
-        if (popup._escHandler) document.removeEventListener("keydown", popup._escHandler);
-        popup.remove();
-    }
+    closeBulkDisassembleMenu();
     renderArtifacts();
     updateUI();
 }
@@ -563,12 +603,14 @@ function _getDaoHint() {
 }
 
 function renderFormations() {
+    if (deferUIRender(renderFormations)) return;
     const container = document.getElementById("formations-list");
     if (!container) return;
     container.innerHTML = "";
 
     const karmaFormSlots = game.prestige.karmaUpgrades.formationSlot || 0;
-    const maxSlots = MAX_FORMATION_SLOTS + (game.getActiveBodyPerks().formationSlots || 0) + karmaFormSlots;
+    const eraFormSlots = game.getEraFormationSlotBonus();
+    const maxSlots = MAX_FORMATION_SLOTS + (game.getActiveBodyPerks().formationSlots || 0) + karmaFormSlots + eraFormSlots;
     const selectedCount = game.selectedFormations.length;
 
     // До Золотого Ядра — скрыть полностью
@@ -614,8 +656,8 @@ function _renderFormationRow(formation, isSelected, maxSlots) {
     const atMax = level >= effectiveMax;
     const atAbsoluteMax = level >= formation.maxLevel;
     const cost = atMax ? null : game.getFormationUpgradeCost(formation.id);
-    const canBuy = isSelected && !atMax && cost !== null && game.stones >= cost;
-    const canSelect = !isSelected && game.selectedFormations.length < maxSlots;
+    const canBuy = !game.gameOver && isSelected && !atMax && cost !== null && game.stones >= cost;
+    const canSelect = !game.gameOver && !isSelected && game.selectedFormations.length < maxSlots;
 
     const perLevelText = _formationPerLevelText(formation);
     const currentText = level > 0 ? game._formatFormationEffect(formation, level) : "\u2014";
@@ -656,13 +698,13 @@ function _formationPerLevelText(formation) {
         demonReduction: "шанс демона",
         pillEffect: "эффект пилюль",
         karmaBonus: "карма",
-        expeditionSpeed: "время экспедиций",
+        expeditionSpeed: "скорость экспедиций",
         breakthroughBonus: "шанс прорыва",
         combatPower: "боевая мощь",
         dangerReward: "награды за опасность"
     };
     const name = effectNames[formation.effectKey] || formation.effectKey;
-    if (formation.effectKey === "expeditionSpeed" || formation.effectKey === "demonReduction") {
+    if (formation.effectKey === "demonReduction") {
         return `-${Math.round(formation.effectPerLevel * 100)}% ${name} за ур.`;
     }
     if (formation.effectKey === "breakthroughBonus") {
@@ -683,4 +725,3 @@ function selectFormationUI(formationId) {
     game.selectFormation(formationId);
     renderFormations();
 }
-

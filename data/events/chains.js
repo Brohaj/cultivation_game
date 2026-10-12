@@ -20,9 +20,9 @@ EVENT_CHAINS.push(
     {
         chainId: "merchant",
         step: 2,
-        text: "Торговец в чёрном плаще снова! На этот раз он предложил вам сделку: редкий артефакт за 30 камней. «Поверь, оно того стоит», — сказал он с усмешкой.",
+        text: "Торговец в чёрном плаще снова! На этот раз он предложил вам сделку: запечатанный свёрток за 30 камней. «Поверь, оно того стоит», — сказал он с усмешкой.",
         type: "event",
-        condition: (g) => g.flags.merchant_step === 1 && g.years - g.flags.merchant_year >= 20 && g.stones >= 30,
+        condition: (g) => g.flags.merchant_step === 1 && g.years - g.flags.merchant_year >= 15 && g.stones >= 30,
         effect: (g) => {
             g.stones -= 30;
             g.flags.merchant_step = 2;
@@ -33,9 +33,9 @@ EVENT_CHAINS.push(
     {
         chainId: "merchant",
         step: 3,
-        text: "Вы наконец вскрыли свёрток торговца. Внутри — древняя пилюля и записка: «Для того, кто не побоялся рискнуть». Пилюля оказалась невероятно мощной!",
+        text: "Вы наконец вскрыли свёрток торговца. Внутри — пять древних пилюль и записка: «Для того, кто не побоялся рискнуть». Пилюли сохранили силу за долгие годы!",
         type: "reward",
-        condition: (g) => g.flags.merchant_step === 2 && g.years - g.flags.merchant_year >= 10,
+        condition: (g) => g.flags.merchant_step === 2 && g.years - g.flags.merchant_year >= 5,
         effect: (g) => {
             g.flags.merchant_step = 99;
             g.pills += 5;
@@ -56,7 +56,7 @@ EVENT_CHAINS.push(
         effect: (g) => {
             g.flags.ancient_step = 1;
             g.flags.ancient_year = g.years;
-            return "Вы сохранили карту. Может быть, удастся найти остальные части.";
+            return "Вы сохранили карту. Не хватает её второй половины.";
         }
     },
     {
@@ -64,20 +64,21 @@ EVENT_CHAINS.push(
         step: 2,
         text: "Странствующий торговец продавал старые свитки. Среди них — вторая часть карты Мастера Юнь!",
         type: "event",
-        condition: (g) => g.flags.ancient_step === 1 && g.years - g.flags.ancient_year >= 30,
+        condition: (g) => g.flags.ancient_step === 1 && g.years - g.flags.ancient_year >= 20,
         effect: (g) => {
             g.flags.ancient_step = 2;
             g.flags.ancient_year = g.years;
-            g.stones -= Math.min(g.stones, 10);
-            return "Карта почти собрана. Осталась последняя часть. (-10 камней)";
+            const price = Math.min(g.stones, 10);
+            g.stones -= price;
+            return `Обе части карты у вас. Но последний знак пока не удаётся прочесть. (-${price} камней)`;
         }
     },
     {
         chainId: "ancient",
         step: 3,
-        text: "Во сне вам явился призрак старика. «Ты собрал мою карту... Иди к Пику Облачного Журавля. Я жду.» Вы проснулись в холодном поту.",
+        text: "Во сне вам явился призрак старика. «Ты собрал мою карту. Твоя ци раскроет последний знак. Иди к Пику Облачного Журавля. Я жду.» Вы проснулись в холодном поту.",
         type: "event",
-        condition: (g) => g.flags.ancient_step === 2 && g.years - g.flags.ancient_year >= 20,
+        condition: (g) => g.flags.ancient_step === 2 && g.years - g.flags.ancient_year >= 15,
         effect: (g) => {
             g.flags.ancient_step = 3;
             g.flags.ancient_year = g.years;
@@ -89,7 +90,7 @@ EVENT_CHAINS.push(
         step: 4,
         text: "У подножия Пика Облачного Журавля вас встретил каменный голем — страж наследия. Бой неизбежен!",
         type: "danger",
-        condition: (g) => g.flags.ancient_step === 3 && g.years - g.flags.ancient_year >= 15,
+        condition: (g) => g.flags.ancient_step === 3 && g.years - g.flags.ancient_year >= 10,
         effect: (g) => {
             // Если приключение "Пик Журавля" уже пройдено — голем побеждён автоматически
             if (g.completedAdventures && g.completedAdventures.includes("crane_peak")) {
@@ -120,7 +121,7 @@ EVENT_CHAINS.push(
         step: 5,
         text: "На вершине Пика вы нашли пещеру Мастера Юнь. Его призрак улыбнулся: «Достойный наследник». Он передал вам технику Восприятия Пустоты и исчез навсегда.",
         type: "reward",
-        condition: (g) => g.flags.ancient_step === 4 && g.years - g.flags.ancient_year >= 10,
+        condition: (g) => g.flags.ancient_step === 4 && g.years - g.flags.ancient_year >= 5 && g.realmIndex >= 6,
         effect: (g) => {
             g.flags.ancient_step = 99;
             g.learnTechnique("void_perception");
@@ -148,7 +149,7 @@ EVENT_CHAINS.push(
         step: 2,
         text: "Вы обнаружили тайный проход под залом совещаний. Там — следы демонической культивации!",
         type: "event",
-        condition: (g) => g.flags.sect_crisis_step === 1 && g.years - g.flags.sect_crisis_year >= 25,
+        condition: (g) => g.flags.sect_crisis_step === 1 && g.years - g.flags.sect_crisis_year >= 15,
         effect: (g) => {
             g.flags.sect_crisis_step = 2;
             g.flags.sect_crisis_year = g.years;
@@ -161,25 +162,20 @@ EVENT_CHAINS.push(
         step: 3,
         text: "Предатель раскрыт — Старейшина Лю! Он атакует вас, чтобы скрыть правду!",
         type: "danger",
-        condition: (g) => g.flags.sect_crisis_step === 2 && g.years - g.flags.sect_crisis_year >= 20,
+        condition: (g) => g.flags.sect_crisis_step === 2 && g.years - g.flags.sect_crisis_year >= 15,
         effect: (g) => {
             // Если приключение "Предательство Лю" уже пройдено — цепочка завершается
-            if (g.completedAdventures && g.completedAdventures.includes("elder_betrayal")) {
+            if (g.hasClaimedLiuSword()) {
                 g.flags.sect_crisis_step = 3;
                 g.flags.sect_crisis_year = g.years;
                 return "Старейшина Лю уже повержен. Секта в безопасности.";
             }
             const power = 20 + g.realmIndex * 4;
             if (g.getCombatPower() >= power) {
+                const sword = g.grantLiuSword();
                 g.flags.sect_crisis_step = 3;
                 g.flags.sect_crisis_year = g.years;
                 g.strength += 2;
-                // Меч Старейшины Лю — редкий артефакт
-                const sword = g.generateArtifact("rare", "weapon");
-                if (sword) {
-                    sword.name = "Меч Старейшины Лю";
-                    g.addArtifact(sword);
-                }
                 return `Вы победили Старейшину Лю! +2 сила.${sword ? ` Трофей: ${sword.name}!` : ""} Секта спасена!`;
             } else {
                 g.flags.sect_crisis_year = g.years;
@@ -197,7 +193,7 @@ EVENT_CHAINS.push(
         step: 4,
         text: "Мастер секты лично благодарит вас за спасение. Секта щедро вознаграждает верных.",
         type: "reward",
-        condition: (g) => g.flags.sect_crisis_step === 3 && g.years - g.flags.sect_crisis_year >= 10,
+        condition: (g) => g.flags.sect_crisis_step === 3 && g.years - g.flags.sect_crisis_year >= 5,
         effect: (g) => {
             g.flags.sect_crisis_step = 99;
             g.flags.coreDisciple = true;

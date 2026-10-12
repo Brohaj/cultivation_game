@@ -22,9 +22,8 @@ Object.assign(game, {
     // === ПРОВЕРКА УРОВНЯ СТАТА ===
 
     _checkStatLevelUp(stat) {
-        const needed = this.statXpNeeded(stat);
         let leveled = false;
-        while (this.activityXP[stat] >= needed) {
+        while (this.activityXP[stat] >= this.statXpNeeded(stat)) {
             this.activityXP[stat] -= this.statXpNeeded(stat);
             this[stat] += 1;
             leveled = true;
@@ -38,13 +37,49 @@ Object.assign(game, {
     },
 
     canBreakthrough() {
-        return this.qi >= this.qiNeeded() && this.realmIndex < REALMS.length - 1;
+        return !this.gameOver && !this.pendingRebirth && this.qi >= this.qiNeeded() && this.realmIndex < REALMS.length - 1;
     },
 
     // breakthrough() возвращает результат для UI-анимации
     // { result: "success"|"great"|"fail"|"demon"|"blocked", ... }
     breakthrough() {
         if (!this.canBreakthrough()) return { result: "none" };
+
+        // Проверяем доступ до броска шанса и любых потерь ресурсов.
+        // Каждый прорыв с реалма 3 требует ещё одного уровня Дао.
+        if (this.realmIndex >= 3) {
+            if (!this.sect) {
+                addLog(`Для прорыва необходимо вступить в секту и постичь Дао!`, "danger");
+                saveGame();
+                updateUI();
+                return { result: "blocked" };
+            }
+            const breakthroughsSinceDao = (this.realmIndex - 3) * SUB_LEVELS + (this.subLevel - 1);
+            const requiredDao = breakthroughsSinceDao + 1;
+            if (this.daoLevel < requiredDao) {
+                addLog(`Постижение Дао недостаточно! Уровень: ${this.daoLevel}, нужно: ${requiredDao}`, "danger");
+                saveGame();
+                updateUI();
+                return { result: "blocked" };
+            }
+        }
+
+        if (this.subLevel === SUB_LEVELS) {
+            const nextRealm = this.realmIndex + 1;
+            if (!this.meetsRealmRequirement(nextRealm)) {
+                const req = this.getRealmPrestigeRequirement(nextRealm);
+                addLog(`Небесный Барьер! Для входа в "${REALMS[nextRealm].name}" требуется:`, "danger");
+                if (req.rebirths) addLog(`  Перерождений: ${this.prestige.totalRebirths}/${req.rebirths}`, "danger");
+                if (req.karma) {
+                    const totalKarma = this.prestige.karma + this._getTotalKarmaSpent();
+                    addLog(`  Карма (всего): ${totalKarma}/${req.karma}`, "danger");
+                }
+                addLog("Ци сохранена. Накопите опыт через перерождения.", "system");
+                saveGame();
+                updateUI();
+                return { result: "blocked" };
+            }
+        }
 
         if (this.realmIndex >= 3) {
             const successChance = this.getBreakthroughChance();
@@ -179,27 +214,6 @@ Object.assign(game, {
             }
         }
 
-        // Постижение Дао — гейт для ЛЮБОГО прорыва с реалма 3+
-        // Каждый прорыв (подуровень и реалм) требует +1 уровень Дао
-        if (this.realmIndex >= 3) {
-            if (!this.sect) {
-                addLog(`Для прорыва необходимо вступить в секту и постичь Дао!`, "danger");
-                saveGame();
-                updateUI();
-                return { result: "blocked" };
-            }
-            // Считаем сколько прорывов сделано с момента реалма 3
-            // Реалм 3 sub 1 = 0 прорывов, sub 2 = 1, ..., реалм 4 sub 1 = 4, и т.д.
-            const breakthroughsSinceDao = (this.realmIndex - 3) * SUB_LEVELS + (this.subLevel - 1);
-            const requiredDao = breakthroughsSinceDao + 1; // следующий прорыв требует на 1 больше
-            if (this.daoLevel < requiredDao) {
-                addLog(`Постижение Дао недостаточно! Уровень: ${this.daoLevel}, нужно: ${requiredDao}`, "danger");
-                saveGame();
-                updateUI();
-                return { result: "blocked" };
-            }
-        }
-
         this.qi = 0;
         this.totalBreakthroughs++;
         if (this.flags.prophetic_dream) delete this.flags.prophetic_dream;
@@ -220,23 +234,6 @@ Object.assign(game, {
             updateUI();
             return { result: "success" };
         } else {
-            const nextRealm = this.realmIndex + 1;
-
-            // Небесный Барьер — проверка prestige для высших реалмов
-            if (!this.meetsRealmRequirement(nextRealm)) {
-                const req = this.getRealmPrestigeRequirement(nextRealm);
-                addLog(`Небесный Барьер! Для входа в "${REALMS[nextRealm].name}" требуется:`, "danger");
-                if (req.rebirths) addLog(`  Перерождений: ${this.prestige.totalRebirths}/${req.rebirths}`, "danger");
-                if (req.karma) {
-                    const totalKarma = this.prestige.karma + this._getTotalKarmaSpent();
-                    addLog(`  Карма (всего): ${totalKarma}/${req.karma}`, "danger");
-                }
-                addLog("Ци сохранена. Накопите опыт через перерождения.", "system");
-                saveGame();
-                updateUI();
-                return { result: "blocked" };
-            }
-
             const oldMaxAge = this.maxAge();
             this.realmIndex++;
             this._maxRealmThisLife = Math.max(this._maxRealmThisLife || 0, this.realmIndex);
@@ -288,7 +285,7 @@ Object.assign(game, {
         if (this.worldEvent && this.worldEvent.modifiers.pillEffect) mult *= this.worldEvent.modifiers.pillEffect;
         mult *= 1 + this.getSectBonus("pillEffect");
         mult *= 1 + this.getArtifactBonus("pillEffect") * 0.01;
-        mult *= 1 + this.getFormationBonus("pillEffect") * 0.05;
+        mult *= 1 + this.getFormationBonus("pillEffect");
         return mult;
     },
 
@@ -299,9 +296,9 @@ Object.assign(game, {
         return Math.floor(base * this._getPillMult());
     },
 
-    // Тир 1: Пилюля Ци (+5% ци)
+    // Тир 1: Пилюля Ци (+500 ци × бонусы)
     usePill() {
-        if (this.pills <= 0 || this.gameOver) return;
+        if (this.pills <= 0 || this.gameOver || this.qi >= this.qiNeeded()) return;
         this.pills--;
         this.flags.pillsUsedTotal = (this.flags.pillsUsedTotal || 0) + 1;
         const gain = this.getPillQi(1);
@@ -309,9 +306,9 @@ Object.assign(game, {
         updateUI();
     },
 
-    // Тир 2: Очищенная Пилюля (+15% ци)
+    // Тир 2: Очищенная Пилюля (+5000 ци × бонусы)
     useRefinedPill() {
-        if ((this.refinedPills || 0) <= 0 || this.gameOver) return;
+        if ((this.refinedPills || 0) <= 0 || this.gameOver || this.qi >= this.qiNeeded()) return;
         this.refinedPills--;
         const gain = this.getPillQi(2);
         this.qi = Math.min(this.qi + gain, this.qiNeeded());
@@ -319,7 +316,7 @@ Object.assign(game, {
         updateUI();
     },
 
-    // Тир 3: Духовная Пилюля (+10% ци, +8% дао, +5% к следующему прорыву)
+    // Тир 3: Духовная Пилюля (+50000 ци × бонусы, +8% дао, +5% к следующему прорыву)
     useSpiritualPill() {
         if ((this.spiritualPills || 0) <= 0 || this.gameOver) return;
         this.spiritualPills--;
@@ -341,7 +338,7 @@ Object.assign(game, {
         updateUI();
     },
 
-    // Тир 4: Небесная Пилюля (+1 перманентный стат, наименьший из 3)
+    // Тир 4: Небесная Пилюля (+1 стат, наименьший из 3)
     useHeavenlyPill() {
         if ((this.heavenlyPills || 0) <= 0 || this.gameOver) return;
         this.heavenlyPills--;
@@ -357,10 +354,7 @@ Object.assign(game, {
         stats.sort((a, b) => a.val - b.val);
         const target = stats[0];
         this[target.key]++;
-        // Сохранить в престиж для перманентности
-        if (!this.prestige.heavenlyStats) this.prestige.heavenlyStats = {};
-        this.prestige.heavenlyStats[target.key] = (this.prestige.heavenlyStats[target.key] || 0) + 1;
-        addLog(`Небесная пилюля: +${qiGain} ци, +1 ${target.name} (перманентно)!`, "breakthrough");
+        addLog(`Небесная пилюля: +${qiGain} ци, +1 ${target.name}!`, "breakthrough");
         updateUI();
     },
 
@@ -374,6 +368,7 @@ Object.assign(game, {
         if (!field || !func) return;
         const actual = Math.min(count, this[field] || 0);
         for (let i = 0; i < actual; i++) {
+            if (tier <= 2 && this.qi >= this.qiNeeded()) break;
             this[func]();
         }
     },
@@ -389,7 +384,7 @@ Object.assign(game, {
         }
     },
 
-    // Рефайн: 5 текущего тира + эссенция → 1 следующего
+    // Рефайн: 5 текущего тира + пыль → 1 следующего
     getRefineCost(fromTier) {
         return [5, 20, 100][fromTier - 1] || 0; // пыль: тир 1→2: 5, 2→3: 20, 3→4: 100
     },
@@ -401,6 +396,7 @@ Object.assign(game, {
     },
 
     canRefinePill(fromTier) {
+        if (this.gameOver) return false;
         const fields = ["pills", "refinedPills", "spiritualPills", "heavenlyPills"];
         const fromField = fields[fromTier - 1];
         const toField = fields[fromTier];
@@ -444,60 +440,83 @@ Object.assign(game, {
 
     // getInsightCost() определён в formulas.js
 
-    buyInsight() {
-        const cost = this.getInsightCost();
-        if (this.daoEssence < cost || this.gameOver) return;
-        if (this.equippedTechniques.length === 0) {
-            addLog("Нет экипированных техник для озарения.", "system");
-            return;
-        }
-        this.daoEssence -= cost;
-        this._insightUses = (this._insightUses || 0) + 1;
-        // Постепенное добавление XP через очередь (10 тиков)
-        const INSIGHT_TICKS = 10;
-        let totalXP = 0;
-        for (const techId of this.equippedTechniques) {
-            const tech = TECHNIQUES.find(t => t.id === techId);
-            if (!tech) continue;
-            const lvl = this.techLevels[techId] || 1;
-            if (lvl >= tech.maxLevel) continue;
-            const xpGain = this.getInsightXpGain(techId);
-            totalXP += xpGain;
-            if (!this._pendingInsightXP) this._pendingInsightXP = {};
-            this._pendingInsightXP[techId] = (this._pendingInsightXP[techId] || 0) + xpGain;
-        }
-        this._insightTicksLeft = INSIGHT_TICKS;
-        const nextCost = this.getInsightCost();
-        addLog(`Свиток Озарения! +${Math.floor(totalXP)} XP ко всем техникам (постепенно). След.: ${nextCost} эссенции`, "reward");
-        updateUI();
-    },
-
-    // Вызывается из lifecycle каждый тик для постепенного добавления insight XP
-    _tickInsightXP() {
-        if (!this._pendingInsightXP || !this._insightTicksLeft) return;
-        this._insightTicksLeft--;
-        for (const techId of Object.keys(this._pendingInsightXP)) {
-            const remaining = this._pendingInsightXP[techId];
-            if (remaining <= 0) continue;
-            const tech = TECHNIQUES.find(t => t.id === techId);
-            if (!tech) continue;
-            const portion = this._insightTicksLeft <= 0
-                ? remaining
-                : Math.ceil(remaining / (this._insightTicksLeft + 1));
-            this._pendingInsightXP[techId] -= portion;
-            this.techXP[techId] = (this.techXP[techId] || 0) + portion;
-            // Level up
-            while (this.techXP[techId] >= this.techXpNeeded(techId)) {
-                const needed = this.techXpNeeded(techId);
-                this.techXP[techId] -= needed;
-                this.techLevels[techId] = (this.techLevels[techId] || 1) + 1;
-                if (this.techLevels[techId] >= tech.maxLevel) addLog(`Техника "${tech.name}" достигла максимума! Вознесение доступно.`, "breakthrough");
-                if (tech.effects.timeSpeed) this.refreshTimers();
+    // Чистый предпросмотр последовательных покупок: новый уровень изменяет
+    // выдачу следующего Озарения. Покупки прекращаются, когда все техники max.
+    getInsightPurchaseInfo(count = 1) {
+        const result = { count: 0, cost: 0, xpGains: {} };
+        if (!Number.isSafeInteger(count) || count <= 0 || count > 1000) return result;
+        const training = this.equippedTechniques.map(id => {
+            const tech = TECHNIQUES.find(t => t.id === id);
+            return tech ? { tech, level: this.techLevels[id] || 1, xp: this.techXP[id] || 0 } : null;
+        }).filter(Boolean);
+        for (let i = 0; i < count; i++) {
+            if (!training.some(t => t.level < t.tech.maxLevel)) break;
+            result.cost += this.getInsightCost((this._insightUses || 0) + result.count);
+            result.count++;
+            for (const t of training) {
+                if (t.level >= t.tech.maxLevel) continue;
+                const gain = this.getInsightXpGain(t.tech.id, t.level);
+                result.xpGains[t.tech.id] = (result.xpGains[t.tech.id] || 0) + gain;
+                t.xp += gain;
+                while (t.level < t.tech.maxLevel && t.xp >= this.techXpNeeded(t.tech.id, t.level)) {
+                    t.xp -= this.techXpNeeded(t.tech.id, t.level);
+                    t.level++;
+                }
             }
         }
-        if (this._insightTicksLeft <= 0) {
-            this._pendingInsightXP = null;
+        return result;
+    },
+
+    canBuyInsight(count = 1) {
+        if (this.gameOver || this.pendingRebirth) return false;
+        const purchase = this.getInsightPurchaseInfo(count);
+        return purchase.count > 0 && this.daoEssence >= purchase.cost;
+    },
+
+    _grantTechniqueXP(techId, gain) {
+        const tech = TECHNIQUES.find(t => t.id === techId);
+        if (!tech || !Number.isFinite(gain) || gain <= 0) return false;
+        this.techXP[techId] = (this.techXP[techId] || 0) + gain;
+        while ((this.techLevels[techId] || 1) < tech.maxLevel && this.techXP[techId] >= this.techXpNeeded(techId)) {
+            this.techXP[techId] -= this.techXpNeeded(techId);
+            this.techLevels[techId] = (this.techLevels[techId] || 1) + 1;
+            if (this.techLevels[techId] >= tech.maxLevel) addLog(`Техника "${tech.name}" достигла максимума! Вознесение доступно.`, "breakthrough");
+            if (tech.effects.timeSpeed) this.refreshTimers();
         }
+        return true;
+    },
+
+    buyInsight(count = 1) {
+        if (this.gameOver || this.pendingRebirth) return false;
+        this._flushPendingInsightXP();
+        const purchase = this.getInsightPurchaseInfo(count);
+        if (purchase.count <= 0 || this.daoEssence < purchase.cost) return false;
+        this.daoEssence -= purchase.cost;
+        this._insightUses = (this._insightUses || 0) + purchase.count;
+        let totalXP = 0;
+        for (const [techId, gain] of Object.entries(purchase.xpGains)) {
+            this._grantTechniqueXP(techId, gain);
+            totalXP += gain;
+        }
+        const nextCost = this.getInsightCost();
+        addLog(`Озарение ×${purchase.count}: +${totalXP} XP экипированным техникам. Потрачено ${purchase.cost} эссенции. След.: ${nextCost}`, "reward");
+        updateUI();
+        return true;
+    },
+
+    // Совместимость со старыми сейвами: оплаченный остаток начисляется один
+    // раз, включая избыток XP на максимальном уровне. Новые очереди не создаются.
+    _flushPendingInsightXP() {
+        const pending = this._pendingInsightXP;
+        this._pendingInsightXP = null;
+        this._insightTicksLeft = 0;
+        if (!pending) return false;
+        for (const [techId, gain] of Object.entries(pending)) this._grantTechniqueXP(techId, gain);
+        return true;
+    },
+
+    _tickInsightXP() {
+        if (this._flushPendingInsightXP() && typeof renderTechniques === "function") renderTechniques();
     },
 
 });
