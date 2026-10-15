@@ -7,11 +7,11 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node test-all.js",
-    "test:browser": "node test-browser-current-profile.js && node test-browser-current-runtime-ui.js && node test-browser-current-sect-ui.js && node test-browser-disciples.js && node test-browser-current-karma-ui.js && node test-browser-current-actions.js && node test-browser-decisions.js && node test-browser-karma-paths.js && node test-browser-pause.js",
-    "balance:disciples": "node simulate-disciples.js",
-    "balance:expeditions": "node simulate-expedition-value.js",
-    "balance:simulate": "node simulate-balance.js"
+    "test": "node tests/test-all.js",
+    "test:browser": "node tests/test-browser-current-profile.js && node tests/test-browser-current-runtime-ui.js && node tests/test-browser-current-sect-ui.js && node tests/test-browser-disciples.js && node tests/test-browser-current-karma-ui.js && node tests/test-browser-current-actions.js && node tests/test-browser-decisions.js && node tests/test-browser-karma-paths.js && node tests/test-browser-pause.js",
+    "balance:disciples": "node tools/simulate-disciples.js",
+    "balance:expeditions": "node tools/simulate-expedition-value.js",
+    "balance:simulate": "node tools/simulate-balance.js"
   },
   "repository": {
     "type": "git",
