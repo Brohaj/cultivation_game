@@ -20,27 +20,29 @@ function renderRootSelection() {
     const available = game.getAvailableRoots();
     const availableIds = available.map(r => r.id);
     const minRootTier = game.getMinRootTier();
-    const isFirstLife = (game.prestige.totalRebirths || 0) === 0;
+    const totalRebirths = game.prestige.totalRebirths || 0;
+    const qualifiedRebirths = game.getQualifiedRebirths();
+    const isFirstLife = totalRebirths === 0;
 
     if (isFirstLife && availableIds.includes("common")) {
         // Первая жизнь — только обычный корень, без выбора
         const common = SPIRITUAL_ROOTS.find(r => r.id === "common");
         resultDiv.innerHTML = `
-            <p class="modal-first-life">Вы — обычный человек. Ваш духовный корень предопределён судьбой.</p>
+            <p class="modal-first-life">Духовный корень — талант вашего персонажа: он определяет скорость накопления ци и стихии. В первой жизни доступен обычный корень.</p>
             <div class="root-card root-${common.tier} selected" style="border-color: ${common.color}">
                 <h3 style="color: ${common.color}">${common.name}</h3>
                 <p class="root-desc">${common.description}</p>
-                <p class="root-mult">Множитель ци: x${common.qiMultiplier.toFixed(2)}</p>
+                <p class="root-mult">Скорость накопления ци: ×${common.qiMultiplier.toFixed(2)}</p>
             </div>
         `;
         const acceptBtn = document.getElementById("btn-accept-root");
         acceptBtn.style.display = "block";
-        acceptBtn.textContent = "Принять судьбу";
+        acceptBtn.textContent = "Начать первую жизнь";
         acceptBtn.onclick = () => acceptRoot("common");
     } else {
         // Перерождение — выбор из доступных корней
         // Показываем только: разблокированные + первые заблокированные как тизер
-        let html = `<p class="modal-rebirth-hint">Накопленная мудрость прошлых жизней открывает новые пути. Выберите духовный корень.</p>`;
+        let html = `<p class="modal-rebirth-hint">Выберите талант для нового пути. Более сильный корень ускоряет накопление ци; его стихии помогают совместимым техникам. Выбор действует до следующего перерождения.</p><p class="modal-rebirth-hint root-life-progress">Всего перерождений: ${totalRebirths}. Зачётных жизней: ${qualifiedRebirths}. При старте на Золотом Ядре или выше для зачёта нужен хотя бы один успешный прорыв.</p>`;
         html += `<div class="root-grid">`;
 
         const tierNames = { trash: "Ничтожный", common: "Смертный", uncommon: "Духовный", rare: "Мистический", epic: "Небесный", legendary: "Священный", divine: "Божественный" };
@@ -58,7 +60,7 @@ function renderRootSelection() {
         for (const root of SPIRITUAL_ROOTS) {
             const unlocked = availableIds.includes(root.id);
             const rootTierIdx = tierOrder.indexOf(root.tier);
-            // Низшие корни исключены происхождением, а не ожидают открытия.
+            // Корни ниже минимума нового происхождения не предлагаются даже как тизеры.
             if (minRootTier && rootTierIdx < TIER_ORDER[minRootTier]) continue;
 
             if (!unlocked) {
@@ -80,7 +82,7 @@ function renderRootSelection() {
                 <h3 style="color: ${root.color}">${root.name}</h3>
                 <p class="root-tier-label" style="color: ${root.color}">${tierNames[root.tier] || root.tier}</p>
                 <p class="root-desc">${root.description}</p>
-                <p class="root-mult">Ци: x${root.qiMultiplier.toFixed(2)}</p>
+                <p class="root-mult">Накопление ци: ×${root.qiMultiplier.toFixed(2)}</p>
                 ${elemCount > 0 ? `<p class="root-elem-count">${elemCount} ${elemCount === 1 ? "элемент" : elemCount < 5 ? "элемента" : "элементов"}</p>` : ""}
                 ${root.statBonus && Object.keys(root.statBonus).length > 0 ? `<p class="root-stat-bonus">${Object.entries(root.statBonus).map(([k, v]) => `+${v} ${k === "spirit" ? "дух" : k === "strength" ? "сила" : k === "luck" ? "удача" : k}`).join(", ")}</p>` : ""}
             </div>`;
@@ -122,7 +124,7 @@ function selectRootUI(rootId) {
             const allElements = typeof ELEMENTS !== "undefined" ? ELEMENTS : [];
             elemContainer.style.display = "";
             elemContainer.innerHTML = `
-                <div class="element-choice-header">Выберите элементы (до ${maxElements}) или оставьте пустым для случайного выбора:</div>
+                <div class="element-choice-header">Выберите до ${maxElements} стихий. Если ничего не выбрать, они определятся случайно:</div>
                 <div class="element-choice-grid">
                     ${allElements.map(e => {
                         const isUnlocked = unlocked.includes(e.id);
@@ -134,7 +136,7 @@ function selectRootUI(rootId) {
                         </button>`;
                     }).join("")}
                 </div>
-                <div class="element-choice-hint" id="element-choice-hint">Выбрано: 0/${maxElements} (рандом)</div>
+                <div class="element-choice-hint" id="element-choice-hint">Выбрано: 0/${maxElements} · случайные стихии</div>
             `;
         } else {
             elemContainer.style.display = "none";
@@ -173,7 +175,7 @@ function toggleElementChoice(elementId, maxElements) {
     if (hint) {
         hint.textContent = _selectedElements.length > 0
             ? `Выбрано: ${_selectedElements.length}/${maxElements}`
-            : `Выбрано: 0/${maxElements} (рандом)`;
+            : `Выбрано: 0/${maxElements} · случайные стихии`;
     }
 }
 
@@ -189,28 +191,7 @@ function acceptRoot(rootId) {
     game.name = rawName || "Культиватор";
 
     document.getElementById("root-modal").classList.remove("active");
-    game.learnTechnique("basic_breathing");
-
-    // Наследие Предков: вознести basic_breathing до целевого тира
-    const ancestorLevel = game.prestige.karmaUpgrades.ancestorLegacy || 0;
-    if (ancestorLevel > 0) {
-        const tierOrder = ["common", "uncommon", "rare", "epic", "legendary"];
-        const targetTier = tierOrder[ancestorLevel] || "uncommon";
-        const tech = TECHNIQUES.find(t => t.id === "basic_breathing");
-        if (tech) {
-            const currentTierIdx = tierOrder.indexOf(tech.tier);
-            const targetTierIdx = tierOrder.indexOf(targetTier);
-            if (targetTierIdx > currentTierIdx) {
-                tech.tier = targetTier;
-                game.techAscendedTiers = game.techAscendedTiers || {};
-                game.techAscendedTiers["basic_breathing"] = targetTier;
-                const ascendNames = tech.ascendNames || {};
-                if (ascendNames[targetTier]) tech.name = ascendNames[targetTier];
-                const ascendDescs = tech.ascendDescriptions || {};
-                if (ascendDescs[targetTier]) tech.description = ascendDescs[targetTier];
-            }
-        }
-    }
+    const startingTechnique = game.learnStartingTechnique();
 
     addLog(`${game.name} начинает путь культивации.`, "system");
     addLog(`Ваш духовный корень: ${root.name}`, "breakthrough");
@@ -221,7 +202,7 @@ function acceptRoot(rootId) {
     if (elemNames.length > 0) {
         addLog(`Элементы: ${elemNames.join(", ")}`, "system");
     }
-    addLog("Изучена техника: Базовая Техника Дыхания", "reward");
+    addLog(`Изучена техника: ${startingTechnique.name}`, "reward");
 
     // Показать вступление только при первой жизни
     if (game.prestige.totalRebirths === 0) {
@@ -244,22 +225,27 @@ function closeIntroModal() {
 // === ВСТУПЛЕНИЕ ===
 // === ПАУЗА ===
 
+function _syncPauseButton() {
+    const btn = document.getElementById('btn-pause');
+    if (!btn) return;
+    btn.textContent = game._paused ? '\u25B6 Продолжить' : '\u23F8 Пауза';
+    btn.classList.toggle('btn-pause-active', !!game._paused);
+    btn.disabled = !!(game.gameOver || game.pendingRebirth);
+}
+
 function togglePause() {
     const btn = document.getElementById("btn-pause");
-    if (!btn) return;
+    if (!btn || game.gameOver || game.pendingRebirth) return;
     if (game._paused) {
         game.start(); // start() сам сбрасывает _paused и пересоздаёт таймеры
-        btn.textContent = "\u23F8 Пауза";
-        btn.classList.remove("btn-pause-active");
         addLog("Игра возобновлена.", "system");
     } else {
-        game._paused = true;
-        game.stop();
+        game.pause();
         saveGame();
-        btn.textContent = "\u25B6 Продолжить";
-        btn.classList.add("btn-pause-active");
         addLog("Игра на паузе.", "system");
     }
+    _syncPauseButton();
+    updateUI();
 }
 
 function playIntro() {
@@ -275,6 +261,20 @@ function playIntro() {
 
 let selectedRebirthBody = "peasant";
 
+function _v2BodyAscensionDescription(ascension) {
+    return ascension.desc
+        .replace(/статам/g, "характеристикам")
+        .replace(/демон жрёт 50% статов/g, "при поражении от внутреннего демона теряется 50% характеристик")
+        .replace(/КД/g, "ожидание")
+        .replace(/авто-рефайн пилюль/g, "автоматическая очистка пилюль")
+        .replace(/тир артефактов/g, "качество артефактов")
+        .replace(/тир \+/g, "качество артефактов +")
+        .replace(/экспедиций/g, "походов")
+        .replace(/авто-экспедиции/g, "автоматические походы")
+        .replace(/старт с ([123]) ступени/g, (_, index) => `старт: ${REALMS[Number(index)].name}`)
+        .replace(/старт со ([123]) ступени/g, (_, index) => `старт: ${REALMS[Number(index)].name}`);
+}
+
 function showRebirthModal(naturalDeath) {
     const pending = game.beginRebirth(naturalDeath);
     selectedRebirthBody = pending.bodyId || "peasant";
@@ -283,7 +283,7 @@ function showRebirthModal(naturalDeath) {
 }
 
 // Обычная загрузка и импорт одинаково возобновляют незавершённый выбор.
-function resumeLoadedGame() {
+function resumeLoadedGame(keepPaused = false) {
     document.getElementById("rebirth-modal")?.classList.remove("active");
     document.getElementById("root-modal")?.classList.remove("active");
     if (game.pendingRebirth) {
@@ -292,32 +292,37 @@ function resumeLoadedGame() {
         if (!game.gameOver) {
             if (!game.spiritualRoot) {
                 showSpiritualRootModal();
+            } else if (game._paused || keepPaused) {
+                game.pause();
             } else {
                 game.start();
             }
         }
     }
+    _syncPauseButton();
     updateUI();
 }
 
-// Запомнить открытые секции аккордеона
+// Совместимость с обновлением содержимого: основные разделы всегда открыты.
 function _saveAccordionState() {
     const state = {};
     document.querySelectorAll(".rebirth-accordion").forEach((el, i) => {
-        state[i] = el.classList.contains("open");
+        state[i] = true;
+    });
+    state.details = {};
+    document.querySelectorAll("details[data-rebirth-detail]").forEach(el => {
+        state.details[el.dataset.rebirthDetail] = el.open;
     });
     return state;
 }
 function _restoreAccordionState(state) {
-    if (!state) return;
-    document.querySelectorAll(".rebirth-accordion").forEach((el, i) => {
+    document.querySelectorAll(".rebirth-accordion").forEach(el => {
         const body = el.querySelector(".rebirth-accordion-body");
-        const arrow = el.querySelector(".accordion-arrow");
-        if (!body || !arrow) return;
-        const shouldBeOpen = state[i] !== undefined ? state[i] : el.classList.contains("open");
-        body.style.display = shouldBeOpen ? "block" : "none";
-        arrow.innerHTML = shouldBeOpen ? "&#9660;" : "&#9654;";
-        el.classList.toggle("open", shouldBeOpen);
+        if (body) body.style.display = "block";
+        el.classList.add("open");
+    });
+    document.querySelectorAll("details[data-rebirth-detail]").forEach(el => {
+        if (state?.details && state.details[el.dataset.rebirthDetail] !== undefined) el.open = state.details[el.dataset.rebirthDetail];
     });
 }
 
@@ -327,28 +332,45 @@ function renderRebirthContent() {
     const karmaEarned = game.pendingRebirth ? game.pendingRebirth.karmaEarned : 0;
     const naturalDeath = !!game.pendingRebirth?.naturalDeath;
 
-    let html = `<h2>Перерождение</h2>`;
+    let html = `<h2>Рассеивание культивации</h2>`;
     const noKarma = karmaEarned === 0 && game.realmIndex < 3;
-    html += `<p class="rebirth-intro">${game.gameOver ? "Ваша жизнь подошла к концу..." : "Вы рассеиваете свою культивацию, жертвуя силу ради нового начала..."} ${noKarma ? '<span style="color:#ee7a7a">Душа слишком слаба для накопления кармы. Достигните Золотого Ядра (реалм 3), чтобы получать карму.</span>' : "Накопленная карма откроет новые возможности."}</p>`;
+    html += `<p class="rebirth-intro">${naturalDeath ? "Эта жизнь завершена. Впереди новый виток пути." : "Вы рассеиваете накопленную культивацию, чтобы начать новую жизнь."} ${noKarma ? '<span class="adventure-check-fail">Карма начисляется начиная с Золотого Ядра. За эту жизнь кармы нет.</span>' : "Карму можно потратить на постоянные улучшения."} Выберите происхождение нового персонажа и нажмите «Начать новый путь».</p>`;
+
+    const currentPerks = game.getActiveBodyPerks();
+    const carryover = currentPerks.carryOver || 0;
+    const nextBody = REBIRTH_BODIES.find(body => body.id === selectedRebirthBody);
+    const nextBodyAscension = BODY_ASCENSIONS[selectedRebirthBody]?.[game.getBodyAscensionLevel(selectedRebirthBody) - 1];
+    // reset() применяет бесплатную Память Артефактов уже от нового происхождения.
+    const nextBodyFreeLevel = nextBodyAscension?.perkUpgrade?.freeUpgradeLevel ?? (nextBody?.perk === "arhatWisdom" ? 1 : 0);
+    const purchasedMemoryLevel = game.prestige.karmaUpgrades.artifactMemory || 0;
+    const artifactMemoryLimit = purchasedMemoryLevel + nextBodyFreeLevel;
+    const transferParts = [];
+    if (carryover) transferParts.push(`${Math.floor(game.artifactDust * carryover)} пыли и ${Math.floor(game.daoEssence * carryover)} эссенции благодаря нынешнему телу`);
+    if (currentPerks.carryArtifacts) transferParts.push(`до ${currentPerks.carryArtifacts} лучших артефактов благодаря нынешнему телу`);
+    if (artifactMemoryLimit) transferParts.push(`до ${artifactMemoryLimit} экипированных артефактов по «Памяти Артефактов»${nextBodyFreeLevel ? ` (${purchasedMemoryLevel} купленных уровней + ${nextBodyFreeLevel} бесплатных от выбранного происхождения «${nextBody.name}»)` : ""}`);
+    if (currentPerks.keepFailstacks) transferParts.push("бонус шанса от неудачной заточки");
+    html += `<div class="v2-rebirth-summary"><p><strong>Сохранится:</strong> карма, купленные улучшения, достижения и доступ к открытым корням, телам и формациям.</p>
+        <p><strong>Начнётся заново:</strong> ступень, характеристики, изученные техники, формации, секта, её путь (Дао) и вклад. Новое тело и улучшения дадут стартовые бонусы.</p>
+        <p><strong>Ресурсы и артефакты:</strong> сбрасываются${transferParts.length ? `, кроме переноса: ${transferParts.join("; ")}` : ". Перенос артефактов открывается улучшениями и особенностями тел"}.</p></div>`;
 
     // Карма
     html += `<div class="karma-summary">`;
-    html += `<div class="karma-earned">Карма этой жизни: <strong>+${karmaEarned}</strong>${naturalDeath ? ' <span style="color:#6aea8a">(+50% Мудрость Полной Жизни)</span>' : ''}</div>`;
+    html += `<div class="karma-earned">Получено за эту жизнь: <strong>+${karmaEarned} кармы</strong>${naturalDeath ? ' <span class="v2-muted">(включая +50% за полную жизнь)</span>' : ''}</div>`;
     const sectKarmaParts = game.sect ? ` Основа от секты: +${game.getSectRankIndex() + game.getSectContributionKarma()} до множителей.` : "";
     const seedKarmaParts = game.flags.ancient_tree_seed || game.flags.dao_tree_seed
         ? " Семя: ещё ×1.30 к итоговой карме; два семени не складываются." : "";
-    html += `<div class="karma-breakdown">Карма учитывает ступень, годы жизни, техники, достижения и прорывы после Золотого Ядра, затем бонусы тела, формаций, артефактов и секты.${sectKarmaParts}${naturalDeath ? " Полная жизнь: ×1.5." : ""}${seedKarmaParts}</div>`;
+    html += `<details class="v2-details" data-rebirth-detail="karma"><summary>Откуда взялась карма</summary><p>Учитываются ступень, возраст, изученные техники, достижения и прорывы после Золотого Ядра. Тело, формации, артефакты и секта могут повысить награду.${sectKarmaParts}${naturalDeath ? " Жизнь до естественной смерти: ×1,5." : ""}${seedKarmaParts}</p></details>`;
     html += `<div class="karma-total">Доступно кармы: <strong id="karma-available">${game.prestige.karma}</strong></div>`;
     html += `</div>`;
 
-    // Кармические улучшения (сворачиваемая секция)
+    // Кармические улучшения — всегда открытый раздел.
     const totalUpgrades = KARMA_UPGRADES.length;
     const maxedUpgrades = KARMA_UPGRADES.filter(u => (game.prestige.karmaUpgrades[u.id] || 0) >= u.maxLevel).length;
     html += `<div class="rebirth-accordion open">
-        <div class="rebirth-accordion-header" onclick="toggleRebirthSection(this)">
-            <span class="accordion-arrow">&#9660;</span> Кармические Улучшения <span class="accordion-hint">(${maxedUpgrades}/${totalUpgrades})</span>
+        <div class="rebirth-accordion-header" role="heading" aria-level="3" style="cursor:default">
+            Постоянные улучшения за карму <span class="accordion-hint">(${maxedUpgrades}/${totalUpgrades})</span>
         </div>
-        <div class="rebirth-accordion-body"><div class="karma-upgrades-grid">`;
+        <div class="rebirth-accordion-body"><p class="empty-msg">Расходуют карму. Стартовые бонусы применятся в новой жизни; покупки сохраняются после следующих перерождений.</p><div class="karma-upgrades-grid">`;
     for (const u of KARMA_UPGRADES) {
         const level = game.prestige.karmaUpgrades[u.id] || 0;
         const atMax = level >= u.maxLevel;
@@ -358,9 +380,9 @@ function renderRebirthContent() {
         const lockHint = locked && u.requirementHint ? u.requirementHint : "";
         html += `<div class="karma-upgrade ${atMax ? "maxed" : ""} ${locked ? "locked" : ""} ${!canAfford && !atMax && !locked ? "cant-afford" : ""}">
             <div class="ku-name">${u.name}</div>
-            <div class="ku-desc">${u.description}${level > 0 && u.effect && u.effectMultiplier ? ` [сейчас: ×${Math.pow(u.effectMultiplier, level)}]` : ""}</div>
+            <div class="ku-desc">${u.description}${level > 0 && u.effect && u.effectMultiplier ? ` Сейчас: ${u.effect.stones * Math.pow(u.effectMultiplier, level - 1)} камней, ${u.effect.pills * Math.pow(u.effectMultiplier, level - 1)} пилюль, ${u.effect.essence * Math.pow(u.effectMultiplier, level - 1)} эссенции и ${u.effect.dust * Math.pow(u.effectMultiplier, level - 1)} пыли.` : ""}</div>
             ${locked && lockHint ? `<div class="ku-lock-hint" style="color:#ee7a7a;font-size:0.85em">${lockHint}</div>` : ""}
-            <div class="ku-level">${level}/${u.maxLevel}</div>
+            <div class="ku-level">Уровень ${level}/${u.maxLevel}</div>
             <button class="btn btn-small ${atMax ? "" : "btn-secondary"}"
                     onclick="buyKarmaUpgradeUI('${u.id}')"
                     ${atMax || !canAfford || locked ? "disabled" : ""}>
@@ -370,14 +392,16 @@ function renderRebirthContent() {
     }
     html += `</div></div></div>`;
 
-    // Тела — сгруппированы по тирам (открыто по умолчанию)
+    html += renderInheritedTechniqueChoice();
+
+    // Тела — сгруппированы по тирам, раздел всегда открыт.
     html += `<div class="rebirth-accordion open">
-        <div class="rebirth-accordion-header" onclick="toggleRebirthSection(this)">
-            <span class="accordion-arrow">&#9660;</span> Выберите Тело Перерождения
+        <div class="rebirth-accordion-header" role="heading" aria-level="3" style="cursor:default">
+            Происхождение новой жизни
         </div>
         <div class="rebirth-accordion-body"><div class="bodies-section">
-        <p class="bodies-hint" style="color:#888;font-size:0.8em;margin-bottom:8px">Тела высших тиров требуют достижения определённой ступени в <b>прошлой жизни</b>. Прогресс прошлых жизней не суммируется.</p>`;
-    const tierNames = { 0: "Начало", 1: "Тир I", 2: "Тир II", 3: "Тир III", 4: "Тир IV", 5: "Тир V", 6: "Тир VI" };
+        <p class="bodies-hint">Всего перерождений: ${game.prestige.totalRebirths || 0}. Зачётных жизней: ${game.getQualifiedRebirths()}. Для зачёта нужно достигнуть Золотого Ядра; при старте на Ядре или выше нужен хотя бы один успешный прорыв. Зачёт начисляется один раз при завершении жизни. Продвинутые тела требуют указанной ступени этой жизни; проходить предыдущие тела необязательно.</p>`;
+    const tierNames = { 0: "Начало", 1: "Уровень I", 2: "Уровень II", 3: "Уровень III", 4: "Уровень IV", 5: "Уровень V", 6: "Уровень VI" };
     const tierRebirths = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 10 };
     const tiers = [...new Set(REBIRTH_BODIES.map(b => b.tier))].sort((a, b) => a - b);
 
@@ -416,7 +440,7 @@ function renderRebirthContent() {
             }
         }
         const realmReqText = tierRealmName ? ` | ${tierRealmName}+` : "";
-        html += `<div class="body-tier-group"><div class="body-tier-header">${tierLabel}${tierReq > 0 ? ` <span class="tier-req">(${tierReq} перерожд.${realmReqText})</span>` : ""}</div>`;
+        html += `<div class="body-tier-group"><div class="body-tier-header">${tierLabel}${tierReq > 0 ? ` <span class="tier-req">(${tierReq} ${_plural(tierReq, "зачётная жизнь", "зачётные жизни", "зачётных жизней")}${realmReqText})</span>` : ""}</div>`;
         html += `<div class="bodies-grid">`;
 
         if (isTeaserTier) {
@@ -424,7 +448,7 @@ function renderRebirthContent() {
             for (const body of tierBodies) {
                 html += `<div class="body-card locked" style="border-color: #333">
                     <div class="body-name" style="color: #444">???</div>
-                    <div class="body-desc" style="color: #555">Требуется больше перерождений...</div>
+                    <div class="body-desc" style="color: #555">Нужны зачётные жизни и соответствующая ступень...</div>
                 </div>`;
             }
         } else {
@@ -438,9 +462,9 @@ function renderRebirthContent() {
                 if (body.bonuses.luck) bonusParts.push(`+${body.bonuses.luck} удача`);
                 if (body.bonuses.stones) bonusParts.push(`+${body.bonuses.stones} камней`);
                 if (body.bonuses.pills) bonusParts.push(`+${body.bonuses.pills} пилюль`);
-                if (body.startRealm) bonusParts.push(`старт: ступень ${body.startRealm}`);
-                if (body.minRootTier) bonusParts.push(`корень мин: ${body.minRootTier}`);
-                if (body.startTechniques.length) bonusParts.push(`+${body.startTechniques.length} техн.`);
+                if (body.startRealm) bonusParts.push(`старт: ${REALMS[body.startRealm].name}`);
+                if (body.minRootTier) bonusParts.push(`корень не ниже ${({ uncommon: "духовного", rare: "мистического", epic: "небесного", legendary: "священного", divine: "божественного" })[body.minRootTier] || body.minRootTier}`);
+                if (body.startTechniques.length) bonusParts.push(`${body.startTechniques.length} ${_plural(body.startTechniques.length, "стартовая техника", "стартовые техники", "стартовых техник")}`);
 
                 // Текст перка и вознесения
                 const ascensions = BODY_ASCENSIONS[body.id];
@@ -471,8 +495,8 @@ function renderRebirthContent() {
                             }
                         }
                         if (body.requirement.rebirths) {
-                            const has = (game.prestige.totalRebirths + 1) >= body.requirement.rebirths;
-                            parts.push(`<span class="${has ? "req-met" : "req-unmet"}">${body.requirement.rebirths} перерождений</span>`);
+                            const has = game.getQualifiedRebirths(true) >= body.requirement.rebirths;
+                            parts.push(`<span class="${has ? "req-met" : "req-unmet"}">${body.requirement.rebirths} зачётных жизней</span>`);
                         }
                         reqText = parts.join(", ");
                     }
@@ -486,9 +510,10 @@ function renderRebirthContent() {
                                   onclick="selectBody('${body.id}')"
                                   style="border-color: ${body.color}">
                         <div class="body-name" style="color: ${body.color}">${ascLevel > 0 && ascensions && ascensions[ascLevel - 1].name ? ascensions[ascLevel - 1].name : body.name}${ascLabel}</div>
-                        <div class="body-desc">${body.description}</div>
-                        <div class="body-perk">\u26A1 ${body.perkDesc}</div>
-                        ${ascLevel > 0 && ascensions ? `<div class="body-asc-desc">\u2605 ${ascensions[ascLevel - 1].desc}</div>` : ""}
+                        <div class="body-mastery">Освоение: ${game.getBodyLives(body.id)} зачётных жизней этим телом</div>
+                        <div class="body-perk">\u26A1 ${ascLevel > 0 ? "Базовые особенности: " : ""}${body.perkDesc}</div>
+                        <details class="v2-details" data-rebirth-detail="body-${body.id}" onclick="event.stopPropagation()"><summary>История происхождения</summary><p class="body-desc">${body.description}</p></details>
+                        ${ascLevel > 0 && ascensions ? `<div class="body-asc-desc">\u2605 Вознесение заменяет указанные базовые значения: ${_v2BodyAscensionDescription(ascensions[ascLevel - 1])}. Остальные особенности сохраняются.</div>` : ""}
                         ${bonusParts.length ? `<div class="body-bonuses">${bonusParts.join(" | ")}</div>` : ""}
                     </div>`;
                 }
@@ -498,13 +523,13 @@ function renderRebirthContent() {
     }
     html += `</div></div></div>`;
 
-    // Вознесение тел (сворачиваемая секция)
+    // Вознесение тел — всегда открытый раздел.
     const totalAscBodies = REBIRTH_BODIES.filter(b => BODY_ASCENSIONS[b.id] && game.isBodyUnlocked(b.id)).length;
     html += `<div class="rebirth-accordion open">
-        <div class="rebirth-accordion-header" onclick="toggleRebirthSection(this)">
-            <span class="accordion-arrow">&#9660;</span> Вознесение Тел <span class="accordion-hint">(${totalAscBodies} тел)</span>
+        <div class="rebirth-accordion-header" role="heading" aria-level="3" style="cursor:default">
+            Усилить происхождение (вознесение) <span class="accordion-hint">(${totalAscBodies} тел)</span>
         </div>
-        <div class="rebirth-accordion-body"><div class="body-ascension-section"><p class="ascension-hint">Усильте перки тел, потратив карму. Эффект работает при выборе этого тела.</p>`;
+        <div class="rebirth-accordion-body"><div class="body-ascension-section"><p class="ascension-hint">Каждая зачётная жизнь этим телом открывает следующую звезду: одна жизнь — ★1, две — ★2, три — ★3. Открытую звезду нужно купить за карму. Указанные значения заменяют базовые; остальные особенности сохраняются. Бонус работает в жизнях с этим происхождением.</p>`;
 
     const ascTiers = [...new Set(REBIRTH_BODIES.filter(b => BODY_ASCENSIONS[b.id] && game.isBodyUnlocked(b.id)).map(b => b.tier))].sort((a, b) => a - b);
     for (const ascTier of ascTiers) {
@@ -518,17 +543,20 @@ function renderRebirthContent() {
         const maxed = level >= ascensions.length;
         const cost = game.getBodyAscendCost(body.id);
         const canAfford = game.prestige.karma >= cost;
+        const bodyLives = game.getBodyLives(body.id);
+        const masteryReady = bodyLives >= level + 1;
 
-        let nextDesc = maxed ? "МАКС" : ascensions[level].desc;
+        let nextDesc = maxed ? "МАКС" : _v2BodyAscensionDescription(ascensions[level]);
         const currentName = level > 0 && ascensions[level - 1].name ? ascensions[level - 1].name : body.name;
         const nextName = !maxed && ascensions[level].name ? ascensions[level].name : null;
 
         html += `<div class="ascension-card ${maxed ? "maxed" : ""}"${maxed ? ' title="Это тело достигло предела вознесения. Для дальнейшего роста изберите другой путь перерождения"' : ""}>
             <div class="asc-body-name" style="color: ${body.color}">${currentName} <span class="asc-level">★${level}/${ascensions.length}</span></div>
             <div class="asc-next">${maxed ? "Максимальное вознесение" : `→ ★${level + 1} ${nextName ? `«${nextName}»` : ""}: ${nextDesc}`}</div>
+            <div class="asc-mastery">Освоение: ${bodyLives} зачётных жизней${!maxed && !masteryReady ? `. Для ★${level + 1} нужно ${level + 1}.` : ""}</div>
             <button class="btn btn-small ${maxed ? "" : "btn-secondary"}"
                     onclick="ascendBodyUI('${body.id}')"
-                    ${maxed || !canAfford ? "disabled" : ""}>
+                    ${maxed || !canAfford || !masteryReady ? "disabled" : ""}>
                 ${maxed ? "МАКС" : `Вознести (${cost} кармы)`}
             </button>
         </div>`;
@@ -537,20 +565,19 @@ function renderRebirthContent() {
     }
     html += `</div></div></div>`; // body-ascension-section + accordion-body + accordion
 
-    html += `<div class="rebirth-actions"><button class="btn btn-primary btn-rebirth-go" onclick="performRebirth()">Переродиться</button></div>`;
+    html += `<div class="rebirth-actions"><button class="btn btn-primary btn-rebirth-go" onclick="performRebirth()" title="Новая жизнь с сохранённой кармой и открытиями. Перерождение — новый виток пути.">Начать новый путь</button></div>`;
 
     content.innerHTML = html;
     _restoreAccordionState(savedState);
 }
 
 function toggleRebirthSection(header) {
-    const accordion = header.parentElement;
-    const body = header.nextElementSibling;
-    const arrow = header.querySelector(".accordion-arrow");
-    const isOpen = body.style.display !== "none";
-    body.style.display = isOpen ? "none" : "block";
-    arrow.innerHTML = isOpen ? "&#9654;" : "&#9660;";
-    accordion.classList.toggle("open", !isOpen);
+    // Старые вызовы больше не сворачивают раздел.
+    const accordion = header?.parentElement;
+    if (!accordion) return;
+    const body = accordion.querySelector(".rebirth-accordion-body");
+    if (body) body.style.display = "block";
+    accordion.classList.add("open");
 }
 
 function selectBody(bodyId) {
@@ -591,14 +618,14 @@ function performRebirth() {
 
 function voluntaryRebirth() {
     if (game.realmIndex < 3) {
-        addLog("Рассеивание Культивации доступно с Золотого Ядра (ступень 3).", "system");
+        addLog("Рассеивание культивации доступно с Золотого Ядра.", "system");
         return;
     }
     const _erPerks = game.getActiveBodyPerks();
     const earlyRebirthLevel = (game.prestige.karmaUpgrades.earlyRebirth || 0) + (_erPerks.freeUpgradeLevel || 0);
     const minAge = 150 - earlyRebirthLevel * 10;
     if (game.characterAge() < minAge) {
-        addLog(`Ваше постижение слишком поверхностно. Рассеивание доступно с ${minAge} лет (сейчас: ${game.characterAge()}).`, "system");
+        addLog(`Для рассеивания культивации нужно прожить ${minAge} лет. Сейчас вам ${game.characterAge()}.`, "system");
         return;
     }
     document.getElementById("btn-rebirth").style.display = "none";

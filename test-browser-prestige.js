@@ -87,7 +87,7 @@ const { chromium } = require('playwright');
             document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
             game.reset(); game.stop(); game.selectSpiritualRoot('common');
             game.realmIndex=10; game.subLevel=4; game.years=150000; game.birthYear=149000;
-            game.prestige.totalRebirths=2; game.prestige.karma=149; game.prestige.karmaSpent=0;
+            game.prestige.totalRebirths=2; game.prestige.qualifiedRebirths=2;game.prestige.karma=149; game.prestige.karmaSpent=0;
             game.prestige.karmaUpgrades={}; game.prestige.bodyAscensions={};
             game.prestige.permanentMilestones=[]; game.prestige.lastBody='peasant';
             // Не beginRebirth: этот сценарий проверяет прежние 149, без новой кармы жизни.

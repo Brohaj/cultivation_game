@@ -101,6 +101,8 @@ header h1 {
     gap: 15px;
 }
 
+.center-panel { min-width: 0; }
+
 .panel {
     background: #12121e;
     border: 1px solid #2a2a3a;
@@ -147,6 +149,7 @@ header h1 {
 /* === TABS === */
 .tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     margin-bottom: 15px;
     border-bottom: 1px solid #2a2a3a;
@@ -2574,6 +2577,37 @@ header h1 {
 .adventure-abandon { margin-top: 6px; }
 .adventure-actions { text-align: right; margin-top: 6px; }
 .adventure-busy { font-size: 0.78em; color: #888; font-style: italic; }
+
+/* Компактный состав учеников; помощь и доход работают автоматически. */
+.disciples-section { margin: 14px 0; padding: 12px; border: 1px solid #343141; border-radius: 7px; background: #171722; }
+.disciples-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.disciples-heading h4 { color: #d4c9a8; font-size: 0.9em; }
+.disciples-capacity { font-size: 0.76em; color: #aaa; white-space: nowrap; }
+.disciples-help, .disciples-budget { font-size: 0.75em; color: #a9a4b6; line-height: 1.55; margin: 5px 0 9px; }
+.disciples-budget { color: #b2c5af; }
+.disciple-candidates, .disciple-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 8px; margin-top: 9px; }
+.disciple-candidate, .disciple-card { padding: 10px; border: 1px solid #333344; border-radius: 6px; background: #20202d; min-width: 0; }
+.disciple-topline { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 5px; margin-bottom: 6px; }
+.disciple-name { color: #e0d6be; font-size: 0.87em; font-weight: 600; overflow-wrap: anywhere; }
+.disciple-quality { padding: 1px 5px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; font-size: 0.68em; }
+.disciple-quality-common { color: #c3c3ce; }
+.disciple-quality-uncommon { color: #81c49b; }
+.disciple-quality-rare { color: #8bb8ed; }
+.disciple-meta, .disciple-price, .disciple-age, .disciple-offer-expiry { font-size: 0.76em; color: #b4b0c0; line-height: 1.55; }
+.disciple-age { margin: 4px 0 7px; }
+.disciple-offer-expiry { color: #aaa1b5; margin: 4px 0 8px; }
+.disciples-candidates-heading { margin-top: 15px; }
+.disciple-delivery { color: #aaa1b5; font-size: 0.73em; text-align: right; }
+.disciple-price { color: #d4c9a8; margin: 8px 0; }
+.disciple-candidate .btn { width: 100%; }
+.disciple-xp { height: 5px; background: #101019; border-radius: 3px; overflow: hidden; margin: 5px 0 8px; }
+.disciple-xp-fill { height: 100%; background: #899c79; transition: width 0.18s linear; }
+.disciple-income { color: #8dbe98; font-size: 0.75em; margin: 6px 0; line-height: 1.5; }
+.disciple-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 8px; }
+.disciple-controls .btn { padding: 3px 7px; font-size: 0.71em; }
+.disciple-empty { color: #9390a2; font-size: 0.76em; margin-top: 8px; line-height: 1.5; }
+.disciple-unavailable { color: #d4b182; font-size: 0.74em; margin: 6px 0; }
+.disciple-training-offer { margin: 9px 0; padding: 8px; border: 1px solid #6a5740; border-radius: 5px; background: #29251f; }
 
 @media (max-width: 950px) {
     .main-layout { grid-template-columns: 1fr; }

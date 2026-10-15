@@ -214,7 +214,7 @@ const REBIRTH_BODIES = [
         startTechniques: ["body_golden_sutra"],
         karmaBonus: 0.5,
         perk: "arhatWisdom",      // +50% карма, кармические улучшения +1 бесплатный уровень
-        perkDesc: "+50% карма, все кармические улучшения +1 бесплатный уровень",
+        perkDesc: "+50% карма, численные кармические бонусы +1 бесплатный уровень",
         color: "#ffe066"
     },
 ];
@@ -251,8 +251,8 @@ const BODY_ASCENSIONS = {
     // --- Тир 4 ---
     sect_genius: [
         { level: 1, cost: 80,  name: "Первый Ученик", desc: "Вклад в секту x1.75, старт с ранга Внутренний Ученик", perkUpgrade: { contributionMult: 1.75, startRank: 1 } },
-        { level: 2, cost: 160, name: "Старейшина Секты", desc: "Вклад x2.0, старт Внутренний, перезарядка заданий -30%", perkUpgrade: { contributionMult: 2.0, startRank: 1, missionCdReduction: 0.3 } },
-        { level: 3, cost: 300, name: "Патриарх Секты", desc: "Вклад x2.5, старт Ядровой Ученик, задания -50% КД, мин. корень: Необычный", perkUpgrade: { contributionMult: 2.5, startRank: 2, missionCdReduction: 0.5, minRoot: "uncommon" } },
+        { level: 2, cost: 160, name: "Старейшина Секты", desc: "Вклад x2.0, старт Внутренний, перезарядка заданий -30%, но не менее 12 лет", perkUpgrade: { contributionMult: 2.0, startRank: 1, missionCdReduction: 0.3 } },
+        { level: 3, cost: 300, name: "Патриарх Секты", desc: "Вклад x2.5, старт Ядровой Ученик, задания -50% КД, но не менее 12 лет, мин. корень: Необычный", perkUpgrade: { contributionMult: 2.5, startRank: 2, missionCdReduction: 0.5, minRoot: "uncommon" } },
     ],
     fortune_child: [
         { level: 1, cost: 80,  name: "Избранник Судьбы", desc: "Шанс внутреннего демона -60%, +15% шанс прорыва", perkUpgrade: { demonReduction: 0.6, breakthroughBonus: 0.15 } },
@@ -279,9 +279,9 @@ const BODY_ASCENSIONS = {
         { level: 3, cost: 800, name: "Изначальный", desc: "Формации с 7 уровня, 4-й слот формаций, старт с 3 ступени, мин. корень: Эпический, +20 ко всем статам", perkUpgrade: { formationBonus: 7, formationSlots: 1, startRealm: 3, minRoot: "epic", bonusStats: 20 } },
     ],
     golden_arhat: [
-        { level: 1, cost: 200, name: "Просветлённый Архат", desc: "+60% кармы, кармические улучшения +1 бесплатный уровень, вознесение тел на 20% дешевле", perkUpgrade: { karmaBonus: 0.6, freeUpgradeLevel: 1, bodyAscendDiscount: 0.2 } },
-        { level: 2, cost: 400, name: "Алмазный Архат", desc: "+75% кармы, улучшения +2 уровня, вознесение на 30% дешевле", perkUpgrade: { karmaBonus: 0.75, freeUpgradeLevel: 2, bodyAscendDiscount: 0.3 } },
-        { level: 3, cost: 800, name: "Будда Дао", desc: "+100% кармы, улучшения +2 уровня, вознесение на 50% дешевле, старт с 3 ступени", perkUpgrade: { karmaBonus: 1.0, freeUpgradeLevel: 2, bodyAscendDiscount: 0.5, startRealm: 3 } },
+        { level: 1, cost: 200, name: "Просветлённый Архат", desc: "+60% кармы, численные кармические бонусы +1 бесплатный уровень, вознесение тел на 20% дешевле", perkUpgrade: { karmaBonus: 0.6, freeUpgradeLevel: 1, bodyAscendDiscount: 0.2 } },
+        { level: 2, cost: 400, name: "Алмазный Архат", desc: "+75% кармы, численные кармические бонусы +2 уровня, вознесение на 30% дешевле", perkUpgrade: { karmaBonus: 0.75, freeUpgradeLevel: 2, bodyAscendDiscount: 0.3 } },
+        { level: 3, cost: 800, name: "Будда Дао", desc: "+100% кармы, численные кармические бонусы +2 уровня, вознесение на 50% дешевле, старт с 3 ступени", perkUpgrade: { karmaBonus: 1.0, freeUpgradeLevel: 2, bodyAscendDiscount: 0.5, startRealm: 3 } },
     ],
 };
 
@@ -321,4 +321,12 @@ const KARMA_UPGRADES = [
     { id: "formationSlot",  name: "Расширение Формаций",     description: "+1 слот активных формаций", costs: [200, 300], maxLevel: 2, effect: {},
         requirement: (g) => g.prestige.permanentMilestones.includes("realm_7"),
         requirementHint: "Требуется: достичь Слияния с Пустотой" },
+    { id: "pastLifeBook", name: "Книга прошлых жизней", description: "Выбрать обычную технику вместо стартового Дыхания. Уровень 1, исходный тир и условия ступени.", cost: 80, maxLevel: 1, effect: {},
+        requirement: (g) => g.prestige.permanentMilestones.includes('three_techniques'), requirementHint: "Требуется: изучить три техники" },
+    { id: "formationRespec", name: "Пересмотр пути", description: "Одна замена выбранной формации за жизнь. Уровни прежней теряются, камни не возвращаются.", cost: 60, maxLevel: 1, effect: {},
+        requirement: (g) => g.prestige.permanentMilestones.includes('first_formation'), requirementHint: "Требуется: выбрать первую формацию" },
+    { id: "practiceSchedule", name: "Расписание практики", description: "Смена занятий по целям ци, Дао и характеристики. Прорывы остаются ручными.", cost: 50, maxLevel: 1, effect: {},
+        requirement: (g) => g.prestige.permanentMilestones.includes('realm_4'), requirementHint: "Требуется: достичь Золотого Ядра" },
+    { id: "mentorEye", name: "Глаз наставника", description: "Три видимых кандидата в ученики вместо двух. Состав не расширяется; найм оплачивается отдельно.", cost: 40, maxLevel: 1, effect: {},
+        requirement: (g) => g.prestige.permanentMilestones.includes('joined_sect'), requirementHint: "Требуется: вступить в секту" },
 ];

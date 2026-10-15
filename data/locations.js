@@ -5,6 +5,10 @@
 // Стоимость вознесения локации
 const LOCATION_ASCEND_COST = { essence: 100, dust: 100, stones: 1000 };
 
+// Добыча ци возвращает часть цены похода, но не обходит лимит текущей ступени.
+// cultivationRealm — ступень ценности духовного опыта; minRealm — условие входа.
+const EXPEDITION_CULTIVATION = { qiReturn: 0.8, daoYears: 10 };
+
 // Вознесённые имена и описания
 const LOCATION_ASCENDED = {
     spirit_forest:    { name: "Сердце Древнего Леса",          description: "Вы проникли глубже — туда, где деревья помнят начало мира." },
@@ -28,7 +32,8 @@ const LOCATIONS = [
         name: "Лес Духовных Трав",
         description: "Густой лес, наполненный духовной энергией. В кронах древнейших деревьев — целебные сады Секты Нефритовой Чистоты, куда допускаются лишь избранные. Здесь растут редкие травы, а потоки ци текут как подземные реки.",
         minRealm: 0,
-        duration: 25,
+        duration: 10,
+        cultivationRealm: 1,
         entryCost: 10,
         daoSect: "jade_purity",
         rewards: {
@@ -47,7 +52,8 @@ const LOCATIONS = [
         name: "Пещера Древнего Зверя",
         description: "Опасная пещера с духовными минералами и древним зверем-стражем. Орден Алого Пламени использует верхние ярусы как испытательную арену — кто выживет в глубине, достоин клинка.",
         minRealm: 0,
-        duration: 30,
+        duration: 12,
+        cultivationRealm: 2,
         entryCost: 15,
         dangerLevel: 20,
         daoSect: "crimson_flame",
@@ -67,7 +73,8 @@ const LOCATIONS = [
         name: "Руины Забытой Секты",
         description: "Развалины древней секты, предшественницы Лунного Озера. Архивы алхимических рецептов рассыпаются в пыль, но среди обломков всё ещё скрыты знания и сокровища.",
         minRealm: 0,
-        duration: 35,
+        duration: 15,
+        cultivationRealm: 3,
         entryCost: 30,
         dangerLevel: 40,
         daoSect: "moon_lake",
@@ -89,6 +96,7 @@ const LOCATIONS = [
         description: "Торговый зал, где культиваторы обмениваются ресурсами. Нужны камни для входа. Артефакт гарантирован.",
         minRealm: 3,
         duration: 15,
+        cultivationRealm: null,
         entryCost: 100,
         daoSect: "no_dao",
         rewards: {
@@ -107,7 +115,8 @@ const LOCATIONS = [
         name: "Бездна Демонов",
         description: "Мрачное измерение, кишащее демонами. Культ Бездны черпает силу из этого разлома — их ритуалы усиливаются вблизи его границ. Опасно, но награды велики.",
         minRealm: 6,
-        duration: 120,
+        duration: 45,
+        cultivationRealm: 6,
         entryCost: 50,
         dangerLevel: 80,
         daoSect: "abyss_cult",
@@ -129,7 +138,8 @@ const LOCATIONS = [
         name: "Дворец Павшего Бессмертного",
         description: "Дворец бессмертного, павшего эоны назад. Его наследие ждёт достойного.",
         minRealm: 7,
-        duration: 200,
+        duration: 60,
+        cultivationRealm: 7,
         entryCost: 100,
         dangerLevel: 200,
         daoSect: null,
@@ -138,9 +148,9 @@ const LOCATIONS = [
             pills: { min: 5, max: 12 },
             essence: { min: 80, max: 200 },
             dust: { min: 60, max: 150 },
-            artifactChance: 0.80,
+            artifactChance: 1.0,
             artifactMinTier: "rare",
-            artifactMaxTier: "rare",
+            artifactMaxTier: "epic",
             techniqueChance: 0.05,
             scrollChance: 0.25
         },
@@ -150,9 +160,10 @@ const LOCATIONS = [
     {
         id: "sect_secret_realm",
         name: "Тайное Царство Секты",
-        description: "Внутреннее царство секты доступно Главам Залов. Знакомый Путь помогает постижению Дао; среди древних реликвий скрыты ресурсы и свитки.",
+        description: "Внутреннее царство секты доступно Главам Сект. Знакомый Путь помогает постижению Дао; среди древних реликвий скрыты ресурсы и свитки.",
         minRealm: 7,
-        duration: 80,
+        duration: 30,
+        cultivationRealm: 7,
         dangerLevel: 120,
         daoSect: "current_sect",
         rewards: {
@@ -161,7 +172,8 @@ const LOCATIONS = [
             essence: { min: 50, max: 120 },
             dust: { min: 40, max: 100 },
             artifactChance: 0.70,
-            artifactMaxTier: "uncommon",
+            artifactMinTier: "rare",
+            artifactMaxTier: "rare",
             scrollChance: 0.20
         },
         ascend: { dangerLevel: 220, artifactMinTier: "rare", artifactMaxTier: "rare" },

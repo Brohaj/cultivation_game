@@ -40,12 +40,11 @@
     const baseAddLog = window.addLog;
     window.addLog = function(text, type) {
         const log = byId("event-log");
-        const oldPosition = log?.scrollTop || 0;
-        const follow = !log || log.scrollHeight - oldPosition - log.clientHeight < 36;
+        const follow = _isLogFollowing();
         baseAddLog(readableLog(text), type);
         refreshLogPreview();
         if (log) {
-            if (follow) { log.scrollTop = log.scrollHeight; unreadLogs = 0; }
+            if (follow) { _scrollLogToBottom(false); unreadLogs = 0; }
             else if (log.lastElementChild && !log.lastElementChild.hidden) unreadLogs++;
         }
         updateUnreadIndicator();
@@ -96,7 +95,8 @@
             if (requiredDao) checks.push({ ready: !!daoReady, text: game.sect ? `Путь секты ${game.daoLevel} / ${requiredDao}` : "Нужна секта" });
             if (!barrierReady) {
                 const req = game.getRealmPrestigeRequirement(nextRealm);
-                checks.push({ ready: game.prestige.totalRebirths >= req.rebirths, text: `Перерождения ${game.prestige.totalRebirths} / ${req.rebirths}` });
+                const qualified = game.getQualifiedRebirths();
+                checks.push({ ready: qualified >= req.rebirths, text: `Зачётные жизни ${qualified} / ${req.rebirths}` });
                 const earnedKarma = game.prestige.karma + game._getTotalKarmaSpent();
                 checks.push({ ready: earnedKarma >= req.karma, text: `Карма ${earnedKarma} / ${req.karma}` });
             }
@@ -119,7 +119,7 @@
             if (probabilities) probabilities.hidden = true;
         } else {
             const probabilities = document.querySelector(".breakthrough-info");
-            if (probabilities) probabilities.hidden = false;
+            if (probabilities) probabilities.hidden = lifeEnded;
         }
         const overview = byId("v2-qi-overview");
         if (overview) {
@@ -128,7 +128,7 @@
             byId("v2-qi-overview-bar").style.width = Math.min(100, game.qi / qiNeeded * 100) + "%";
         }
         setText("v2-current-activity", lifeEnded ? "Эта жизнь завершена" : game._paused ? "Игра на паузе" : "");
-        if (lifeEnded) setText("qi-rate", "0");
+        if (lifeEnded || game._paused) setText("qi-rate", "0");
         setText("btn-pause", game._paused ? "▶ Продолжить" : "⏸ Пауза");
         if (byId("btn-pause")) {
             byId("btn-pause").classList.toggle("btn-pause-active", !!game._paused);
@@ -148,6 +148,7 @@
             const developsSect = !!sect && sectActivities.includes(key);
             row?.setAttribute("aria-pressed", String(game.currentActivity === key));
             if (row) {
+                row.classList.toggle('active', game.currentActivity === key);
                 row.disabled = lifeEnded;
                 row.classList.toggle("activity-sect-path", developsSect);
                 if (developsSect) row.title = `${purpose}. Развивает путь секты${game.realmIndex < 3 ? " с Золотого Ядра" : ""}.`;
@@ -201,14 +202,14 @@
                     item.setAttribute("aria-pressed", String(active));
                 });
                 refreshLogPreview();
-                byId("event-log").scrollTop = byId("event-log").scrollHeight;
+                _scrollLogToBottom();
                 unreadLogs = 0;
                 updateUnreadIndicator();
             });
         });
         byId("v2-log-latest")?.addEventListener("click", () => {
             const log = byId("event-log");
-            log.scrollTop = log.scrollHeight;
+            _scrollLogToBottom();
             unreadLogs = 0;
             refreshLogPreview();
         });

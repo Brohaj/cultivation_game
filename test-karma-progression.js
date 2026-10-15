@@ -9,7 +9,7 @@ function total(ctx) {
 
 test('Скидка эпохи не открывает барьер на фиктивных 150 кармы', () => {
     const ctx = createContext();
-    ctx.run('game.years=150000;game.realmIndex=10;game.prestige.totalRebirths=2;game.prestige.karma=149;');
+    ctx.run('game.years=150000;game.realmIndex=10;game.prestige.totalRebirths=2;game.prestige.qualifiedRebirths=2;game.prestige.karma=149;');
     assert.equal(ctx.run('game.meetsRealmRequirement(11)'), false);
     const qiMultiplier = ctx.run('game.getKarmaQiMultiplier()');
     assert.equal(ctx.run('game.getUpgradeCost("wealth")'), 4);
@@ -24,6 +24,7 @@ test('Скидка эпохи не открывает барьер на фикт
 test('Скидка Архата при вознесении тела сохраняет накопленную карму', () => {
     const ctx = createContext();
     ctx.run(`game.realmIndex=10;game.prestige.totalRebirths=9;
+        game.prestige.qualifiedRebirths=9;game.prestige.bodyLives.alchemist_heir=1;game.prestige.bodyLives.golden_arhat=1;
         game.prestige.lastBody='golden_arhat';game.prestige.bodyAscensions.golden_arhat=1;
         game.prestige.permanentMilestones=['ten_breakthroughs'];
         game.prestige.karma=799;game.prestige.karmaSpent=200;`);

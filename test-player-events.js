@@ -407,9 +407,9 @@ test('Превью использует оплату старосты и ком�
     ]) {
         const ctx = contentAdventureContext(route.id, { stones: route.stones });
         ctx.run(`game.chooseAdventureOption(0,${route.choice});
-            var cards=[];var container={innerHTML:'',appendChild(node){cards.push(node);}};
+            var cards=[];var container={..._testElement(),innerHTML:'',appendChild(node){cards.push(node);}};
             document.getElementById=id=>id==='adventures-list'?container:null;
-            document.createElement=()=>({innerHTML:'',textContent:''});
+            document.createElement=()=>_testElement();
             renderAdventures();var markup=cards.map(card=>card.innerHTML).join('');`);
         assert.match(ctx.run('markup'), new RegExp(route.expected));
         assert.equal(ctx.run(`markup.includes(${JSON.stringify(route.forbidden)})`), false);

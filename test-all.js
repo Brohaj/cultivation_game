@@ -2,6 +2,7 @@
 const suites = [
     './test-regression',
     './test-balance-expeditions',
+    './test-expedition-cultivation',
     './test-balance-sects',
     './test-balance-artifacts',
     './test-balance-inheritance',
@@ -9,14 +10,19 @@ const suites = [
     './test-player-expeditions',
     './test-player-events',
     './test-audit-systems',
+    './test-background-progress',
     './test-content-integrity',
+    './test-coherent-previews',
+    './test-closed-life-actions',
     './test-user-decisions',
-    './test-adventure-meditation',
-    './test-demon-preview',
     './test-technique-balance',
     './test-sect-donation',
     './test-karma-progression',
     './test-prestige-roots',
+    './test-karma-paths',
+    './test-disciples',
+    './test-disciple-events',
+    './test-prototype-progression',
 ];
 let failed = false;
 for (const suite of suites) {

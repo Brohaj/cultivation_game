@@ -24,7 +24,7 @@ function collectInheritance(ctx) {
 for (const level of [2, 3]) {
     test(`Алхимик ${level}: четыре перерождения и JSON reload не размножают полный перенос`, () => {
         let ctx=createContext();
-        ctx.run(`game.prestige.totalRebirths=2; game.prestige.lastBody='alchemist_heir';
+        ctx.run(`game.prestige.totalRebirths=${2+level};game.prestige.qualifiedRebirths=${2+level};game.prestige.bodyLives.alchemist_heir=${level};game.prestige.lastBody='alchemist_heir';
             game.prestige.permanentMilestones=['ten_breakthroughs'];
             game.prestige.bodyAscensions.alchemist_heir=${level};
             game.daoEssence=10003; game.artifactDust=10001; Math.random=()=>0;`);
@@ -52,6 +52,7 @@ for (const level of [2, 3]) {
 test('Тайники Мастера и десяти жизней не копируют 100% перенесённые материалы', () => {
     let ctx=createContext();
     ctx.run(`game.prestige.totalRebirths=9; game.prestige.lastBody='alchemist_heir';
+        game.prestige.qualifiedRebirths=9;game.prestige.bodyLives.alchemist_heir=2;
         game.prestige.permanentMilestones=['ten_breakthroughs'];
         game.prestige.bodyAscensions.alchemist_heir=2;
         game.daoEssence=10000; game.artifactDust=10000;`);
@@ -71,6 +72,7 @@ test('Тайники Мастера и десяти жизней не копир
 test('Частичный перенос оставляет тайникам неперенесённый остаток', () => {
     const ctx=createContext();
     ctx.run(`game.prestige.totalRebirths=9; game.prestige.lastBody='alchemist_heir';
+        game.prestige.qualifiedRebirths=9;
         game.prestige.permanentMilestones=['ten_breakthroughs'];
         game.daoEssence=10000; game.artifactDust=10000; game.realmIndex=9;
         game.stones=0; game.pills=0; Math.random=()=>0;

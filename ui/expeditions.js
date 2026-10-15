@@ -1,23 +1,32 @@
-// ============================================================
-// UI/EXPEDITIONS.JS — Таб тайных царств (экспедиции)
-// ============================================================
+// Походы: лор, виды добычи и условия отправления без подробной сводки наград.
 
-// Словесное описание шанса
-function _chanceTier(chance) {
-    if (chance >= 0.7) return "высокий";
-    if (chance >= 0.4) return "средний";
-    if (chance >= 0.15) return "низкий";
-    return "редкий";
-}
-
-// Имя тира артефакта
 function _artifactTierName(tier) {
-    const names = { common: "смертного", uncommon: "духовного", rare: "мистического", epic: "небесного", legendary: "священного", divine: "божественного" };
-    return names[tier] || tier;
+    return ({ common: "смертного", uncommon: "духовного", rare: "мистического", epic: "небесного", legendary: "священного", divine: "божественного" })[tier] || tier;
 }
+
 function _artifactTierNameNom(tier) {
-    const names = { common: "смертный", uncommon: "духовный", rare: "мистический", epic: "небесный", legendary: "священный", divine: "божественный" };
-    return names[tier] || tier;
+    return ({ common: "смертный", uncommon: "духовный", rare: "мистический", epic: "небесный", legendary: "священный", divine: "божественный" })[tier] || tier;
+}
+
+function _v2ExpeditionLore(description) {
+    const sentences = description.match(/^.*?[.!?](?=\s|$)/)?.[0] || description;
+    return sentences.length > 190 ? sentences.slice(0, 187).replace(/\s+\S*$/, "") + "…" : sentences;
+}
+
+function _v2ExpeditionTier(tier, genitive = false) {
+    return `<b class="art-tier-${tier}">${genitive ? _artifactTierName(tier) : _artifactTierNameNom(tier)}</b>`;
+}
+
+function _v2ExpeditionLastRewardHtml(reward) {
+    const text = String(reward);
+    const types = [
+        ["scrolls", /свиток|свитк/i], ["stones", /^\+?\d+(?:[.,]\d+)?\s+кам/i],
+        ["essence", /^\+?\d+(?:[.,]\d+)?\s+эссенц/i], ["dust", /^\+?\d+(?:[.,]\d+)?\s+пыл/i],
+        ["pills", /^\+?\d+(?:[.,]\d+)?\s+пилю/i], ["dao", /постижение\s+Дао|опыт\s+пути\s+секты/i]
+    ];
+    const type = /артефакт|техника:/i.test(text) ? null : types.find(([, pattern]) => pattern.test(text))?.[0];
+    const escaped = text.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    return `<span class="v2-expedition-result${type ? ` v2-resource-${type}` : ""}">${escaped}</span>`;
 }
 
 function renderExpeditions() {
@@ -26,59 +35,49 @@ function renderExpeditions() {
     if (!container) return;
     container.innerHTML = "";
 
-    // Текущая экспедиция
+    const guide = document.createElement("p");
+    guide.className = "v2-section-intro";
+    guide.textContent = "Медитация приостановлена на время похода. Успешное возвращение даёт ци за опыт царства. При провале добыча и плата за вход потеряны.";
+    container.appendChild(guide);
+
     if (game.expedition) {
         const loc = LOCATIONS.find(l => l.id === game.expedition.locationId);
         if (loc) {
-            const progress = game.getExpeditionProgress();
+            const pct = (game.getExpeditionProgress() * 100).toFixed(0);
             const timeLeft = game.getExpeditionTimeLeft();
-            const pct = (progress * 100).toFixed(0);
-
+            const failChance = game.getExpeditionFailChance();
             const activeDiv = document.createElement("div");
             activeDiv.className = "expedition-active";
             activeDiv.style.borderColor = loc.color;
-            const failChance = game.getExpeditionFailChance();
-            const riskText = failChance > 0
-                ? `<div class="expedition-danger expedition-risky">\u26A0 Риск провала: ~${(failChance * 100).toFixed(1)}%/год</div>`
-                : game.getEffectiveDangerLevel(loc) > 0 ? `<div class="expedition-danger expedition-safe">\u2694 Безопасно</div>` : "";
             activeDiv.innerHTML = `
-                <h3>Текущая экспедиция</h3>
-                <p class="empty-msg">Медитация приостановлена. Множители ресурсов зафиксированы при отправлении.</p>
-                <div class="expedition-active-name" style="color:${loc.color}">${game.getLocationName(loc.id)}</div>
-                ${riskText}
+                <div class="expedition-header"><span class="expedition-active-name" style="color:${loc.color}">${game.getLocationName(loc.id)}</span><span class="expedition-in-progress">В пути</span></div>
+                <span class="expedition-danger ${failChance > 0 ? "expedition-risky" : "expedition-safe"}">Риск: ${(failChance * 100).toFixed(1)}%/год</span>
                 <div class="expedition-bar-container">
                     <div class="expedition-bar" style="width:${pct}%; background:${loc.color}"></div>
                     <span class="expedition-bar-text">${pct}% — осталось ${timeLeft} ${_plural(timeLeft, "год", "года", "лет")}</span>
-                </div>
-            `;
+                </div>`;
             container.appendChild(activeDiv);
         }
     }
 
-    // Последняя награда
     if (game.lastExpeditionReward && !game.expedition) {
         const lr = game.lastExpeditionReward;
         const lastDiv = document.createElement("div");
         lastDiv.className = "expedition-last-reward";
-        lastDiv.innerHTML = `
-            <div class="expedition-last-header">Последняя экспедиция: ${lr.locationName} (год ${lr.year})</div>
-            <div class="expedition-last-items">${lr.rewards.join(", ")}</div>
-        `;
+        lastDiv.innerHTML = `<div class="expedition-last-header">Последний поход: ${lr.locationName} (год ${lr.year})</div><div class="expedition-last-items">${lr.rewards.map(_v2ExpeditionLastRewardHtml).join("")}</div>`;
         container.appendChild(lastDiv);
     }
 
-    // Список локаций — только доступные + одна следующая как превью
     const header = document.createElement("h3");
-    header.textContent = game.expedition ? "Другие царства" : "Тайные Царства";
+    header.textContent = game.expedition ? "Другие походы" : "Куда отправиться";
     container.appendChild(header);
 
-    // Кнопка авто-экспедиции (если перк есть)
-    const autoPerksUI = game.getActiveBodyPerks();
-    if (autoPerksUI.autoExpedition) {
+    if (game.getActiveBodyPerks().autoExpedition) {
         const autoEnabled = game._autoExpeditionEnabled !== false;
         const autoBtn = document.createElement("button");
         autoBtn.className = `btn btn-small ${autoEnabled ? "btn-primary" : "btn-secondary"}`;
-        autoBtn.textContent = autoEnabled ? "Авто-экспедиция: ВКЛ" : "Авто-экспедиция: ВЫКЛ";
+        autoBtn.textContent = autoEnabled ? "Автоматические походы: включены" : "Автоматические походы: выключены";
+        autoBtn.title = "После возвращения вы снова отправитесь в последнее выбранное царство, если сможете оплатить вход и выполнить требования. Медитация будет прерываться.";
         autoBtn.onclick = () => {
             game._autoExpeditionEnabled = !autoEnabled;
             renderExpeditions();
@@ -86,226 +85,92 @@ function renderExpeditions() {
         container.appendChild(autoBtn);
     }
 
-    // Сортируем по minRealm для корректного определения "следующей"
     const sorted = [...LOCATIONS].sort((a, b) => a.minRealm - b.minRealm);
     let shownNextLocked = false;
+    const grid = document.createElement("div");
+    grid.className = "v2-expedition-grid";
+    container.appendChild(grid);
 
     for (const loc of sorted) {
-        const isActive = game.expedition && game.expedition.locationId === loc.id;
-        const meetsRealm = game.realmIndex >= loc.minRealm;
-
-        // Скрываем недоступные, кроме первой следующей (превью)
-        if (!meetsRealm) {
+        const locName = game.getLocationName(loc.id);
+        const locDesc = game.getLocationDescription(loc.id);
+        if (game.realmIndex < loc.minRealm) {
             if (shownNextLocked) continue;
             shownNextLocked = true;
-
             const card = document.createElement("div");
             card.className = "expedition-card expedition-locked";
-            card.style.borderColor = "#333";
-            card.innerHTML = `
-                ${renderSceneryImage(getExpeditionScenery(loc.id, game.ascendedLocations[loc.id] || 0, game.sect?.id), "expedition-scenery")}
-                <div class="expedition-header">
-                    <span class="expedition-name" style="color:#555">??? ${loc.name}</span>
-                </div>
-                <div class="expedition-desc" style="color:#555">${loc.description}</div>
-                <div class="expedition-req">Требуется: ступень ${loc.minRealm}+ (${REALMS[loc.minRealm]?.name || "???"})</div>
-            `;
-            container.appendChild(card);
+            card.dataset.location = loc.id;
+            card.innerHTML = `${renderSceneryImage(getExpeditionScenery(loc.id, game.ascendedLocations[loc.id] || 0, game.sect?.id), "expedition-scenery")}<div class="expedition-header"><span class="expedition-name">${locName}</span></div><p class="expedition-desc v2-expedition-lore">${_v2ExpeditionLore(locDesc)}</p><div class="expedition-req">Откроется на ступени «${REALMS[loc.minRealm]?.name || loc.minRealm}»</div>`;
+            grid.appendChild(card);
             continue;
         }
 
+        const isActive = game.expedition?.locationId === loc.id;
         const canStart = game.canStartExpedition(loc.id);
-        const meetsCombat = !loc.combatCheck || game.getCombatPower() >= loc.combatCheck;
-        const meetsSect = !loc.requiresSectRank || (game.sect && game.getSectRankIndex() >= SECT_RANKS.findIndex(r => r.id === loc.requiresSectRank));
-        const locAscTier = game.ascendedLocations[loc.id] || 0;
-        const entryCostMult = locAscTier >= 2 ? 3 : locAscTier >= 1 ? 2 : 1;
-        const actualEntryCost = (loc.entryCost || 0) * entryCostMult;
-        const meetsStones = !loc.entryCost || game.stones >= actualEntryCost;
-
-        const card = document.createElement("div");
-        card.className = `expedition-card ${isActive ? "expedition-current" : ""}`;
-        card.style.borderColor = loc.color;
-
-        const adjustedDuration = game.getExpeditionDuration(loc);
-
-        // Опасность (с учётом эпохи/событий)
+        const duration = game.getExpeditionDuration(loc);
+        const ascTier = game.ascendedLocations[loc.id] || 0;
+        const entryCost = (loc.entryCost || 0) * (ascTier >= 2 ? 3 : ascTier >= 1 ? 2 : 1);
         const power = game.getCombatPower();
         const danger = game.getEffectiveDangerLevel(loc);
-        let dangerHtml = "";
-        if (danger > 0) {
-            const safe = power >= danger;
-            if (safe) {
-                dangerHtml = `<div class="expedition-danger expedition-safe">\u2694 Мощь ${power}/${danger} — безопасно</div>`;
-            } else {
-                const deficit = (danger - power) / danger;
-                const failPerYear = Math.min(0.25, deficit * 0.30);
-                dangerHtml = `<div class="expedition-danger expedition-risky">\u2694 Мощь ${power}/${danger} — риск провала ~${(failPerYear * 100).toFixed(1)}%/год</div>`;
-            }
-        }
+        const failPerYear = danger > power && danger > 0 ? Math.min(0.25, ((danger - power) / danger) * 0.30) : 0;
+        const rankName = loc.requiresSectRank ? SECT_RANKS.find(rank => rank.id === loc.requiresSectRank)?.name || loc.requiresSectRank : "";
+        const meetsSect = !loc.requiresSectRank || (game.sect && game.getSectRankIndex() >= SECT_RANKS.findIndex(rank => rank.id === loc.requiresSectRank));
+        const unmet = [];
+        if (loc.combatCheck && power < loc.combatCheck) unmet.push(`Нужно ${loc.combatCheck} боевой мощи`);
+        if (!meetsSect) unmet.push(`Нужен ранг «${rankName}»`);
+        if (game.stones < entryCost) unmet.push("Не хватает камней");
 
-        // Требования (только невыполненные)
-        let reqParts = [];
-        if (loc.combatCheck && !meetsCombat) reqParts.push(`Мощь ${loc.combatCheck}+ \u2717`);
-        if (loc.requiresSectRank && !meetsSect) reqParts.push(`Ранг: Глава Зала \u2717`);
-        if (loc.entryCost) reqParts.push(`Вход: ${actualEntryCost} камней ${meetsStones ? "\u2713" : "\u2717"}`);
-
-        // Награды — конкретные цифры с учётом множителей
         const r = loc.rewards;
-        const mult = game.getExpeditionRewardMultipliers(loc);
-        const stoneMult = mult.stones;
-        const essMult = mult.resources;
-        const pillMult = mult.pills;
+        const mainRewards = [];
+        for (const [key, label] of [
+            ["stones", "Камни"], ["essence", "Эссенция"],
+            ["dust", "Пыль"], ["pills", "Пилюли"]
+        ]) {
+            if (!r[key] || r[key].max <= 0) continue;
+            mainRewards.push(`<span class="reward-item v2-resource-${key}">${label}</span>`);
+        }
+        const daoReward = game.getExpeditionDaoReward(loc);
+        const cultivationReward = game.getExpeditionCultivationReward(loc);
+        if (cultivationReward.qi > 0) {
+            mainRewards.push(`<span class="reward-item v2-resource-qi" title="При успешном возвращении. Выдача ограничена свободным местом на шкале ци.">До ${Math.floor(cultivationReward.qi).toLocaleString("ru-RU")} ци</span>`);
+        }
+        if (daoReward.max > 0 && game.getDaoProgressRoom() > 0) {
+            mainRewards.push('<span class="reward-item v2-resource-dao">Опыт Дао</span>');
+        }
 
-        let rewardLines = [];
-        if (r.stones && r.stones.max > 0) {
-            const sMin = Math.floor(r.stones.min * stoneMult);
-            const sMax = Math.floor(r.stones.max * stoneMult);
-            rewardLines.push(`<span class="reward-item reward-stones">\u25C7 Камни: ${sMin}–${sMax}</span>`);
-        }
-        if (r.essence && r.essence.max > 0) {
-            const eMin = Math.floor(r.essence.min * essMult);
-            const eMax = Math.floor(r.essence.max * essMult);
-            rewardLines.push(`<span class="reward-item reward-essence">\u2726 Эссенция: ${eMin}–${eMax}</span>`);
-        }
-        if (r.dust && r.dust.max > 0) {
-            const dMin = Math.floor(r.dust.min * essMult);
-            const dMax = Math.floor(r.dust.max * essMult);
-            rewardLines.push(`<span class="reward-item reward-dust">\u2B29 Пыль: ${dMin}–${dMax}</span>`);
-        }
-        if (r.pills && r.pills.max > 0) {
-            const pMin = Math.floor(r.pills.min * pillMult);
-            const pMax = Math.floor(r.pills.max * pillMult);
-            rewardLines.push(`<span class="reward-item reward-pills">\u25CB Пилюли: ${pMin}–${pMax}</span>`);
-        }
+        let artifactPreview = "";
         if (r.artifactChance) {
-            const artifactReward = game.getExpeditionArtifactReward(loc);
-            const dispMaxTier = artifactReward.maxTier;
-            const dispMinTier = artifactReward.minTier;
-            const artChance = artifactReward.firstChance;
-            let artText = `${_chanceTier(artChance)} (${Math.round(artChance * 100)}%)`;
-            if (artifactReward.secondChance > 0) artText += ` | второй: ${Math.round(artifactReward.secondChance * 100)}%`;
-            if (artifactReward.extraArtifact) artText += ` | +1 от тела`;
-            if (dispMinTier && dispMaxTier && dispMinTier !== dispMaxTier) {
-                artText += ` | <b>${_artifactTierNameNom(dispMinTier)}</b> — <b>${_artifactTierNameNom(dispMaxTier)}</b>`;
-            } else if (dispMinTier && dispMinTier === dispMaxTier) {
-                artText += ` | <b>${_artifactTierNameNom(dispMinTier)}</b>`;
-            } else if (dispMaxTier) {
-                artText += ` | до <b>${_artifactTierName(dispMaxTier)}</b>`;
-            } else if (dispMinTier) {
-                artText += ` | от <b>${_artifactTierName(dispMinTier)}</b>`;
-            }
-            rewardLines.push(`<span class="reward-item reward-artifact">\u2666 Артефакт: ${artText}</span>`);
+            const reward = game.getExpeditionArtifactReward(loc);
+            let tier = "";
+            if (reward.minTier && reward.maxTier && reward.minTier !== reward.maxTier) tier = `${_v2ExpeditionTier(reward.minTier)} — ${_v2ExpeditionTier(reward.maxTier)}`;
+            else if (reward.minTier && reward.minTier === reward.maxTier) tier = _v2ExpeditionTier(reward.minTier);
+            else if (reward.maxTier) tier = `до ${_v2ExpeditionTier(reward.maxTier, true)}`;
+            else if (reward.minTier) tier = `от ${_v2ExpeditionTier(reward.minTier, true)}`;
+            if (tier) artifactPreview = `<div class="v2-expedition-artifact-preview">Артефакт: ${tier}</div>`;
         }
         const scrollReward = game.getExpeditionScrollReward(loc);
-        if (scrollReward.guaranteed) {
-            rewardLines.push(`<span class="reward-item reward-scroll">\u25AB Свиток: ${scrollReward.guaranteed} гарантированно</span>`);
-        } else if (scrollReward.chance) {
-            rewardLines.push(`<span class="reward-item reward-scroll">\u25AB Свиток: ${_chanceTier(scrollReward.chance)} (${Math.round(scrollReward.chance * 100)}%)</span>`);
-        }
-        if (r.techniqueChance) {
-            rewardLines.push(`<span class="reward-item reward-technique">\u25AB Техника: ${_chanceTier(r.techniqueChance)} (${Math.round(r.techniqueChance * 100)}%)</span>`);
-        }
+        if (scrollReward.guaranteed || scrollReward.chance) mainRewards.push('<span class="reward-item v2-resource-scrolls">Свитки заточки</span>');
+        if (r.techniqueChance && game.getRewardTechniquePool().length) mainRewards.push('<span class="reward-item">Техники</span>');
 
-        // Дао бонус
-        const daoReward = game.getExpeditionDaoReward(loc);
-        if (daoReward.max > 0) {
-            const isMatch = daoReward.sectMultiplier > 1;
-            const daoMin = Math.floor(daoReward.min);
-            const daoMax = Math.floor(daoReward.max);
-            const sect = SECTS.find(s => s.id === game.sect.id);
-            const daoLabel = sect ? (sect.daoDisplayName || "Дао") : "Дао";
-            if (isMatch) {
-                rewardLines.push(`<span class="reward-item" style="color:#eebb44">\u262F Дао: ${daoMin}–${daoMax} (×2 ${daoLabel})</span>`);
-            } else {
-                rewardLines.push(`<span class="reward-item" style="color:#888">\u262F Дао: ${daoMin}–${daoMax}</span>`);
-            }
-        }
-
-        // Разбивка множителей
-        const era = game.getCurrentEra();
-        const eraName = mult.eraName || era.name;
-        let bonusParts = [];
-        let tipParts = [];
-        if (mult.era > 0.01) {
-            bonusParts.push(`<span style="color:${era.color}">${eraName} +${Math.round(mult.era * 100)}%</span>`);
-            tipParts.push(`${eraName}: +${Math.round(mult.era * 100)}% к наградам`);
-        }
-        if (mult.event > 0.01) {
-            bonusParts.push(`<span>событие +${Math.round(mult.event * 100)}%</span>`);
-            if (mult.eventName) tipParts.push(`${mult.eventName}: +${Math.round(mult.event * 100)}% к наградам`);
-        }
-        if (mult.danger > 0.01) {
-            bonusParts.push(`<span style="color:#cc4a3a">опасность +${Math.round(mult.danger * 100)}%</span>`);
-            tipParts.push(`Опасность: бонус секты/техник/артефактов к наградам за опасные локации`);
-        }
-        if (bonusParts.length > 0 || mult.ascend > 1) {
-            tipParts.push(`Базовые награды ×${mult.total.toFixed(2)}, затем бонус удачи и камней локации`);
-            if (mult.stoneTotal > mult.total) tipParts.push(`Камни: ×${mult.stoneTotal.toFixed(2)} с учётом мирового события`);
-            tipParts.push(`Бонусы складываются, предел +300% до вознесения`);
-            bonusParts.push(`<span>итого ×${mult.total.toFixed(2)}</span>`);
-        }
-        const bonusLabel = bonusParts.length > 0
-            ? `<div class="expedition-era-bonus stat-with-tip">\u2605 ${bonusParts.join(" | ")}<span class="stat-tip expedition-bonus-tip">${tipParts.join(" | ")}</span></div>`
-            : "";
-
-        const locName = game.getLocationName(loc.id);
-        const locDesc = game.getLocationDescription(loc.id);
-        const ascTierLoc = game.ascendedLocations[loc.id] || 0;
-        const isAscended = ascTierLoc >= 1;
-        const isAscended2 = ascTierLoc >= 2;
-
-        // Прогресс вознесения (тир 2 и тир 3)
-        let ascendInfo = "";
-        if (game.flags["expedition_" + loc.id]) {
-            const completions = (game.expeditionCompletions || {})[loc.id] || 0;
-            if (!isAscended && ADVENTURES.some(a => a.id === "ascend_" + loc.id)) {
-                // Путь к тиру 2
-                const ascAdvId = "ascend_" + loc.id;
-                const ascAdvDone = (game.completedAdventures || []).includes(ascAdvId);
-                if (completions < 10) {
-                    ascendInfo = `<div class="expedition-ascend-progress">\u2728 Изучение: ${completions}/10 походов</div>`;
-                } else if (!ascAdvDone) {
-                    const ascDanger = loc.ascend && loc.ascend.dangerLevel ? loc.ascend.dangerLevel : 0;
-                    const dangerNote = ascDanger > (loc.dangerLevel || 0)
-                        ? ` <span style="color:#ee7a7a">\u26A0 Базовая опасность вырастет до ${ascDanger}</span>` : "";
-                    ascendInfo = `<div class="expedition-ascend-ready">\u2728 Доступно испытание вознесения!${dangerNote}</div>`;
-                }
-            } else if (!isAscended2 && ADVENTURES.some(a => a.id === "ascend2_" + loc.id)) {
-                // Второе испытание требует 20 общих походов этой жизни.
-                const ascAdvId = "ascend2_" + loc.id;
-                const ascAdvDone = (game.completedAdventures || []).includes(ascAdvId);
-                if (completions < 20) {
-                    ascendInfo = `<div class="expedition-ascend-progress">\u2728\u2728 Высшее испытание: ${completions}/20 общих походов</div>`;
-                } else if (!ascAdvDone) {
-                    ascendInfo = `<div class="expedition-ascend-ready">\u2728\u2728 Доступно высшее испытание! Награды усилятся.</div>`;
-                }
-            }
-        }
-
+        const card = document.createElement("div");
+        card.className = `expedition-card${isActive ? " expedition-current" : ""}`;
+        card.dataset.location = loc.id;
+        card.style.borderColor = loc.color;
         card.innerHTML = `
-            ${renderSceneryImage(getExpeditionScenery(loc.id, locAscTier, game.sect?.id), "expedition-scenery")}
-            <div class="expedition-header">
-                <span class="expedition-name" style="color:${loc.color}">${isAscended ? "\u2728".repeat(game.ascendedLocations[loc.id]) + " " : ""}${locName}</span>
-                <span class="expedition-duration">${adjustedDuration} лет</span>
+            ${renderSceneryImage(getExpeditionScenery(loc.id, ascTier, game.sect?.id), "expedition-scenery")}
+            <div class="expedition-header"><span class="expedition-name" style="color:${loc.color}">${locName}</span><span class="expedition-duration">${duration} ${_plural(duration, "год", "года", "лет")}</span></div>
+            <p class="expedition-desc v2-expedition-lore">${_v2ExpeditionLore(locDesc)}</p>
+            <div class="v2-expedition-facts">
+                <span class="expedition-cost">Вход: <b class="v2-resource-stones">${entryCost ? `${entryCost} камней` : "бесплатно"}</b></span>
+                <span class="expedition-danger ${failPerYear > 0 ? "expedition-risky" : "expedition-safe"}" title="Вероятность провала за каждый год похода; при провале добыча и плата за вход потеряны.">Риск: ${(failPerYear * 100).toFixed(1)}%/год</span>
             </div>
-            <div class="expedition-desc">${locDesc}</div>
-            ${isAscended2 ? '<div class="expedition-ascended">\u2728\u2728 Высшее вознесение — награды ×2.5</div>' : isAscended ? '<div class="expedition-ascended">\u2728 Вознесено — награды ×2</div>' : ""}
-            ${dangerHtml}
-            <div class="expedition-rewards">${rewardLines.join("")}${bonusLabel}</div>
-            ${reqParts.length > 0 ? `<div class="expedition-req">${reqParts.join(" | ")}</div>` : ""}
-            ${ascendInfo}
-            <div class="expedition-actions">
-                ${isActive
-                    ? '<span class="expedition-in-progress">В пути...</span>'
-                    : canStart
-                        ? `<button class="btn btn-small btn-primary" onclick="startExpeditionUI('${loc.id}')">Отправиться</button>`
-                        : game.expedition
-                            ? `<span class="expedition-busy">Уже в экспедиции</span>`
-                            : `<span class="expedition-unavailable">Недоступно</span>`
-                }
-            </div>
-        `;
-        container.appendChild(card);
+            <div class="expedition-rewards v2-expedition-main-rewards">${mainRewards.join("")}</div>
+            ${artifactPreview}
+            ${unmet.length ? `<div class="expedition-req">${unmet.join(" · ")}</div>` : ""}
+            <div class="v2-expedition-footer">
+                <div class="expedition-actions">${isActive ? '<span class="expedition-in-progress">В пути…</span>' : canStart ? `<button class="btn btn-small btn-primary" onclick="startExpeditionUI('${loc.id}')">Отправиться</button>` : game.expedition ? '<span class="expedition-busy">Уже в походе</span>' : '<span class="expedition-unavailable">Недоступно</span>'}</div>
+            </div>`;
+        grid.appendChild(card);
     }
 }
 
@@ -315,7 +180,5 @@ function startExpeditionUI(locationId) {
 }
 
 function ascendLocationUI(locationId) {
-    if (game.ascendLocation(locationId)) {
-        renderExpeditions();
-    }
+    if (game.ascendLocation(locationId)) renderExpeditions();
 }

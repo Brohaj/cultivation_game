@@ -2,7 +2,8 @@
 // SAVE.JS — Сохранение и загрузка игры
 // ============================================================
 
-const SAVE_KEY = "cultivation_game_save";
+const SAVE_KEY = "cultivation_game_prototype_save";
+const SAVE_MIGRATION_KEY = "cultivation_game_migrated_to_v07";
 const AUTO_SAVE_INTERVAL = 30000; // 30 секунд
 
 function getSaveableState() {
@@ -12,6 +13,8 @@ function getSaveableState() {
         daoProgress: game.daoProgress,
         daoLevel: game.daoLevel,
         realmIndex: game.realmIndex,
+        _maxRealmThisLife: Math.max(game.realmIndex, game._maxRealmThisLife || 0),
+        _startingRealmThisLife: game._startingRealmThisLife || 0,
         subLevel: game.subLevel,
         years: game.years,
         birthYear: game.birthYear,
@@ -48,6 +51,9 @@ function getSaveableState() {
         sect: game.sect,
         sectMissions: game.sectMissions,
         sectMissionTimer: game.sectMissionTimer,
+        disciplesState: game.disciplesState,
+        startingTechniqueId: game.startingTechniqueId,
+        practicePlan: game.practicePlan,
         expedition: game.expedition,
         _insightUses: game._insightUses || 0,
         ascendedLocations: game.ascendedLocations || {},
@@ -66,9 +72,11 @@ function getSaveableState() {
         gameOver: game.gameOver,
         prestige: game.prestige,
         pendingRebirth: game.pendingRebirth,
+        paused: !!game._paused,
+        pausedTimerProgress: game._paused ? game._pauseTimerProgress : null,
         _minRootTier: game._minRootTier || null,
         logEntries: _getLogEntries(),
-        version: 16
+        version: 18
     };
 }
 
@@ -76,6 +84,7 @@ function saveGame() {
     try {
         const data = getSaveableState();
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        localStorage.setItem(SAVE_MIGRATION_KEY, "1");
         return true;
     } catch (e) {
         console.error("Ошибка сохранения:", e);
@@ -85,9 +94,26 @@ function saveGame() {
 
 function loadGame() {
     try {
-        const raw = localStorage.getItem(SAVE_KEY);
+        let raw = localStorage.getItem(SAVE_KEY);
+        if (!raw && localStorage.getItem(SAVE_MIGRATION_KEY) !== "1") {
+            // Новый единый интерфейс принимает прежний профиль один раз, не изменяя исходную копию.
+            for (const key of ["cultivation_game_save_v2", "cultivation_game_save"]) {
+                const previous = localStorage.getItem(key);
+                if (!previous) continue;
+                try {
+                    const data = JSON.parse(previous);
+                    if (!Number.isInteger(data.realmIndex) || data.realmIndex < 0 || data.realmIndex >= 15) continue;
+                    raw = previous;
+                    localStorage.setItem(SAVE_KEY, raw);
+                    break;
+                } catch { /* Пропустить некорректный прежний профиль. */ }
+            }
+            localStorage.setItem(SAVE_MIGRATION_KEY, "1");
+        }
         if (!raw) return null;
-        return JSON.parse(raw);
+        const data = JSON.parse(raw);
+        localStorage.setItem(SAVE_MIGRATION_KEY, "1");
+        return data;
     } catch (e) {
         console.error("Ошибка загрузки:", e);
         return null;
@@ -95,11 +121,12 @@ function loadGame() {
 }
 
 function hasSave() {
-    return localStorage.getItem(SAVE_KEY) !== null;
+    return localStorage.getItem(SAVE_KEY) !== null || loadGame() !== null;
 }
 
 function deleteSave() {
     localStorage.removeItem(SAVE_KEY);
+    localStorage.setItem(SAVE_MIGRATION_KEY, "1");
 }
 
 function applyLoadedState(data) {
@@ -121,6 +148,9 @@ function applyLoadedState(data) {
     game.daoProgress = data.daoProgress || 0;
     game.daoLevel = data.daoLevel || 0;
     game.realmIndex = data.realmIndex || 0;
+    game._maxRealmThisLife = Math.max(game.realmIndex, Number.isFinite(data._maxRealmThisLife) ? data._maxRealmThisLife : 0);
+    game._startingRealmThisLife = Number.isInteger(data._startingRealmThisLife) && data._startingRealmThisLife >= 0
+        && data._startingRealmThisLife < REALMS.length ? data._startingRealmThisLife : 0;
     game.subLevel = data.subLevel || 1;
     game.years = data.years ?? 16;
     game.birthYear = data.birthYear || 0;
@@ -189,8 +219,9 @@ function applyLoadedState(data) {
     if (data.sectMission && !data.sectMissions) {
         game.sectMissions = [data.sectMission];
     } else {
-        game.sectMissions = data.sectMissions || [];
+        game.sectMissions = Array.isArray(data.sectMissions) ? data.sectMissions : [];
     }
+    game.sectMissions = game.sectMissions.map(mission => mission || { cooldown: 1 });
     // Дополнить до 3 слотов если их меньше (миграция или старое сохранение)
     if (game.sect && game.sectMissions.length > 0 && game.sectMissions.length < 3) {
         while (game.sectMissions.length < 3) {
@@ -198,6 +229,9 @@ function applyLoadedState(data) {
         }
     }
     game.sectMissionTimer = data.sectMissionTimer || 0;
+    game.disciplesState = data.disciplesState || null;
+    game.startingTechniqueId = data.startingTechniqueId || "basic_breathing";
+    game.practicePlan = data.practicePlan || null;
     game.expedition = data.expedition || null;
     game._insightUses = data._insightUses || 0;
     game.ascendedLocations = data.ascendedLocations || {};
@@ -220,6 +254,8 @@ function applyLoadedState(data) {
     game.selectedFormations = data.selectedFormations || [];
     game.prestige = data.prestige || { karma: 0, karmaSpent: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
     game.pendingRebirth = data.pendingRebirth || null;
+    game.prestige.qualifiedRebirths ??= 0;
+    game.prestige.bodyLives ||= {};
     // Миграция переименованных milestone ID в permanentMilestones
     if (game.prestige.permanentMilestones) {
         for (const [oldId, newId] of Object.entries(_milestoneRenames)) {
@@ -366,6 +402,8 @@ function applyLoadedState(data) {
     // Старый оплаченный опыт выдаётся после восстановления всех техник и тиров.
     // Новые покупки начисляют XP сразу; сохранённая очередь остаётся миграцией.
     if (typeof game._flushPendingInsightXP === "function") game._flushPendingInsightXP();
+    if (typeof game._restoreDiscipleState === "function") game._restoreDiscipleState(game.disciplesState);
+    if (typeof game._restorePauseState === "function") game._restorePauseState(data);
 
     return true;
 }
@@ -374,7 +412,7 @@ function applyLoadedState(data) {
 
 function _getLogEntries() {
     const log = document.getElementById("event-log");
-    if (!log) return [];
+    if (!log || !log.children) return [];
     const entries = [];
     const children = log.children;
     const start = Math.max(0, children.length - 50);
@@ -382,7 +420,7 @@ function _getLogEntries() {
         const el = children[i];
         entries.push({
             text: el.dataset.text || el.textContent,
-            type: (el.className.match(/log-(\S+)/) || [])[1] || "system",
+            type: el.className.split(/\s+/).find(name => name.startsWith("log-") && name !== "log-entry")?.slice(4) || "system",
             worldYear: el.dataset.worldYear || "",
             charAge: el.dataset.charAge || ""
         });
@@ -403,7 +441,8 @@ function _restoreLogEntries(entries) {
         el.textContent = `[${_getLogTimeLabel(e)}] ${e.text}`;
         log.appendChild(el);
     }
-    log.scrollTop = log.scrollHeight;
+    if (typeof _scrollLogToBottom === "function") _scrollLogToBottom();
+    else log.scrollTop = log.scrollHeight;
 }
 
 function exportSave() {
@@ -885,10 +924,11 @@ function importSave(json) {
             addLog("Некорректный формат сейва.", "danger");
             return false;
         }
+        const keepPaused = !!game._paused;
         game.stop();
         applyLoadedState(data);
+        resumeLoadedGame(keepPaused);
         saveGame();
-        resumeLoadedGame();
         addLog("Сейв успешно загружен!", "system");
         return true;
     } catch (e) {

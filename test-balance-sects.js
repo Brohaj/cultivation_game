@@ -9,6 +9,24 @@ function test(name, fn) {
     catch (error) { failed++; console.error(`FAIL ${name}\n${error.stack}`); }
 }
 
+test('Пустой слот не выдаёт награду и повторяет подбор, если свободного задания пока нет', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7; game.sect={id:'jade_purity',rank:3,contribution:1800};
+        game.sectMissions=[{cooldown:1}]; game.flags.sectMissionsCompleted=0;
+        var generateMission=game._generateOneMission;
+        game._generateOneMission=()=>null;`);
+    ctx.run('game.tickSectMission();');
+    assert.equal(ctx.run('game.sectMissions[0].cooldown'), 1);
+    assert.equal(ctx.run('game.canCompleteSectMission(0)'), false);
+    assert.equal(ctx.run('game.completeSectMission(0)'), false);
+    assert.equal(ctx.run('game.flags.sectMissionsCompleted'), 0);
+    ctx.run('game._generateOneMission=generateMission; game.tickSectMission();');
+    assert.ok(ctx.run('game.sectMissions[0].reward'));
+    assert.equal(ctx.run('game.sectMissions[0].cooldown'), 0);
+    ctx.run('game.sectMissions=[{cooldown:0},null]; game.tickSectMission();');
+    assert.ok(ctx.run('game.sectMissions.every(m=>m.reward)'));
+});
+
 test('Множители вклада рангов растут до ×2 без изменения начального ранга', () => {
     const ctx = createContext();
     assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(getSectRanks("jade_purity").map(r=>r.bonusMult))')), [1, 1.25, 1.5, 1.75, 2]);
@@ -93,15 +111,15 @@ test('Первая награда гарантирована, повторная
     assert.equal(ctx.run('game.flags.sectMissionArtifact_hall_master_artifact'), true);
     assert.equal(ctx.run('game.completeSectMission(0)'), false);
     assert.equal(ctx.run('game.artifacts.length'), 1);
-    ctx.run(`game.sectMissions=[{templateId:'hall_master_artifact',reward:{artifact:'epic'}}];`);
+    ctx.run(`game.years+=game.getSectMissionCooldown();game.sectMissions=[{templateId:'hall_master_artifact',reward:{artifact:'epic'}}];`);
     assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(game.getSectMissionArtifactReward(game.sectMissions[0]))')),
         {tier:'rare',chance:0.05,firstReward:false,flag:'sectMissionArtifact_hall_master_artifact'});
     ctx.run('game.completeSectMission(0);');
     assert.equal(ctx.run('game.artifacts.length'), 1);
-    ctx.run(`game.sectMissions=[{templateId:'hall_master_artifact',reward:{artifact:'epic'}}]; Math.random=()=>0.01;
+    ctx.run(`game.years+=game.getSectMissionCooldown();game.sectMissions=[{templateId:'hall_master_artifact',reward:{artifact:'epic'}}]; Math.random=()=>0.01;
         game.completeSectMission(0);`);
     assert.equal(ctx.run('game.artifacts[1].tier'), 'rare');
-    ctx.run(`Math.random=()=>0.99; game.sectMissions=[{templateId:'relic_hunt',reward:{artifact:'uncommon'}}];
+    ctx.run(`game.years+=game.getSectMissionCooldown();Math.random=()=>0.99; game.sectMissions=[{templateId:'relic_hunt',reward:{artifact:'uncommon'}}];
         game.completeSectMission(0);`);
     assert.equal(ctx.run('game.artifacts[2].tier'), 'uncommon');
 });
@@ -134,12 +152,12 @@ test('UI показывает фактический шанс, тир и нез�
         game.flags.sectMissionArtifact_hall_master_artifact=true;
         game.sectMissions=[{templateId:'hall_master_artifact',reward:{artifact:'epic'}}];
         var rendered=[];
-        document.createElement=()=>({innerHTML:'',style:{},classList:{add(){}},setAttribute(){},appendChild(el){rendered.push(el);}});
-        document.getElementById=()=>({innerHTML:'',querySelector(){return null;},appendChild(el){rendered.push(el);}});
+        document.createElement=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
+        document.getElementById=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
         renderSects(); rendered.map(el=>el.innerHTML).join(' ');`);
-    assert.match(html, /артефакт: 5%.*редкий/);
-    assert.match(html, /Кулдаун не зависит от ранга/);
-    assert.doesNotMatch(html, /эпический/);
+    assert.match(html, /art-tier-rare[^>]*>Мистический артефакт · 5%/);
+    assert.match(html, /Новое через 20 лет/);
+    assert.doesNotMatch(html, /art-tier-epic/);
 });
 
 test('Пожертвование Главы Лунного Озера нельзя замкнуть через обмен Торговца', () => {

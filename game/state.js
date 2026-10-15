@@ -8,6 +8,7 @@ const game = {
     name: "Культиватор",
     qi: 0,
     realmIndex: 0,
+    _startingRealmThisLife: 0, // старт после бонусов тела и Памяти Пути
     subLevel: 1,
     years: 16,        // мировое время (продолжается между жизнями)
     birthYear: 0,     // год рождения текущего персонажа (возраст = years - birthYear)
@@ -55,6 +56,9 @@ const game = {
     sect: null,                 // { id, rank, contribution } или null
     sectMissions: [],            // текущие задания секты (до 3)
     sectMissionTimer: 0,        // лет до нового задания
+    disciplesState: typeof createDiscipleState === "function" ? createDiscipleState() : null,
+    startingTechniqueId: "basic_breathing",
+    practicePlan: null,        // выбранный план занятий текущей жизни
 
     // Экспедиции
     expedition: null,           // { locationId, startYear, baseDuration, rewardMultipliers } или null
@@ -80,13 +84,16 @@ const game = {
         karma: 0,
         karmaSpent: 0,           // сумма фактически оплаченной кармы
         totalRebirths: 0,
+        qualifiedRebirths: 0,
+        bodyLives: {},          // квалифицированные жизни по происхождению
         permanentMilestones: [],
         karmaUpgrades: {},
         lastBody: "peasant",
         bodyAscensions: {},      // { bodyId: level } — вознесения тел
         worldAge: 0,             // мировое время при перерождении
         daoLevels: {},           // { sectId: maxLevel } — макс уровень Дао по секте (перманентный)
-        unlockedFormations: []   // [formationId, ...] — разблокированные формации (перманентно)
+        unlockedFormations: [],  // [formationId, ...] — разблокированные формации (перманентно)
+        heavenlyStats: {}
     },
     _minRootTier: null, // временное: мин. тир корня от тела
     pendingRebirth: null, // { karmaEarned, naturalDeath, bodyId } — незавершённое перерождение
@@ -96,4 +103,6 @@ const game = {
     eventTimer: null,
     yearTimer: null,
     debugSpeed: 1,
+    _paused: false,
+    _pauseTimerProgress: null,
 };

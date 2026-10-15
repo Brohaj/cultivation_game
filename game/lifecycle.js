@@ -43,7 +43,9 @@ Object.assign(game, {
 
     tick() {
         if (this.gameOver || this.pendingRebirth) return;
+        if (typeof this.tickPracticePlan === 'function') this.tickPracticePlan();
         const tickFraction = 1 / TICK_RATE; // доля секунды за 1 тик
+        if (typeof this.tickDiscipleLearning === "function") this.tickDiscipleLearning(tickFraction);
         {
             // Авто-активность + пассивная прокачка статов
             const PASSIVE_STAT_RATE = 0.15;
@@ -166,6 +168,7 @@ Object.assign(game, {
             }
             this.checkMilestones();
             this.tickSectMission();
+            if (typeof this.tickDisciples === "function") this.tickDisciples();
             this.tickExpedition();
             this.tickAdventures();
 
@@ -247,32 +250,101 @@ Object.assign(game, {
         return 1 + timeFlow * 0.25 + techTimeSpeed + artifactTimeSpeed;
     },
 
+    _getTimerIntervals(totalSpeed) {
+        return {
+            tickMs: Math.max(1,Math.floor(1000 / TICK_RATE / totalSpeed)),
+            yearMs: Math.max(1,Math.floor(5000 / totalSpeed)),
+            eventMs: Math.max(1,Math.floor(15000 / totalSpeed)),
+        };
+    },
+
+    _getTimerProgress(now = Date.now()) {
+        const intervals = this._timerIntervals || this._getTimerIntervals(this.getSpeedMultiplier() * (this.debugSpeed || 1));
+        const progress = (last, interval) => Math.max(0, Math.min(1,
+            (now - (Number.isFinite(last) ? last : now)) / interval));
+        return { tick: progress(this._lastTickTime, intervals.tickMs),
+            year: progress(this._lastYearTime, intervals.yearMs),
+            event: progress(this._lastEventTime, intervals.eventMs) };
+    },
+
+    getYearTimerProgress() {
+        if (this._paused) return this._pauseTimerProgress?.year || 0;
+        if (this.yearTimer) return this._getTimerProgress().year;
+        return this._stoppedTimerProgress?.year || 0;
+    },
+
+    pause() {
+        if (this.gameOver || this.pendingRebirth || this._paused) return;
+        this._paused = true;
+        this.stop();
+        this._pauseTimerProgress ||= { tick: 0, year: 0, event: 0 };
+    },
+
+    // Загрузка не наследует фазу таймеров предыдущего персонажа.
+    _restorePauseState(data = {}) {
+        this.stop();
+        this._paused = data.paused === true;
+        const raw = data.pausedTimerProgress || {};
+        const fraction = key => Number.isFinite(raw[key]) ? Math.max(0, Math.min(1, raw[key])) : 0;
+        this._pauseTimerProgress = this._paused
+            ? { tick: fraction('tick'), year: fraction('year'), event: fraction('event') } : null;
+        this._stoppedTimerProgress = this._pauseTimerProgress;
+        this._timerIntervals = null;
+        this._lastTickTime = this._lastYearTime = this._lastEventTime = null;
+    },
+
     start() {
+        const progress = this._paused ? this._pauseTimerProgress
+            : this.tickTimer ? this._getTimerProgress() : null;
         // Остановить предыдущие таймеры чтобы не дублировать
         this.stop();
         if (this.gameOver || this.pendingRebirth) return;
         this._paused = false;
+        this._pauseTimerProgress = null;
+        this._stoppedTimerProgress = null;
         const speedMult = this.getSpeedMultiplier();
         const totalSpeed = speedMult * (this.debugSpeed || 1);
         this._currentSpeedMult = speedMult;
-        const tickMs = Math.floor(1000 / TICK_RATE / totalSpeed);
-        const yearMs = Math.floor(5000 / totalSpeed);
-        const eventMs = Math.floor(15000 / totalSpeed);
-        this.tickTimer = setInterval(() => this.tick(), tickMs);
-        this.yearTimer = setInterval(() => this.passYear(), yearMs);
-        this.eventTimer = setInterval(() => this.triggerEvent(), eventMs);
+        const {tickMs,yearMs,eventMs} = this._getTimerIntervals(totalSpeed);
+        this._timerIntervals = { tickMs, yearMs, eventMs };
+        const generation = this._timerGeneration;
+        const schedule = (field, interval, fraction, run) => {
+            const active = () => this._timerGeneration === generation && !this._paused
+                && !this.gameOver && !this.pendingRebirth;
+            const callback = () => { if (active()) run(); };
+            if (!fraction) {
+                this[field] = setInterval(callback, interval);
+            } else {
+                this[field] = setTimeout(() => {
+                    if (!active()) return;
+                    // Назначить interval до callback: он сам может изменить скорость или завершить жизнь.
+                    this[field] = setInterval(callback, interval);
+                    callback();
+                }, Math.max(1, Math.ceil(interval * (1 - fraction))));
+            }
+        };
+        schedule('tickTimer', tickMs, progress?.tick || 0, () => this.tick());
+        schedule('yearTimer', yearMs, progress?.year || 0, () => this.passYear());
+        schedule('eventTimer', eventMs, progress?.event || 0, () => this.triggerEvent());
         this._lastEra = this.getCurrentEra().id;
-        this._lastTickTime = Date.now();
-        this._lastYearTime = Date.now();
-        this._lastEventTime = Date.now();
+        const now = Date.now();
+        this._lastTickTime = now - (progress?.tick || 0) * tickMs;
+        this._lastYearTime = now - (progress?.year || 0) * yearMs;
+        this._lastEventTime = now - (progress?.event || 0) * eventMs;
         startAutoSave();
         this._startVisibilityHandler();
     },
 
     stop() {
-        clearInterval(this.tickTimer);
-        clearInterval(this.yearTimer);
-        clearInterval(this.eventTimer);
+        if (this.tickTimer || this.yearTimer || this.eventTimer) {
+            this._stoppedTimerProgress = this._getTimerProgress();
+            if (this._paused) this._pauseTimerProgress = this._stoppedTimerProgress;
+        }
+        this._timerGeneration = (this._timerGeneration || 0) + 1;
+        for (const timer of [this.tickTimer, this.yearTimer, this.eventTimer]) {
+            clearInterval(timer);
+            clearTimeout(timer);
+        }
         this.tickTimer = null;
         this.yearTimer = null;
         this.eventTimer = null;
@@ -287,35 +359,28 @@ Object.assign(game, {
             if (document.hidden || this.gameOver || this._paused || !this.tickTimer) return;
             const now = Date.now();
             const totalSpeed = this.getSpeedMultiplier() * (this.debugSpeed || 1);
+            const {tickMs,yearMs,eventMs} = this._getTimerIntervals(totalSpeed);
 
-            // Пропущенные тики (ци + статы + техники)
-            const tickMs = Math.floor(1000 / TICK_RATE / totalSpeed);
-            const missedTicks = Math.floor((now - (this._lastTickTime || now)) / tickMs);
-            if (missedTicks > 1) {
-                const catchUpTicks = Math.min(missedTicks, TICK_RATE * 60);
-                for (let i = 0; i < catchUpTicks; i++) {
-                    this.tick();
+            // Сохраняем пределы компенсации, но повторяем таймеры в порядке игрового времени.
+            // Иначе все тики проходят до возвращения из царства и медитация после похода теряется.
+            const pending = [];
+            const timers = [
+                { last:this._lastTickTime, interval:tickMs, limit:TICK_RATE * 60, run:() => this.tick() },
+                { last:this._lastYearTime, interval:yearMs, limit:200, run:() => this.passYear() },
+                { last:this._lastEventTime, interval:eventMs, limit:20, run:() => this.triggerEvent() },
+            ];
+            for (const timer of timers) {
+                const last = timer.last || now;
+                const missed = Math.floor((now - last) / timer.interval);
+                if (missed <= 1) continue;
+                for (let i = 1; i <= Math.min(missed,timer.limit); i++) {
+                    pending.push({ time:last + i * timer.interval, run:timer.run });
                 }
             }
-
-            // Пропущенные годы
-            const yearMs = Math.floor(5000 / totalSpeed);
-            const missedYears = Math.floor((now - (this._lastYearTime || now)) / yearMs);
-            if (missedYears > 1) {
-                const catchUpYears = Math.min(missedYears, 200);
-                for (let i = 0; i < catchUpYears; i++) {
-                    this.passYear();
-                }
-            }
-
-            // Пропущенные события
-            const eventMs = Math.floor(15000 / totalSpeed);
-            const missedEvents = Math.floor((now - (this._lastEventTime || now)) / eventMs);
-            if (missedEvents > 1) {
-                const catchUpEvents = Math.min(missedEvents, 20);
-                for (let i = 0; i < catchUpEvents; i++) {
-                    this.triggerEvent();
-                }
+            pending.sort((a,b) => a.time - b.time);
+            for (const action of pending) {
+                if (this.gameOver || this.pendingRebirth) break;
+                action.run();
             }
 
             // Обновить таймстампы
@@ -344,6 +409,9 @@ Object.assign(game, {
 
     reset(keepPrestige = false) {
         this.stop();
+        this._paused = false;
+        this._pauseTimerProgress = this._stoppedTimerProgress = this._timerIntervals = null;
+        this._lastTickTime = this._lastYearTime = this._lastEventTime = null;
         const savedPrestige = keepPrestige ? JSON.parse(JSON.stringify(this.prestige)) : null;
         const savedName = keepPrestige ? this.name : "Культиватор";
         // Мировое время: при перерождении мир продолжает жить
@@ -363,6 +431,7 @@ Object.assign(game, {
         this.gameOver = false;
         this.pendingRebirth = null;
         this._maxRealmThisLife = 0;
+        this._startingRealmThisLife = 0;
         this.currentActivity = "meditation";
         this.activityXP = { strength: 0, spirit: 0, luck: 0 };
         this.daoProgress = 0;
@@ -379,6 +448,9 @@ Object.assign(game, {
         this.sect = null;
         this.sectMissions = [];
         this.sectMissionTimer = 0;
+        this.disciplesState = typeof createDiscipleState === "function" ? createDiscipleState() : null;
+        this.startingTechniqueId = "basic_breathing";
+        this.practicePlan = null;
         // Экспедиция сбрасывается
         this.expedition = null;
         this.lastExpeditionReward = null;
@@ -453,7 +525,10 @@ Object.assign(game, {
         this.debugSpeed = 1;
         this._lastEra = null;
         this._minRootTier = null;
-        this.prestige = savedPrestige || { karma: 0, karmaSpent: 0, totalRebirths: 0, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", formations: {}, bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [] };
+        this.prestige = savedPrestige || { karma: 0, karmaSpent: 0, totalRebirths: 0, qualifiedRebirths: 0, bodyLives: {}, permanentMilestones: [], karmaUpgrades: {}, lastBody: "peasant", formations: {}, bodyAscensions: {}, worldAge: 0, daoLevels: {}, unlockedFormations: [], heavenlyStats: {} };
+        this.prestige.qualifiedRebirths ??= 0;
+        this.prestige.bodyLives ||= {};
+        this.prestige.heavenlyStats ||= {};
         // Восстановить достижения из перманентных
         this.milestones = [...(this.prestige.permanentMilestones || [])].filter(m => !m.startsWith("visited_sect_"));
         deleteSave();

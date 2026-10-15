@@ -137,7 +137,7 @@ Object.assign(game, {
 
     qiPerSec() {
         if (this.currentActivity !== "meditation") return 0;
-        return Math.floor(this.getMeditationQiPerSec() * this.getAdventureMeditationMultiplier());
+        return this.getMeditationQiPerSec();
     },
 
     getMeditationQiPerSec() {
@@ -300,7 +300,7 @@ Object.assign(game, {
 
     // === ПРОРЫВ ===
 
-    getBreakthroughChance(includePillBonus = true) {
+    getBreakthroughChance() {
         if (this.realmIndex < 3) return 1.0;
 
         // Штраф: -2.5% за подуровень внутри реалма, -10% за полный смертный реалм (3-9), -15% за бессмертный (10+)
@@ -331,7 +331,7 @@ Object.assign(game, {
         const dreamBonus = this.flags.prophetic_dream ? 0.05 : 0;
 
         // Бонус от духовной пилюли (расходуется при попытке)
-        const pillBonus = includePillBonus ? this.flags._pillBreakthroughBonus || 0 : 0;
+        const pillBonus = this.flags._pillBreakthroughBonus || 0;
 
         const chance = baseChance + luckBonus
             + techBonus + artifactBonus + sectBonus + techLuckBonus + formationBonus + bodyBonus + dreamBonus + pillBonus;
@@ -343,8 +343,7 @@ Object.assign(game, {
 
     // Шанс встречи с внутренним демоном (только при провале прорыва, когда шанс < 65%)
     getDemonChance() {
-        // При провале пилюльный бонус уже израсходован до проверки демона.
-        const btChance = this.getBreakthroughChance(false);
+        const btChance = this.getBreakthroughChance();
         // Давление Дао снижает порог (65% → 70/75/80%)
         const daoLevel = this.daoLevel || 0;
         let threshold = 0.65;
@@ -389,7 +388,7 @@ Object.assign(game, {
     meetsRealmRequirement(realmIndex) {
         const req = this.getRealmPrestigeRequirement(realmIndex);
         if (!req) return true;
-        if (this.prestige.totalRebirths < req.rebirths) return false;
+        if (this.getQualifiedRebirths() < req.rebirths) return false;
         const totalKarmaEver = this.prestige.karma + this._getTotalKarmaSpent();
         if (req.karma > 0 && totalKarmaEver < req.karma) return false;
         return true;

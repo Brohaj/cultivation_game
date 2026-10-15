@@ -8,18 +8,23 @@ const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(match => match[
 
 function createContext(saved) {
     const storage = new Map();
-    if (saved) storage.set('cultivation_game_save', JSON.stringify(saved));
+    if (saved) storage.set('cultivation_game_prototype_save', JSON.stringify(saved));
     const elements = new Map();
     let timerId = 0;
     const timers = new Set();
     const classList = () => ({ add() {}, remove() {}, toggle() {}, contains() { return false; } });
+    const element = () => ({ style:{}, dataset:{}, classList:classList(), children:[], innerHTML:'', textContent:'',
+        appendChild(node){this.children.push(node);return node;},setAttribute(){},addEventListener(){},removeEventListener(){},
+        querySelector(){return null;},querySelectorAll(){return [];},remove(){},getBoundingClientRect(){return {left:0,top:0,width:0,height:0};} });
     for (const id of ['rebirth-modal', 'rebirth-content', 'rebirth-confirm-panel', 'btn-rebirth', 'root-modal', 'event-log', 'btn-breakthrough', 'btn-save', 'btn-new-game', 'btn-log-time-toggle']) {
         elements.set(id, { style: {}, classList: classList(), children: [], innerHTML: '', appendChild() {}, addEventListener() {} });
     }
     const context = vm.createContext({
         console,
+        _testElement:element,
         document: {
             hidden: false,
+            createElement:element,
             getElementById: id => elements.get(id) || null,
             querySelectorAll: () => [], querySelector: () => null,
             addEventListener() {}, removeEventListener() {},
@@ -46,7 +51,7 @@ function createContext(saved) {
     `, context);
     return {
         run: code => vm.runInContext(code, context),
-        saved: () => JSON.parse(storage.get('cultivation_game_save')),
+        saved: () => JSON.parse(storage.get('cultivation_game_prototype_save')),
         timers,
     };
 }

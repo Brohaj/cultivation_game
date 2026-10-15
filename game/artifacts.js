@@ -118,6 +118,7 @@ Object.assign(game, {
     // === ЭКИПИРОВКА ===
 
     equipArtifact(artifactId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const artifact = this.artifacts.find(a => a.id === artifactId);
         if (!artifact) return false;
         const current = this.equippedArtifacts[artifact.slot];
@@ -129,6 +130,7 @@ Object.assign(game, {
     },
 
     unequipArtifact(slot) {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (!this.equippedArtifacts[slot]) return false;
         const art = this.equippedArtifacts[slot];
         const name = art.name;
@@ -162,6 +164,7 @@ Object.assign(game, {
     },
 
     enhanceArtifact(artifactId, useCrone) {
+        if (this.gameOver || this.pendingRebirth) return { success: false, reason: "closedLife" };
         const artifact = this.artifacts.find(a => a.id === artifactId);
         if (!artifact || artifact.enhance >= ENHANCE_MAX || (artifact.transcend || 0) > 0) return { success: false, reason: "max" };
 
@@ -252,6 +255,7 @@ Object.assign(game, {
     },
 
     canFuseArtifact(artifactId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const artifact = this.artifacts.find(a => a.id === artifactId);
         if (!artifact) return false;
         const t = artifact.transcend || 0;
@@ -267,6 +271,7 @@ Object.assign(game, {
     },
 
     fuseArtifacts(keepId, consumeId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (keepId === consumeId) return false;
         const keep = this.artifacts.find(a => a.id === keepId);
         const consume = this.artifacts.find(a => a.id === consumeId);
@@ -339,6 +344,7 @@ Object.assign(game, {
     },
 
     disassembleArtifact(artifactId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const artifact = this.artifacts.find(a => a.id === artifactId);
         if (!artifact) return false;
 
@@ -362,6 +368,7 @@ Object.assign(game, {
     // === СВИТКИ ВОЛИ ДАО ===
 
     useDaoScroll() {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (!this.daoScrolls || this.daoScrolls <= 0) return false;
         const maxScrolls = 10;
         if ((this.scrollFailstacksApplied || 0) >= maxScrolls) {
@@ -437,19 +444,22 @@ Object.assign(game, {
 
         const row = TECH_ASCEND_TABLE.find(r => r.from === tech.tier);
         if (!row) return null; // уже на макс тире
+        // Стоимость остаётся правдивой и в закрытой жизни; доступность отдельна.
+        const perks = this.getActiveBodyPerks();
+        const discount = perks.ascendDiscount || 0;
+        const discountedEssence = discount > 0 ? Math.ceil(row.essence * (1 - discount)) : row.essence;
+        if (this.gameOver || this.pendingRebirth) return { ...row, essence: discountedEssence, locked: true, closedLife: true };
         if (this._pendingInsightXP && this._pendingInsightXP[techId] > 0) {
             return { ...row, locked: true, insightPending: true };
         }
         if (row.eraReq && !this.hasReachedEra(row.eraReq)) return { ...row, locked: true, eraLocked: true };
         if (this.realmIndex < row.realmReq) return { ...row, locked: true };
         // Отшельник Дао: скидка на вознесение техник
-        const perks = this.getActiveBodyPerks();
-        const discount = perks.ascendDiscount || 0;
-        const discountedEssence = discount > 0 ? Math.ceil(row.essence * (1 - discount)) : row.essence;
         return { ...row, essence: discountedEssence, locked: false };
     },
 
     ascendTechnique(techId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const info = this.getTechAscendInfo(techId);
         if (!info || info.locked) return false;
         if (this.daoEssence < info.essence) {

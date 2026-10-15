@@ -154,12 +154,12 @@ test('Карточка пожертвования показывает авто�
         "game.sectMissions=[{templateId:'donate_pills_sect',description:mission.description,check:mission.check,reward:mission.reward,pillsDonatedAtStart:0},",
         "{templateId:'prove_spirit',description:'Испытание',check:{spirit:1},reward:{stones:1}}];",
         "var rendered=[];",
-        "document.createElement=()=>({innerHTML:'',style:{},classList:{add(){}},setAttribute(){},appendChild(el){rendered.push(el);}});",
-        "document.getElementById=()=>({innerHTML:'',querySelector(){return null;},appendChild(el){rendered.push(el);}});",
+        "document.createElement=()=>({..._testElement(),appendChild(el){rendered.push(el);}});",
+        "document.getElementById=()=>({..._testElement(),appendChild(el){rendered.push(el);}});",
         "renderSects();rendered.map(el=>el.innerHTML).join(' ');"
     ].join('\n'));
-    assert.match(html, /Награда автоматически при сдаче пилюль/);
-    assert.match(html, /2\/6 пожертвовано/);
+    assert.match(html, /Награда за поручение придёт автоматически после пожертвования/);
+    assert.match(html, /Пожертвовано пилюль[^<]*2 \/ 6/);
     assert.doesNotMatch(html, /onclick="completeSectMissionUI\(0\)"/);
     assert.match(html, /onclick="completeSectMissionUI\(1\)"/);
 });

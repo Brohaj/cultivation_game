@@ -57,6 +57,7 @@ Object.assign(game, {
     },
 
     equipTechnique(techId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (!this.hasTechnique(techId)) return false;
         if (this.isTechEquipped(techId)) return false;
         if (this.equippedTechniques.length >= this.getMaxTechSlots()) return false;
@@ -67,6 +68,7 @@ Object.assign(game, {
     },
 
     unequipTechnique(techId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const idx = this.equippedTechniques.indexOf(techId);
         if (idx === -1) return false;
         this.equippedTechniques.splice(idx, 1);

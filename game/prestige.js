@@ -26,7 +26,7 @@ Object.assign(game, {
             }
             const req = root.unlock;
             if (!req) return true;
-            if (req.rebirths && (this.prestige.totalRebirths || 0) < req.rebirths) return false;
+            if (req.rebirths && this.getQualifiedRebirths() < req.rebirths) return false;
             if (req.milestone && !(this.prestige.permanentMilestones || []).includes(req.milestone)) return false;
             return true;
         });
@@ -194,6 +194,42 @@ Object.assign(game, {
 
     // === ПЕРЕРОЖДЕНИЕ ===
 
+    getLifePeakRealm() {
+        return Math.max(this.realmIndex || 0, this._maxRealmThisLife || 0);
+    },
+
+    isCurrentLifeQualified(peakRealm = this.getLifePeakRealm(), startingRealm = this._startingRealmThisLife || 0,
+        breakthroughs = this.totalBreakthroughs || 0) {
+        return peakRealm >= 3 && (peakRealm > startingRealm || breakthroughs > 0);
+    },
+
+    getQualifiedRebirths(includeClosingLife = false) {
+        const count = Math.max(0, this.prestige.qualifiedRebirths || 0);
+        if (!includeClosingLife || this.pendingRebirth?.progressionCredited) return count;
+        const qualifies = this.pendingRebirth?.qualifiedLife ?? this.isCurrentLifeQualified();
+        return count + (qualifies ? 1 : 0);
+    },
+
+    getBodyLives(bodyId) {
+        return Math.max(0, this.prestige.bodyLives?.[bodyId] || 0);
+    },
+
+    _creditClosingLife() {
+        const pending = this.pendingRebirth;
+        if (!pending || pending.progressionCredited) return;
+        pending.peakRealm ??= this.getLifePeakRealm();
+        pending.startingRealm ??= this._startingRealmThisLife || 0;
+        pending.breakthroughs ??= this.totalBreakthroughs || 0;
+        pending.qualifiedLife ??= this.isCurrentLifeQualified(pending.peakRealm, pending.startingRealm, pending.breakthroughs);
+        pending.closingBodyId ||= this.prestige.lastBody || "peasant";
+        if (pending.qualifiedLife) {
+            this.prestige.qualifiedRebirths = this.getQualifiedRebirths() + 1;
+            this.prestige.bodyLives ||= {};
+            this.prestige.bodyLives[pending.closingBodyId] = this.getBodyLives(pending.closingBodyId) + 1;
+        }
+        pending.progressionCredited = true;
+    },
+
     getSectContributionKarma() {
         if (!this.sect) return 0;
         const ranks = getSectRanks(this.sect.id);
@@ -287,8 +323,9 @@ Object.assign(game, {
                 }
             }
         }
-        // +1 потому что текущее перерождение ещё не засчитано в totalRebirths
-        if (req.rebirths && (this.prestige.totalRebirths + 1) < req.rebirths) return false;
+        // Заканчивающаяся зачётная жизнь учитывается один раз: после beginRebirth
+        // она уже внесена в счётчик, при прямом вызове пока только прогнозируется.
+        if (req.rebirths && this.getQualifiedRebirths(true) < req.rebirths) return false;
         return true;
     },
 
@@ -364,10 +401,20 @@ Object.assign(game, {
         this.stop();
         // Карма начисляется однажды при входе в модалку, а покупки меняют
         // уже зафиксированный баланс. Повторное открытие лишь продолжает её.
-        if (this.pendingRebirth) return this.pendingRebirth;
+        if (this.pendingRebirth) {
+            this._creditClosingLife();
+            saveGame();
+            return this.pendingRebirth;
+        }
         const karmaEarned = this.calculateKarma(naturalDeath);
-        this.pendingRebirth = { karmaEarned, naturalDeath: !!naturalDeath, bodyId: "peasant" };
+        this.pendingRebirth = {
+            karmaEarned, naturalDeath: !!naturalDeath, bodyId: "peasant",
+            peakRealm: this.getLifePeakRealm(), qualifiedLife: this.isCurrentLifeQualified(),
+            startingRealm: this._startingRealmThisLife || 0, breakthroughs: this.totalBreakthroughs || 0,
+            closingBodyId: this.prestige.lastBody || "peasant", progressionCredited: false
+        };
         this.prestige.karma += karmaEarned;
+        this._creditClosingLife();
         this.prestige.lastLifeResources = {
             stones: this.stones || 0,
             pills: this.pills || 0,
@@ -393,7 +440,8 @@ Object.assign(game, {
         if (!this.isBodyUnlocked(bodyId)) return false;
         // Прямой вызов (без модалки) также поддерживается. При продолжении
         // сохранённой модалки сумма уже начислена и не пересчитывается.
-        if (!this.pendingRebirth) this.prestige.karma += this.calculateKarma(naturalDeath);
+        this.beginRebirth(naturalDeath);
+        const inheritedTechniqueId = this.pendingRebirth?.pastLifeTechniqueId || "basic_breathing";
         this.prestige.totalRebirths++;
         // Сохранить достижения
         for (const m of this.milestones) {
@@ -500,6 +548,9 @@ Object.assign(game, {
 
         // Применить кармические улучшения
         this.applyKarmaUpgrades();
+        this._startingRealmThisLife = this.realmIndex;
+        this._maxRealmThisLife = this.realmIndex;
+        this.startingTechniqueId = this.resolveInheritedTechnique(inheritedTechniqueId);
 
         // Перенос ресурсов Алхимика
         if (carryDust > 0) this.artifactDust += carryDust;
@@ -541,6 +592,7 @@ Object.assign(game, {
         if (!ascensions) return false;
         const level = this.getBodyAscensionLevel(bodyId);
         if (level >= ascensions.length) return false;
+        if (level + 1 > this.getBodyLives(bodyId)) return false;
         return this.prestige.karma >= this.getBodyAscendCost(bodyId);
     },
 

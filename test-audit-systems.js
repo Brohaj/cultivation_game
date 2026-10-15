@@ -99,7 +99,7 @@ test('Экспорт игрока v14 проходит миграцию и по�
     const ctx = createContext(original);
     ctx.run('applyLoadedState(loadGame()); saveGame();');
     const migrated = ctx.saved();
-    assert.equal(migrated.version, 16);
+    assert.equal(migrated.version, 18);
     for (const key of ['qi','stones','pills','refinedPills','spiritualPills','heavenlyPills','artifactDust','daoEssence',
         'strength','spirit','luck','years','birthYear','realmIndex','subLevel','daoProgress','daoLevel']) {
         assert.equal(migrated[key], original[key] ?? 0, key);
@@ -108,8 +108,83 @@ test('Экспорт игрока v14 проходит миграцию и по�
         'formations','selectedFormations','sect','sectMissions','ascendedLocations','expeditionCompletions']) {
         assert.deepEqual(migrated[key], original[key], key);
     }
-    assert.deepEqual(migrated.prestige, { ...original.prestige, karmaSpent: 0, heavenlyStats: original.prestige.heavenlyStats ?? {} });
+    assert.deepEqual(migrated.prestige, { ...original.prestige, karmaSpent: 0, qualifiedRebirths: 0, bodyLives: {}, heavenlyStats: original.prestige.heavenlyStats ?? {} });
     const reloaded = createContext(migrated);
     reloaded.run('applyLoadedState(loadGame()); saveGame();');
     assert.deepEqual(reloaded.saved(), migrated);
+});
+
+test('Завершённая жизнь не получает задания и не покупает формации; живая сохраняет действия', () => {
+    for (const status of ['alive','dead','pending']) {
+        const ctx = createContext();
+        ctx.run(`game.realmIndex=7;game.daoLevel=20;game.spirit=100;game.stones=1000;
+            game.sect={id:'jade_purity',rank:0,contribution:0};
+            game.sectMissions=[{templateId:'prove_spirit',text:'Проверка',check:{spirit:10},reward:{stones:7,contribution:5},cooldown:0}];
+            game.selectedFormations=['qiPillar'];game.formations.qiPillar=0;
+            game.prestige.unlockedFormations=['qiPillar','fateHall'];Math.random=()=>.5;`);
+        if (status === 'dead') ctx.run('game.gameOver=true;');
+        if (status === 'pending') ctx.run('game.beginRebirth(false);');
+        const snapshot = `JSON.stringify({stones:game.stones,sect:game.sect,missions:game.sectMissions,flags:game.flags,
+            formations:game.formations,selected:game.selectedFormations,karma:game.prestige.karma,
+            lastLifeResources:game.prestige.lastLifeResources,daoProgress:game.daoProgress,daoLevel:game.daoLevel})`;
+        const before = ctx.run(snapshot);
+        const expected = status === 'alive';
+        assert.equal(ctx.run('game.canCompleteSectMission(0)'), expected, status);
+        assert.equal(ctx.run('game.completeSectMission(0)'), expected, status);
+        assert.equal(ctx.run("game.buyFormation('qiPillar')"), expected, status);
+        assert.equal(ctx.run("game.selectFormation('fateHall')"), expected, status);
+        if (!expected) assert.equal(ctx.run(snapshot), before, status + ': нет изменений завершённой жизни');
+    }
+});
+
+test('Четыре пожертвования и уход не меняют завершённую жизнь, но работают у живого героя', () => {
+    for (const status of ['alive','dead','pending']) {
+        const ctx = createContext();
+        ctx.run(`game.realmIndex=7;game.daoLevel=10;game.stones=1000;game.pills=100;game.daoEssence=100;game.artifactDust=100;
+            game.sect={id:'jade_purity',rank:0,contribution:0};game.sectMissions=[];Math.random=()=>.5;`);
+        if (status === 'dead') ctx.run('game.gameOver=true;');
+        if (status === 'pending') ctx.run('game.beginRebirth(false);');
+        const snapshot = `JSON.stringify({stones:game.stones,pills:game.pills,essence:game.daoEssence,dust:game.artifactDust,
+            sect:game.sect,flags:game.flags,daoLevel:game.daoLevel,daoProgress:game.daoProgress,prestige:game.prestige})`;
+        const before = ctx.run(snapshot);
+        for (const action of ['donateStones','donatePills','donateEssence','donateDust']) {
+            assert.equal(ctx.run(`game.${action}(10)`), status === 'alive', status + ': ' + action);
+        }
+        assert.equal(ctx.run('game.leaveSect()'), status === 'alive', status + ': уход');
+        if (status !== 'alive') assert.equal(ctx.run(snapshot), before, status);
+    }
+});
+
+test('Вступление после завершения жизни не открывает постоянные формации и посещённую секту', () => {
+    for (const status of ['alive','dead','pending']) {
+        const ctx = createContext();
+        ctx.run(`game.realmIndex=7;game.milestones=['ten_breakthroughs'];game.years=100;Math.random=()=>.5;`);
+        if (status === 'dead') ctx.run('game.gameOver=true;');
+        if (status === 'pending') ctx.run('game.beginRebirth(false);');
+        const snapshot = `JSON.stringify({sect:game.sect,techniques:game.techniques,prestige:game.prestige,flags:game.flags})`;
+        const before = ctx.run(snapshot);
+        assert.equal(ctx.run("game.canJoinSect('moon_lake')"),status === 'alive',status);
+        assert.equal(ctx.run("game.joinSect('moon_lake')"),status === 'alive',status);
+        if (status === 'alive') {
+            assert.equal(ctx.run("game.prestige.unlockedFormations.includes('alchemyFurnace')"),true);
+            assert.equal(ctx.run("game.prestige.permanentMilestones.includes('visited_sect_moon_lake')"),true);
+        } else assert.equal(ctx.run(snapshot),before,status);
+    }
+});
+
+test('Старое вознесение царства не списывает ресурсы после завершения жизни', () => {
+    for (const status of ['alive','dead','pending']) {
+        const ctx = createContext();
+        ctx.run(`game.realmIndex=7;game.strength=10000;game.stones=10000;game.daoEssence=1000;game.artifactDust=1000;
+            Math.random=()=>.5;game.startExpedition('spirit_forest');
+            game.years+=game.getAdjustedExpeditionDuration();game.tickExpedition();`);
+        if (status === 'dead') ctx.run('game.gameOver=true;');
+        if (status === 'pending') ctx.run('game.beginRebirth(false);');
+        const snapshot = 'JSON.stringify({stones:game.stones,essence:game.daoEssence,dust:game.artifactDust,ascended:game.ascendedLocations})';
+        const before = ctx.run(snapshot);
+        assert.equal(ctx.run("game.canAscendLocation('spirit_forest')"),status === 'alive',status);
+        assert.equal(ctx.run("game.ascendLocation('spirit_forest')"),status === 'alive',status);
+        if (status === 'alive') assert.equal(ctx.run('game.ascendedLocations.spirit_forest'),1);
+        else assert.equal(ctx.run(snapshot),before,status);
+    }
 });

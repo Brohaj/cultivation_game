@@ -1,44 +1,54 @@
-/* Панорамы царств и сект; сведения и действия остаются на сплошном фоне. */
-body:not(.ui-v2) .tabs { flex-wrap: wrap; }
-
-.scenery-frame {
+/* Иллюстрация заполняет карточку и не занимает места в потоке. */
+.ui-v2 #expeditions-list .expedition-card,
+.ui-v2 #sects-list .sect-card,
+.ui-v2 #sects-list.v2-sect-member {
     position: relative;
-    min-width: 0;
-    contain: inline-size;
-    height: 112px;
-    margin: 0 0 9px;
-    overflow: hidden;
-    border: 1px solid rgba(166, 188, 162, .18);
-    border-radius: 6px;
-    background: #182321;
     isolation: isolate;
+    overflow: hidden;
+    text-shadow: 0 1px 3px #000b;
 }
 
-.scenery-image {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
+.ui-v2 #sects-list.v2-sect-member {
+    padding: 10px;
+    border: 1px solid var(--v2-line);
+    border-radius: 8px;
 }
 
-.scenery-frame::after {
-    content: "";
+.ui-v2 #sects-list .sect-active-header { position: static; }
+
+.ui-v2 #expeditions-list .expedition-card > .scenery-frame,
+.ui-v2 #sects-list .sect-card > .scenery-frame,
+.ui-v2 #sects-list.v2-sect-member .sect-active-header > .scenery-frame {
     position: absolute;
     inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    float: none;
+    margin: 0;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    contain: none;
+    isolation: auto;
     pointer-events: none;
-    box-shadow: inset 0 -14px 18px -16px rgba(5, 13, 12, .8);
 }
 
-.expedition-locked .scenery-image {
-    filter: saturate(.55);
+.ui-v2 #expeditions-list .expedition-scenery::after,
+.ui-v2 #sects-list .sect-scenery::after {
+    box-shadow: none;
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, .8), transparent 3mm, transparent calc(100% - 3mm), rgba(0, 0, 0, .8)),
+        linear-gradient(90deg, rgba(0, 0, 0, .85), transparent 24%, transparent 76%, rgba(0, 0, 0, .85)),
+        linear-gradient(90deg, rgba(7, 16, 20, .74), rgba(7, 16, 20, .6) 58%, rgba(7, 16, 20, .4));
 }
 
-.sect-active-header > .sect-scenery {
-    height: 96px;
+.ui-v2 #sects-list .sect-active-bonuses,
+.ui-v2 #sects-list .sect-mission-card,
+.ui-v2 #sects-list .sect-donations {
+    background: rgba(13, 24, 28, .73);
 }
 
-@media (max-width: 600px) {
-    .scenery-frame { height: 120px; }
-    .sect-active-header > .sect-scenery { height: 112px; }
-}
+.ui-v2 #expeditions-list .expedition-card .btn,
+.ui-v2 #sects-list .sect-card .btn,
+.ui-v2 #sects-list.v2-sect-member .btn { text-shadow: none; }

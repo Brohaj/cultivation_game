@@ -13,17 +13,17 @@ function json(ctx, expression) { return JSON.parse(ctx.run(`JSON.stringify(${exp
 // Мощь фиксирует безопасное состояние билда; это снимки, а не симуляция всей жизни.
 const fixtures = [
     { name: 'первая жизнь, смертный', r: 0, y: 16, power: 5, luck: 0, loc: 'spirit_forest',
-        before: [6, 10, 6, 2, 25], after: [6, 10, 6, 2, 25] },
+        before: [6, 10, 6, 2, 25], after: [6, 10, 6, 2, 10] },
     { name: 'первая жизнь, реалм 3', r: 3, y: 400, power: 35, luck: 8, loc: 'spirit_forest',
-        before: [35, 14, 9, 2, 25], after: [13, 14, 9, 2, 25] },
+        before: [35, 14, 9, 2, 25], after: [13, 14, 9, 2, 10] },
     { name: 'вторая жизнь, Купец', r: 5, y: 1100, power: 100, luck: 15, body: 'merchant_son', loc: 'forgotten_ruins',
-        before: [223, 88, 69, 6, 35], after: [48, 68, 54, 5, 35] },
+        before: [223, 88, 69, 6, 35], after: [48, 68, 54, 5, 15] },
     { name: 'третья жизнь, Воин★1, руины★2', r: 7, y: 2200, power: 250, luck: 35,
         body: 'wandering_warrior', bodyAsc: 1, tier: 2, loc: 'forgotten_ruins',
-        before: [2298, 674, 529, 45, 31], after: [484, 228, 179, 17, 31] },
+        before: [2298, 674, 529, 45, 31], after: [484, 228, 179, 17, 13] },
     { name: 'третья жизнь, Воин★1, дворец★1', r: 7, y: 2200, power: 250, luck: 35,
         body: 'wandering_warrior', bodyAsc: 1, tier: 1, loc: 'immortal_palace',
-        before: [4304, 1233, 924, 50, 180], after: [2472, 731, 548, 34, 181] },
+        before: [4304, 1233, 924, 50, 180], after: [2472, 731, 548, 34, 54] },
 ];
 
 function runFixture(fixture) {
@@ -93,8 +93,8 @@ test('Максимальные Врата и тело ускоряют двор�
     const ctx = createContext();
     ctx.run(`game.formations.realmGate=20; game.selectedFormations=['realmGate'];
         game.prestige.lastBody='wandering_warrior'; game.prestige.bodyAscensions.wandering_warrior=3;`);
-    assert.equal(ctx.run(`game.getExpeditionDuration(LOCATIONS.find(l=>l.id==='immortal_palace'))`), 80);
-    assert.equal(ctx.run(`game.getExpeditionDuration(LOCATIONS.find(l=>l.id==='forgotten_ruins'))`), 14);
+    assert.equal(ctx.run(`game.getExpeditionDuration(LOCATIONS.find(l=>l.id==='immortal_palace'))`), 24);
+    assert.equal(ctx.run(`game.getExpeditionDuration(LOCATIONS.find(l=>l.id==='forgotten_ruins'))`), 10);
     ctx.run(`game.expedition={locationId:'immortal_palace',duration:200,startYear:0};`);
     assert.equal(ctx.run('game.getAdjustedExpeditionDuration()'), 80);
 });
@@ -129,31 +129,31 @@ test('Дао использует общий диапазон с множите�
         game.getDaoSpeedMultiplier=()=>1.5;game._checkDaoLevelUp=()=>{};game.daoProgress=0;
         game.stones=1000;Math.random=()=>.5;game._rollExpeditionRumor=()=>{};game.checkMilestones=()=>{};`);
     const reward = json(ctx, `game.getExpeditionDaoReward(LOCATIONS.find(l=>l.id==='spirit_forest'))`);
-    assert.deepEqual(reward, { min: 222, max: 333, sectMultiplier: 2 });
+    assert.deepEqual(reward, { min: 78, max: 117, sectMultiplier: 2 });
     ctx.run(`game.startExpedition('spirit_forest');game._completeExpedition();`);
-    assert.equal(ctx.run('game.daoProgress'), 277.5);
+    assert.equal(ctx.run('game.daoProgress'), 97.5);
     ctx.run(`game.startExpedition('heavenly_auction');game._completeExpedition();`);
-    assert.equal(ctx.run('game.daoProgress'), 277.5);
+    assert.equal(ctx.run('game.daoProgress'), 97.5);
 });
 
-test('Карточки показывают реальную удачу, свитки, длительность и диапазон Дао', () => {
+test('Карточки нового UI показывают действительный срок, ци и виды добычи без прежних диапазонов', () => {
     const ctx = createContext();
     ctx.run(`game.realmIndex=7;game.subLevel=2;game.sect={id:'jade_purity',rank:0,contribution:0};
         game.luck=0;game.getTotalLuck=()=>35;game.getDaoSpeedMultiplier=()=>1.5;game.stones=10000;
         game.ascendedLocations.spirit_forest=2;game.getFormationBonus=key=>key==='expeditionSpeed'?1.5:0;
-        const cards=[];const container={innerHTML:'',appendChild(el){cards.push(el);}};
+        const cards=[];const container={..._testElement(),innerHTML:'',appendChild(el){cards.push(el);}};
         document.getElementById=id=>id==='expeditions-list'?container:null;
-        document.createElement=()=>({style:{},innerHTML:'',appendChild(){}});
+        document.createElement=()=>({..._testElement(),appendChild(el){cards.push(el);}});
         renderExpeditions();`);
-    const forest = ctx.run(`cards.find(card=>card.innerHTML.includes('Высшее вознесение')&&card.innerHTML.includes('Свиток: 1 гарантированно')).innerHTML`);
-    assert.ok(forest.includes('×2.5'));
+    const forest = ctx.run(`cards.find(card=>card.dataset?.location==='spirit_forest').innerHTML`);
     assert.ok(forest.includes('10 лет'));
-    assert.ok(forest.includes('Дао: 222–333'));
-    const mult = json(ctx, `game.getExpeditionRewardMultipliers(LOCATIONS.find(l=>l.id==='spirit_forest'))`);
-    assert.ok(forest.includes(`Камни: ${Math.floor(8 * mult.stones)}–${Math.floor(20 * mult.stones)}`));
-    const auction = ctx.run(`cards.find(card=>card.innerHTML.includes('Небесный Аукцион')).innerHTML`);
-    assert.ok(auction.includes('второй: 21%'));
-    assert.ok(!auction.includes('Дао:'));
+    assert.match(forest,/Опыт Дао/);
+    assert.match(forest,/Свитки заточки/);
+    const qi = ctx.run(`game.getExpeditionCultivationReward(LOCATIONS.find(l=>l.id==='spirit_forest')).qi`);
+    assert.ok(forest.includes(`До ${Math.floor(qi).toLocaleString('ru-RU')} ци`));
+    const auction = ctx.run(`cards.find(card=>card.dataset?.location==='heavenly_auction').innerHTML`);
+    assert.match(auction,/Артефакт:/);
+    assert.doesNotMatch(auction,/Опыт Дао|v2-resource-qi/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -10,7 +10,7 @@ Object.assign(game, {
 
     selectFormation(formationId) {
         const formation = CULT_FORMATIONS.find(f => f.id === formationId);
-        if (!formation || this.gameOver) return false;
+        if (!formation || this.gameOver || this.pendingRebirth) return false;
 
         // Проверка разблокировки через секту
         if (formation.sect && (!this.prestige.unlockedFormations || !this.prestige.unlockedFormations.includes(formationId))) {
@@ -66,7 +66,7 @@ Object.assign(game, {
 
     buyFormation(formationId) {
         const formation = CULT_FORMATIONS.find(f => f.id === formationId);
-        if (!formation || this.gameOver) return false;
+        if (!formation || this.gameOver || this.pendingRebirth) return false;
 
         if (!this.isFormationSelected(formationId)) {
             addLog("Сначала выберите формацию!", "system");

@@ -31,13 +31,14 @@
             expeditionSpeed: `+${amount}% к скорости походов`,
             combatPower: `+${amount}% к боевой мощи`,
             dangerReward: `+${amount}% к наградам опасных событий`,
-            breakthroughBonus: `+${amount}% к шансу прорыва`,
-            demonReduction: `−${amount}% к шансу внутреннего демона при провале`
+            breakthroughBonus: `+${amount} п.п. к шансу прорыва`,
+            demonReduction: `−${amount} п.п. к шансу внутреннего демона при провале`
         };
         return effects[formation.effectKey] || formation.description;
     }
 
     function card(formation, selected, maxSlots, perks) {
+        const closedLife = !!(game.gameOver || game.pendingRebirth);
         const savedLevel = game.formations[formation.id] || 0;
         const level = selected ? savedLevel : savedLevel || Math.min(perks.formationBonus || 0, formation.maxLevel);
         const maximum = level >= formation.maxLevel;
@@ -72,13 +73,13 @@
 
         const action = element("div", "v2-formation-footer");
         if (!selected) {
-            const canSelect = !game.gameOver && game.selectedFormations.length < maxSlots;
-            action.appendChild(element("span", "v2-formation-condition", canSelect ? "Займёт 1 место" : game.gameOver ? "Путь завершён" : "Все места заняты"));
+            const canSelect = !closedLife && game.selectedFormations.length < maxSlots;
+            action.appendChild(element("span", "v2-formation-condition", canSelect ? "Займёт 1 место" : closedLife ? "Путь завершён" : "Все места заняты"));
             const button = element("button", "btn btn-small btn-primary-outline v2-formation-button", "Выбрать · бесплатно");
             button.type = "button";
             button.dataset.formationSelect = formation.id;
             button.disabled = !canSelect;
-            button.title = "Выбор сохраняется до новой жизни. Снять формацию в этой жизни нельзя.";
+            button.title = "Выбор сохраняется до новой жизни. Оплаченный «Пересмотр пути» позволяет одну замену с потерей уровней.";
             button.addEventListener("click", () => selectFormationUI(formation.id));
             action.appendChild(button);
         } else if (maximum) {
@@ -100,7 +101,7 @@
             price.firstChild.setAttribute("aria-hidden", "true");
             price.appendChild(document.createTextNode(` ${cost.toLocaleString("ru-RU")}`));
             button.appendChild(price);
-            button.disabled = game.gameOver || !daoReady || game.stones < cost;
+            button.disabled = closedLife || !daoReady || game.stones < cost;
             button.title = `Уровень ${nextLevel}: ${effectText(formation, nextLevel)}. Улучшение стоит ${cost} духовных камней.${!daoReady ? ` Сначала развейте путь секты до Дао ${nextLevel}.` : ""}`;
             button.setAttribute("aria-label", `Улучшить ${formation.name} до уровня ${nextLevel} за ${cost} духовных камней`);
             button.addEventListener("click", () => buyFormationUI(formation.id));
@@ -140,6 +141,7 @@
             fragment.appendChild(group);
         }
         if (!chosen.length && !available.length) fragment.appendChild(element("p", "v2-formations-empty", "Вступите в секту, чтобы открыть её формации."));
+        if (typeof renderFormationRespec === "function") renderFormationRespec(fragment);
         container.replaceChildren(fragment);
     };
 })();

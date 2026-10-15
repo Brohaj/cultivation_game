@@ -2,6 +2,8 @@
 // UI/ADVENTURES.JS — Таб приключений: слухи + активные квесты
 // ============================================================
 
+let _v2AdventureHelpOpen = false;
+
 // Показать мощь босса (только для приключений с showBossPower — игрок уже проиграл боссу в цепочке)
 function _getAdventureBossPower(adv) {
     if (!adv.showBossPower) return "";
@@ -16,14 +18,20 @@ function _getAdventureBossPower(adv) {
     if (!maxCombat) return "";
     const current = Math.floor(game.getCombatPower());
     const has = current >= maxCombat;
-    return `<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Босс: мощь ${maxCombat} (ваша: ${current})</span>`;
+    return `<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Боевая мощь босса: ${maxCombat} · ваша: ${current}</span>`;
 }
 
 function renderAdventures() {
     if (deferUIRender(renderAdventures)) return;
     const container = document.getElementById("adventures-list");
     if (!container) return;
-    container.innerHTML = "";
+    const previousHelp = container.querySelector("#v2-adventure-help");
+    if (previousHelp) _v2AdventureHelpOpen = previousHelp.open;
+    container.innerHTML = `<p class="v2-section-intro">Приключения — истории с выбором и наградами. Возьмите одно из доступных и решайте, как пройти каждый этап.</p>
+        <details class="v2-details" id="v2-adventure-help"${_v2AdventureHelpOpen ? " open" : ""}><summary>Как читать условия</summary>
+        <p>Проверка сравнивает ваше значение с требуемым. Если условие не выполнено, вариант либо недоступен, либо ведёт к указанной неудаче. Цена списывается при выборе, включая неудачу.</p>
+        <p>Боевая мощь учитывает силу и боевые бонусы. Проверка силы использует силу с бонусами артефактов. Для духа и удачи проверяются соответствующие характеристики с бонусами артефактов.</p>
+        <p>Время этапа расходует годы жизни. Слухи обычно исчезают через 100 лет; испытания для вознесения остаются доступны.</p></details>`;
 
     const hasRumors = game.adventureRumors.length > 0;
     const hasActive = game.activeAdventures.length > 0;
@@ -31,7 +39,7 @@ function renderAdventures() {
     const hasLastReward = game.lastAdventureReward && !hasActive;
 
     if (!hasRumors && !hasActive && !hasLastReward) {
-        container.innerHTML = '<div class="adventure-empty">Пока нет слухов о приключениях. Они появятся со временем, когда будут выполнены условия доступа.</div>';
+        container.innerHTML += '<div class="adventure-empty">Пока нет доступных приключений. Слухи появляются со временем по мере роста персонажа. После завершения приключения новые слухи не появляются 50 лет.</div>';
         return;
     }
 
@@ -81,29 +89,30 @@ function renderAdventures() {
 
                 let choicesHtml = step.choices.map((choice, ci) => {
                     let reqParts = [];
-                    let canChoose = !game.gameOver;
+                    let canChoose = !game.gameOver && !game.pendingRebirth;
+                    let failedCheck = false;
 
                     // Стоимость рассчитывается по тем же флагам, что и при выборе.
                     const cost = typeof choice.cost === "function" ? choice.cost(adventure.flags) : choice.cost;
                     if (cost) {
                         if (cost.stones) {
                             const has = game.stones >= cost.stones;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.stones} камней</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">Цена: ${cost.stones} камней</span>`);
                             if (!has) canChoose = false;
                         }
                         if (cost.essence) {
                             const has = game.daoEssence >= cost.essence;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.essence} эссенции</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">Цена: ${cost.essence} эссенции</span>`);
                             if (!has) canChoose = false;
                         }
                         if (cost.pills) {
                             const has = game.pills >= cost.pills;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.pills} пилюль</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">Цена: ${cost.pills} пилюль</span>`);
                             if (!has) canChoose = false;
                         }
                         if (cost.dust) {
                             const has = game.artifactDust >= cost.dust;
-                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">${cost.dust} пыли</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-req-met' : 'adventure-req-unmet'}">Цена: ${cost.dust} пыли</span>`);
                             if (!has) canChoose = false;
                         }
                     }
@@ -114,48 +123,62 @@ function renderAdventures() {
                         if (resolvedCheck.strength) {
                             const value = game.strength + game.getArtifactBonus("strength");
                             const has = value >= resolvedCheck.strength;
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Сила: ${Number(value.toFixed(1))}/${resolvedCheck.strength}</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Сила: нужно ${resolvedCheck.strength} · у вас ${Number(value.toFixed(1))}</span>`);
                         }
                         if (resolvedCheck.spirit) {
                             const value = game.spirit + game.getArtifactBonus("spirit");
                             const has = value >= resolvedCheck.spirit;
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Дух: ${Number(value.toFixed(1))}/${resolvedCheck.spirit}</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Дух: нужно ${resolvedCheck.spirit} · у вас ${Number(value.toFixed(1))}</span>`);
                         }
                         if (resolvedCheck.luck) {
                             const value = game.luck + game.getArtifactBonus("luck");
                             const has = value >= resolvedCheck.luck;
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Удача: ${Number(value.toFixed(1))}/${resolvedCheck.luck}</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Удача: нужно ${resolvedCheck.luck} · у вас ${Number(value.toFixed(1))}</span>`);
                         }
                         if (resolvedCheck.combatPower) {
                             const has = game.getCombatPower() >= resolvedCheck.combatPower;
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
-                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Мощь: ${game.getCombatPower()}/${resolvedCheck.combatPower}</span>`);
+                            reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Боевая мощь: нужно ${resolvedCheck.combatPower} · у вас ${game.getCombatPower()}</span>`);
                         }
                         if (resolvedCheck.hasSect) {
                             const has = !!game.sect;
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
                             reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Секта: ${has ? '\u2713' : '\u2717'}</span>`);
                         }
                         if (resolvedCheck.flag) {
                             const has = adventure.flags[resolvedCheck.flag] || (choice.altCheck && choice.altCheck.flag && adventure.flags[choice.altCheck.flag]);
+                            failedCheck ||= !has;
                             if (!has && !choice.fail) canChoose = false;
                             reqParts.push(`<span class="${has ? 'adventure-check-pass' : 'adventure-check-fail'}">Особое условие ${has ? '\u2713' : '\u2717'}</span>`);
                         }
                     }
 
                     // Провал не блокирует, но показывает что check не пройден
-                    const hasFail = !!choice.fail;
                     const reqHtml = reqParts.length > 0 ? `<div class="adventure-choice-reqs">${reqParts.join(" | ")}</div>` : "";
+                    const failureHint = failedCheck && choice.fail ? `<div class="adventure-check-fail">Условие не выполнено: этот выбор приведёт к неудаче.${cost ? " Цена всё равно будет списана." : ""}</div>` : "";
+                    const durationText = years => years > 0 ? `${years} ${_plural(years, "год", "года", "лет")}` : "сразу";
+                    const successDuration = game.getAdventureChoiceDuration(adv,choice,choice.success);
+                    const failDuration = choice.fail ? game.getAdventureChoiceDuration(adv,choice,choice.fail) : successDuration;
+                    const duration = failedCheck ? failDuration : successDuration;
+                    const durationHtml = successDuration !== failDuration
+                        ? `<div class="adventure-choice-duration">При успехе: ${durationText(successDuration)} · При неудаче: ${durationText(failDuration)}</div>`
+                        : duration > 0 ? `<div class="adventure-choice-duration">${durationText(duration)}</div>` : "";
 
                     return `<button class="btn adventure-choice-btn ${!canChoose ? 'btn-disabled' : ''}" `
                         + `onclick="chooseAdventureUI(${idx}, ${ci})" ${!canChoose ? 'disabled' : ''}>`
                         + `<div class="adventure-choice-text">${choice.text}</div>`
                         + `<div class="adventure-choice-desc">${typeof choice.description === "function" ? choice.description(adventure.flags) : choice.description}</div>`
-                        + (choice.duration ? `<div class="adventure-choice-duration">${choice.duration} ${_plural(choice.duration, 'год', 'года', 'лет')}</div>` : '')
+                        + durationHtml
                         + reqHtml
+                        + failureHint
                         + `</button>`;
                 }).join("");
 
@@ -167,7 +190,7 @@ function renderAdventures() {
                     ${historyHtml}
                     <div class="adventure-step-text">${stepText}</div>
                     <div class="adventure-choices">${choicesHtml}</div>
-                    <button class="btn btn-small btn-danger adventure-abandon" onclick="abandonAdventureUI(${idx})">Отказаться</button>
+                    <button class="btn btn-small btn-danger adventure-abandon" onclick="abandonAdventureUI(${idx})" ${game.gameOver || game.pendingRebirth ? "disabled" : ""}>Отказаться</button>
                 `;
             } else {
                 // В процессе — прогресс-бар (для приключений с duration)
@@ -184,9 +207,9 @@ function renderAdventures() {
                     ${adventure.stepDuration > 0 ? `
                     <div class="adventure-progress-container" data-adv-idx="${idx}">
                         <div class="adventure-progress-bar" style="width:${pct}%"></div>
-                        <span class="adventure-progress-text">${pct}% — ${timeLeft} ${_plural(timeLeft, 'год', 'года', 'лет')}</span>
+                        <span class="adventure-progress-text">${pct}% · осталось ${timeLeft} ${_plural(timeLeft, 'год', 'года', 'лет')}</span>
                     </div>` : ''}
-                    <button class="btn btn-small btn-danger adventure-abandon" onclick="abandonAdventureUI(${idx})">Отказаться</button>
+                    <button class="btn btn-small btn-danger adventure-abandon" onclick="abandonAdventureUI(${idx})" ${game.gameOver || game.pendingRebirth ? "disabled" : ""}>Отказаться</button>
                 `;
             }
 
@@ -208,7 +231,7 @@ function renderAdventures() {
             const yearsLeft = isAscend ? Infinity : Math.max(0, 100 - (game.years - rumor.appearedYear));
             const cost = adv.ascendCost || {};
             const hasEntryCost = (!cost.stones || game.stones >= cost.stones) && (!cost.essence || game.daoEssence >= cost.essence) && (!cost.dust || game.artifactDust >= cost.dust);
-            const canAccept = !game.gameOver && game.activeAdventures.length < 1 && adv.condition(game) && !game.completedAdventures.includes(adv.id) && hasEntryCost;
+            const canAccept = !game.gameOver && !game.pendingRebirth && game.activeAdventures.length < 1 && adv.condition(game) && !game.completedAdventures.includes(adv.id) && hasEntryCost;
 
             const bossPower = _getAdventureBossPower(adv);
 
@@ -222,11 +245,11 @@ function renderAdventures() {
                 <div class="adventure-desc">${adv.description}</div>
                 ${bossPower ? `<div class="adventure-reqs-summary">${bossPower}</div>` : ""}
                 ${adv.ascendCost ? `<div class="adventure-reqs-summary" style="color:#cc7a3a">\u2728 Стоимость: ${adv.ascendCost.stones ? adv.ascendCost.stones + " камней" : ""}${adv.ascendCost.essence ? ", " + adv.ascendCost.essence + " эссенции" : ""}${adv.ascendCost.dust ? ", " + adv.ascendCost.dust + " пыли" : ""}</div>` : ""}
-                ${game.realmIndex >= 3 && game.sect ? `<div class="adventure-reqs-summary" style="color:#eebb44">\u262F +Дао за завершение</div>` : ""}
+                ${game.realmIndex >= 3 && game.sect ? `<div class="adventure-reqs-summary">Завершение продвигает путь секты (Дао)</div>` : ""}
                 <div class="adventure-actions">
                     ${canAccept
-                        ? `<button class="btn btn-small btn-primary" onclick="acceptAdventureUI('${adv.id}')">Принять</button>`
-                        : `<span class="adventure-busy">${game.activeAdventures.length >= 1 ? "Макс. 1 активное" : !hasEntryCost ? "Недостаточно ресурсов для входа" : "Условия не выполнены"}</span>`
+                        ? `<button class="btn btn-small btn-primary" onclick="acceptAdventureUI('${adv.id}')">Начать приключение</button>`
+                        : `<span class="adventure-busy">${game.activeAdventures.length >= 1 ? "Сначала завершите текущее приключение" : !hasEntryCost ? "Недостаточно ресурсов для входа" : "Условия не выполнены"}</span>`
                     }
                 </div>
             `;

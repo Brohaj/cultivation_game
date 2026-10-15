@@ -18,30 +18,6 @@ Object.assign(game, {
         return resolved;
     },
 
-    // Временные условия выбранного занятия выводятся из уже сохраняемого этапа.
-    // Несколько одинаковых условий не перемножаются: действует самое сильное.
-    getAdventureMeditationMultiplier() {
-        if (this.gameOver || this.pendingRebirth) return 1;
-        let multiplier = 1;
-        for (const adventure of this.activeAdventures || []) {
-            if (!adventure || adventure.awaitingChoice || !(adventure.stepDuration > 0)) continue;
-            const elapsed = this.years - adventure.stepStartYear;
-            if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed >= adventure.stepDuration) continue;
-            const adv = ADVENTURES.find(item => item.id === adventure.id);
-            const history = adventure.completedSteps || [];
-            const selected = adventure._pendingOutcome || history[history.length - 1];
-            if (!adv || !selected || selected.stepIdx !== adventure.currentStep || selected.passed === false) continue;
-            const step = adv.steps[selected.stepIdx];
-            if (!step) continue;
-            const choiceIdx = Number.isInteger(selected.choiceIdx)
-                ? selected.choiceIdx
-                : step.choices.findIndex(choice => choice.text === selected.choiceText || choice.legacyTexts?.includes(selected.choiceText));
-            const effect = step.choices[choiceIdx]?.waitEffects?.meditationQiMultiplier;
-            if (Number.isFinite(effect) && effect > multiplier) multiplier = effect;
-        }
-        return multiplier;
-    },
-
     // === СЛУХИ ===
 
     _getAvailableAdventureRumors() {
@@ -128,6 +104,7 @@ Object.assign(game, {
     // === ПРИНЯТЬ ПРИКЛЮЧЕНИЕ ===
 
     acceptAdventure(adventureId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (this.activeAdventures.length >= 1) return false;
         const rumorIdx = this.adventureRumors.findIndex(r => r.id === adventureId);
         if (rumorIdx === -1) return false;
@@ -173,7 +150,16 @@ Object.assign(game, {
 
     // === ВЫБОР НА ШАГЕ ===
 
+    // Длительность одна для превью и исполнения; финальное исследование вознесения занимает 20 лет.
+    getAdventureChoiceDuration(adventure, choice, outcome) {
+        const duration = choice.duration || 0;
+        const isAscension = adventure.id.startsWith("ascend_") || adventure.id.startsWith("ascend2_");
+        const isFinalReward = outcome && outcome.rewards && outcome.nextStep === undefined;
+        return isAscension && isFinalReward && duration === 0 ? 20 : duration;
+    },
+
     chooseAdventureOption(adventureIdx, choiceIdx) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const adventure = this.activeAdventures[adventureIdx];
         if (!adventure || !adventure.awaitingChoice) return false;
 
@@ -258,10 +244,8 @@ Object.assign(game, {
         }
 
         // Определить следующее состояние
-        let dur = choice.duration || 0;
+        const dur = this.getAdventureChoiceDuration(adventure, choice, outcome);
         const isFinalReward = outcome.rewards && outcome.nextStep === undefined;
-        // Ascend-приключения: финальный шаг = 20 лет исследования
-        if ((adventure.id.startsWith("ascend_") || adventure.id.startsWith("ascend2_")) && isFinalReward && dur === 0) dur = 20;
         if (outcome.rewards) {
             adventure._pendingRewards = typeof outcome.rewards === "function"
                 ? outcome.rewards(adventure.flags)
@@ -557,6 +541,7 @@ Object.assign(game, {
     // === ОТКАЗ ===
 
     abandonAdventure(idx) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const adventure = this.activeAdventures[idx];
         if (!adventure) return false;
 

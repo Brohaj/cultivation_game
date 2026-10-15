@@ -6,6 +6,64 @@
 // === ЛОГ СОБЫТИЙ ===
 // Режим отображения времени: "world" (мировой год) или "char" (возраст персонажа)
 let logTimeMode = "world";
+let _logScrollState = null;
+
+function _ensureLogScrollState() {
+    const log = document.getElementById('event-log');
+    if (!log) return null;
+    if (_logScrollState?.log === log) return _logScrollState;
+    if (_logScrollState) {
+        _logScrollState.observer?.disconnect();
+        _logScrollState.log.removeEventListener?.('scroll', _logScrollState.onScroll);
+    }
+    const state = { log, follow: log.scrollHeight - log.clientHeight - log.scrollTop <= 36,
+        width: log.clientWidth, height: log.clientHeight, pending: false, observer: null };
+    state.onScroll = () => {
+        // Изменение раскладки не означает, что читатель ушёл от свежих событий.
+        if (state.pending || log.clientWidth !== state.width || log.clientHeight !== state.height) return;
+        state.follow = log.scrollHeight - log.clientHeight - log.scrollTop <= 36;
+    };
+    log.addEventListener?.('scroll', state.onScroll);
+    _logScrollState = state;
+    if (typeof ResizeObserver === 'function') {
+        state.observer = new ResizeObserver(() => {
+            state.width = log.clientWidth; state.height = log.clientHeight;
+            if (state.follow) _scrollLogToBottom(false);
+        });
+        state.observer.observe(log);
+    }
+    return state;
+}
+
+function _isLogFollowing() {
+    const state = _ensureLogScrollState();
+    if (!state) return true;
+    const log = state.log;
+    if (log.clientWidth === state.width && log.clientHeight === state.height) {
+        state.follow = log.scrollHeight - log.clientHeight - log.scrollTop <= 36;
+    }
+    return state.follow;
+}
+
+// После очистки, фильтра и соседних рендеров удерживаем нижнюю границу.
+// Ручное чтение старой истории сохраняется, пока игрок сам не выберет свежие записи.
+function _scrollLogToBottom(force = true) {
+    const state = _ensureLogScrollState();
+    if (!state) return;
+    if (force) state.follow = true;
+    if (!state.follow) return;
+    const log = state.log;
+    log.scrollTop = log.scrollHeight;
+    state.width = log.clientWidth; state.height = log.clientHeight;
+    if (state.pending || typeof requestAnimationFrame !== 'function') return;
+    state.pending = true;
+    requestAnimationFrame(() => {
+        state.pending = false;
+        if (_logScrollState !== state || log.isConnected === false || !state.follow) return;
+        log.scrollTop = log.scrollHeight;
+        state.width = log.clientWidth; state.height = log.clientHeight;
+    });
+}
 
 function _getLogTimeLabel(saved) {
     if (logTimeMode === "char") {
@@ -21,6 +79,7 @@ function toggleLogTimeMode() {
     // Обновить все существующие записи
     const log = document.getElementById("event-log");
     if (!log) return;
+    const followedBottom = _isLogFollowing();
     for (const entry of log.children) {
         const y = entry.dataset.worldYear;
         const a = entry.dataset.charAge;
@@ -30,11 +89,13 @@ function toggleLogTimeMode() {
             entry.textContent = `[${label}] ${txt}`;
         }
     }
+    if (followedBottom) _scrollLogToBottom(false);
 }
 
 function addLog(text, type = "system") {
     const log = document.getElementById("event-log");
     if (!log) return;
+    const follow = _isLogFollowing();
     const entry = document.createElement("div");
     entry.className = `log-entry log-${type}`;
     // Сохраняем оба значения и текст для переключения
@@ -43,18 +104,12 @@ function addLog(text, type = "system") {
     entry.dataset.text = text;
     entry.textContent = `[${_getLogTimeLabel()}] ${text}`;
     log.appendChild(entry);
-    log.scrollTop = log.scrollHeight;
 
-    // Удалять записи старше 200 игровых лет (но оставлять минимум 20)
-    const cutoffYear = game.years - 200;
-    while (log.children.length > 20) {
-        const oldest = log.firstChild;
-        const yr = parseInt(oldest.dataset.worldYear, 10);
-        if (isNaN(yr) || yr < cutoffYear) {
-            log.removeChild(oldest);
-        } else {
-            break;
-        }
+    // При чтении старой истории не сдвигаем прокрутку и не удаляем её записи.
+    // Ограничиваем размер только при следующем событии, когда читатель внизу.
+    if (follow) {
+        while (log.children.length > 1000) log.removeChild(log.firstChild);
+        _scrollLogToBottom(false);
     }
 }
 
@@ -203,6 +258,7 @@ function onNewGameClick() {
 
 // === ИНИЦИАЛИЗАЦИЯ ===
 function initGame() {
+    _ensureLogScrollState();
     // Удерживаем интерактивный DOM до native click, включая касания и клавиатуру.
     document.addEventListener("pointerdown", event => {
         if (event.target?.closest?.("button, input, select, textarea, [role='button'], [onclick]")) {

@@ -7,6 +7,7 @@ Object.assign(game, {
     // === ПРОВЕРКА ТРЕБОВАНИЙ ===
 
     canJoinSect(sectId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const sect = SECTS.find(s => s.id === sectId);
         if (!sect) return false;
         if (this.sect) return false; // уже в секте
@@ -86,12 +87,15 @@ Object.assign(game, {
             this.sectMissionTimer = this.getSectMissionCooldown();
         }
         this.checkMilestones();
+        if (typeof this._getDiscipleState === "function") this._getDiscipleState().sectId = this.sect.id;
+        if (typeof this.getDiscipleCandidates === "function") this.getDiscipleCandidates();
         updateUI();
         return true;
     },
 
     leaveSect() {
-        if (!this.sect) return false;
+        if (!this.sect || this.gameOver || this.pendingRebirth) return false;
+        if (typeof this._clearDiscipleRoster === "function") this._clearDiscipleRoster();
         const sect = SECTS.find(s => s.id === this.sect.id);
         // Сохранить уровень Дао перед уходом
         if (sect && this.daoLevel > 0) {
@@ -143,7 +147,7 @@ Object.assign(game, {
     // === ПОЖЕРТВОВАНИЕ ПИЛЮЛЬ ===
 
     donatePills(amount) {
-        if (!this.sect || this.pills < amount || amount <= 0) return false;
+        if (!this.sect || this.gameOver || this.pendingRebirth || this.pills < amount || amount <= 0) return false;
         const rankIdx = this.getSectRankIndex();
         // Вклад растёт с рангом: 5 / 8 / 12 / 16 / 20 за пилюлю
         const contribPerPill = [5, 8, 12, 16, 20][rankIdx] || 5;
@@ -204,7 +208,7 @@ Object.assign(game, {
     },
 
     donateStones(amount) {
-        if (!this.sect || this.stones < amount || amount <= 0) return false;
+        if (!this.sect || this.gameOver || this.pendingRebirth || this.stones < amount || amount <= 0) return false;
         const rankIdx = this.getSectRankIndex();
         // 10 камней = 1 вклад базовый, растёт с рангом
         const contribPer10 = [1, 2, 3, 4, 5][rankIdx] || 1;
@@ -247,7 +251,7 @@ Object.assign(game, {
     },
 
     donateEssence(amount) {
-        if (!this.sect || this.daoEssence < amount || amount <= 0) return false;
+        if (!this.sect || this.gameOver || this.pendingRebirth || this.daoEssence < amount || amount <= 0) return false;
         const rankIdx = this.getSectRankIndex();
         // 1 эссенция = 2 вклада базовый, растёт с рангом
         const contribPerEssence = [2, 3, 5, 7, 10][rankIdx] || 2;
@@ -300,7 +304,7 @@ Object.assign(game, {
     },
 
     donateDust(amount) {
-        if (!this.sect || this.artifactDust < amount || amount <= 0) return false;
+        if (!this.sect || this.gameOver || this.pendingRebirth || this.artifactDust < amount || amount <= 0) return false;
         const rankIdx = this.getSectRankIndex();
         // 1 пыль = 1.5 вклада базовый, растёт с рангом
         const contribPerDust = [1, 2, 3, 5, 7][rankIdx] || 1;
@@ -434,8 +438,8 @@ Object.assign(game, {
     },
 
     // Необходимый прогресс Дао для текущего уровня (линейный рост)
-    daoNeeded() {
-        const lvl = this.daoLevel;
+    daoNeeded(atLevel = this.daoLevel) {
+        const lvl = atLevel;
         if (lvl <= 8) return 80 + lvl * 20; // 80-240, линейно
         // После 8: экспоненциальный рост, округление до 50
         const base = 80 + lvl * 20;
@@ -443,13 +447,24 @@ Object.assign(game, {
         return Math.round(base * scaleMult / 50) * 50;
     },
 
+    getDaoLevelCap() {
+        return (this.realmIndex - 3) * SUB_LEVELS + this.subLevel + 4;
+    },
+
+    // Доступный прогресс до потолка, включая неполную полоску последнего уровня.
+    getDaoProgressRoom() {
+        if (!this.sect || this.realmIndex < 3) return 0;
+        const cap = Math.max(this.daoLevel, this.getDaoLevelCap());
+        let room = this.daoNeeded(cap) - 1 - this.daoProgress;
+        for (let level = this.daoLevel; level < cap; level++) room += this.daoNeeded(level);
+        return Math.max(0, room);
+    },
+
     // Автоповышение Дао при заполнении бара
     _checkDaoLevelUp() {
         if (!this.sect || this.realmIndex < 3) return;
         // Кэп: не более +4 выше требования текущей ступени
-        const breakthroughsSinceDao = (this.realmIndex - 3) * SUB_LEVELS + (this.subLevel - 1);
-        const requiredDao = breakthroughsSinceDao + 1;
-        const daoCap = requiredDao + 4;
+        const daoCap = this.getDaoLevelCap();
         if (this.daoLevel >= daoCap) {
             this.daoProgress = Math.min(this.daoProgress, this.daoNeeded() - 1);
             return;
@@ -577,8 +592,10 @@ Object.assign(game, {
     },
 
     canCompleteSectMission(index) {
+        if (this.gameOver || this.pendingRebirth) return false;
         const m = this.sectMissions[index];
-        if (!m || m.cooldown > 0) return false;
+        if (!m || !m.reward || m.cooldown > 0) return false;
+        if (typeof this.isDiscipleSlotBlocked === "function" && this.isDiscipleSlotBlocked(index)) return false;
 
         if (m.cost) {
             if (m.cost.stones && this.stones < m.cost.stones) return false;
@@ -641,9 +658,11 @@ Object.assign(game, {
         return { tier, chance: firstReward ? 1 : SECT_MISSION_REPEAT_ARTIFACT_CHANCE, firstReward, flag };
     },
 
-    completeSectMission(index) {
+    completeSectMission(index, source = "manual") {
+        if (source === "disciple" && !this.canAutoCompleteDiscipleMission(index)) return false;
         if (!this.canCompleteSectMission(index)) return false;
         const m = this.sectMissions[index];
+        if (typeof this._markDiscipleSlotPaid === "function") this._markDiscipleSlotPaid(index);
 
         // Оплата
         if (m.cost) {
@@ -718,7 +737,6 @@ Object.assign(game, {
 
         // Счётчик для достижений
         this.flags.sectMissionsCompleted = (this.flags.sectMissionsCompleted || 0) + 1;
-
         // Поставить слот на кулдаун (не удалять — раздельный КД)
         this.sectMissions[index] = { cooldown: this.getSectMissionCooldown() };
         // UI обновляет вызывающее действие: ручное выполнение или пожертвование.
@@ -745,17 +763,21 @@ Object.assign(game, {
 
         let newMissions = [];
         for (let i = 0; i < this.sectMissions.length; i++) {
-            const m = this.sectMissions[i];
-            if (m.cooldown > 0) {
-                m.cooldown--;
+            const m = this.sectMissions[i] || { cooldown: 0 };
+            if (m.cooldown > 0 || !m.reward) {
+                m.cooldown = Math.max(0, (m.cooldown || 0) - 1);
+                this.sectMissions[i] = m;
                 if (m.cooldown <= 0) {
                     const exclude = this.sectMissions
-                        .filter((s, j) => j !== i && s.templateId)
+                        .filter((s, j) => j !== i && s?.templateId)
                         .map(s => s.templateId);
                     const newMission = this._generateOneMission(exclude);
                     if (newMission) {
                         this.sectMissions[i] = newMission;
                         newMissions.push(newMission);
+                    } else {
+                        // Пока все доступные шаблоны заняты, слот ждёт, а не становится пустым заданием.
+                        this.sectMissions[i] = { cooldown: 1 };
                     }
                 }
             }

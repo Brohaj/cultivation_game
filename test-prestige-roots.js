@@ -50,22 +50,22 @@ test('Недоступный и неизвестный корни не меня�
 
 test('Обычные корни открываются по числу жизней и достижениям', () => {
     const ctx = createContext();
-    ctx.run('game.prestige.totalRebirths=1;');
+    ctx.run('game.prestige.totalRebirths=1;game.prestige.qualifiedRebirths=1;');
     assert.deepEqual(rootIds(ctx), ['common','dual']);
-    ctx.run('game.prestige.totalRebirths=2;');
+    ctx.run('game.prestige.totalRebirths=2;game.prestige.qualifiedRebirths=2;');
     assert.deepEqual(rootIds(ctx), ['common','dual','triple']);
     ctx.run("game.prestige.permanentMilestones=['realm_5'];");
     assert.ok(rootIds(ctx).includes('single'));
-    ctx.run("game.prestige.totalRebirths=4;game.prestige.permanentMilestones.push('realm_9');");
+    ctx.run("game.prestige.totalRebirths=4;game.prestige.qualifiedRebirths=4;game.prestige.permanentMilestones.push('realm_9');");
     assert.ok(rootIds(ctx).includes('spirit_body'));
     assert.equal(rootIds(ctx).includes('chaotic'), false);
-    ctx.run("game.prestige.totalRebirths=7;game.prestige.permanentMilestones.push('immortal');");
+    ctx.run("game.prestige.totalRebirths=7;game.prestige.qualifiedRebirths=7;game.prestige.permanentMilestones.push('immortal');");
     assert.ok(rootIds(ctx).includes('chaotic'));
 });
 
 test('Тело гарантирует редкий минимум в legacy-сейве без временного поля и milestone', () => {
     let ctx = createContext();
-    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game._minRootTier=null;");
+    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game.prestige.qualifiedRebirths=10;game._minRootTier=null;");
     ctx = reload(ctx);
     assert.equal(ctx.run('game.getMinRootTier()'), 'rare');
     assert.deepEqual(rootIds(ctx), ['triple','single']);
@@ -75,7 +75,7 @@ test('Тело гарантирует редкий минимум в legacy-се
 
 test('Вознесение и сохранённый минимум выбирают самый высокий гарантированный тир', () => {
     const ctx = createContext();
-    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game.prestige.bodyAscensions.ancient_reincarnation=1;");
+    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game.prestige.qualifiedRebirths=10;game.prestige.bodyAscensions.ancient_reincarnation=1;");
     assert.equal(ctx.run('game.getMinRootTier()'), 'epic');
     assert.deepEqual(rootIds(ctx), ['spirit_body']);
     assert.equal(ctx.run("game.selectSpiritualRoot('chaotic')"), null,'Более высокий тир не обходит свои условия');
@@ -85,7 +85,7 @@ test('Вознесение и сохранённый минимум выбира
 
 test('Древний при покупке второй звезды сохраняет эпический минимум первой', () => {
     const ctx = createContext();
-    ctx.run(`game.realmIndex=10;game.prestige.totalRebirths=10;game.prestige.lastBody='ancient_reincarnation';
+    ctx.run(`game.realmIndex=10;game.prestige.totalRebirths=10;game.prestige.qualifiedRebirths=10;game.prestige.bodyLives={ancient_reincarnation:2};game.prestige.lastBody='ancient_reincarnation';
         game.prestige.permanentMilestones=['age_10000'];game.prestige.karma=2000;`);
     assert.equal(ctx.run("game.ascendBody('ancient_reincarnation')"), true);
     assert.equal(ctx.run('game.getMinRootTier()'), 'epic');
@@ -97,7 +97,7 @@ test('Древний при покупке второй звезды сохра�
 
 test('Демон при покупке третьей звезды сохраняет редкий минимум второй', () => {
     const ctx = createContext();
-    ctx.run(`game.realmIndex=6;game.prestige.totalRebirths=3;game.prestige.lastBody='demon_heir';
+    ctx.run(`game.realmIndex=6;game.prestige.totalRebirths=3;game.prestige.qualifiedRebirths=3;game.prestige.bodyLives={demon_heir:3};game.prestige.lastBody='demon_heir';
         game.prestige.permanentMilestones=['failed_break'];game.prestige.karma=1000;`);
     assert.equal(ctx.run("game.ascendBody('demon_heir')"), true);
     assert.equal(ctx.run("game.ascendBody('demon_heir')"), true);
@@ -110,7 +110,7 @@ test('Демон при покупке третьей звезды сохран�
 
 test('Без минимума остаются common и открытый challenge-корень', () => {
     const ctx = createContext();
-    ctx.run("game._minRootTier='unknown';game.prestige.totalRebirths=3;");
+    ctx.run("game._minRootTier='unknown';game.prestige.totalRebirths=3;game.prestige.qualifiedRebirths=3;");
     assert.equal(ctx.run('game.getMinRootTier()'), null);
     assert.ok(rootIds(ctx).includes('common'));
     assert.ok(rootIds(ctx).includes('none'));
@@ -118,14 +118,14 @@ test('Без минимума остаются common и открытый challe
 
 test('Ручные элементы ограничены открытыми стихиями, уникальностью и слотами', () => {
     const ctx = createContext();
-    ctx.run(`game.prestige.totalRebirths=1;game.prestige.karmaUpgrades.elementChoice=1;
+    ctx.run(`game.prestige.totalRebirths=1;game.prestige.qualifiedRebirths=1;game.prestige.karmaUpgrades.elementChoice=1;
         game.prestige.permanentMilestones=['mastered_sect_jade_purity','mastered_sect_crimson_flame','mastered_sect_moon_lake'];`);
     assert.deepEqual(value(ctx, "game.selectSpiritualRoot('dual',['water','water','void','unknown','fire','wood']).elements"), ['water','fire']);
 });
 
 test('Без права ручного выбора недопустимые элементы заменяются обычным случайным набором', () => {
     const ctx = createContext();
-    ctx.run('game.prestige.totalRebirths=1;Math.random=()=>0.4;');
+    ctx.run('game.prestige.totalRebirths=1;game.prestige.qualifiedRebirths=1;Math.random=()=>0.4;');
     const elements = value(ctx, "game.selectSpiritualRoot('dual',['unknown','unknown']).elements");
     assert.equal(elements.length, 2);
     assert.equal(new Set(elements).size, 2);
@@ -134,7 +134,7 @@ test('Без права ручного выбора недопустимые э�
 
 test('Принятый корень не позволяет повторно получить статы даже после JSON reload', () => {
     let ctx = createContext();
-    ctx.run("game.prestige.totalRebirths=2;game.prestige.permanentMilestones=['realm_5'];game.selectSpiritualRoot('single');");
+    ctx.run("game.prestige.totalRebirths=2;game.prestige.qualifiedRebirths=2;game.prestige.permanentMilestones=['realm_5'];game.selectSpiritualRoot('single');");
     const before = value(ctx, '[game.strength,game.spirit,game.luck,game.spiritualRoot]');
     assert.equal(ctx.run("game.selectSpiritualRoot('single')"), null);
     assert.equal(ctx.run("game.selectSpiritualRoot('triple')"), null);
@@ -146,7 +146,7 @@ test('Принятый корень не позволяет повторно п�
 
 test('Существующий низкий корень legacy-сейва не заменяется задним числом', () => {
     let ctx = createContext();
-    ctx.run("game.selectSpiritualRoot('common');game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;");
+    ctx.run("game.selectSpiritualRoot('common');game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game.prestige.qualifiedRebirths=10;");
     ctx = reload(ctx);
     assert.equal(ctx.run('game.getMinRootTier()'), 'rare');
     assert.equal(ctx.run('game.spiritualRoot.id'), 'common');
@@ -166,7 +166,7 @@ test('Корень нельзя принять во время смерти ил
 
 test('UI скрывает низшие корни и показывает реальные гарантированные варианты', () => {
     const ctx = createContext();
-    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;");
+    ctx.run("game.prestige.lastBody='ancient_reincarnation';game.prestige.totalRebirths=10;game.prestige.qualifiedRebirths=10;");
     rootUI(ctx);
     ctx.run('renderRootSelection();');
     const markup = ctx.run('rootResult.innerHTML');
@@ -178,7 +178,7 @@ test('UI скрывает низшие корни и показывает реа
 
 test('UI не выбирает закрытый корень и не принимает подменённый предел элементов', () => {
     const ctx = createContext();
-    ctx.run(`game.prestige.totalRebirths=1;game.prestige.karmaUpgrades.elementChoice=1;
+    ctx.run(`game.prestige.totalRebirths=1;game.prestige.qualifiedRebirths=1;game.prestige.karmaUpgrades.elementChoice=1;
         game.prestige.permanentMilestones=['mastered_sect_jade_purity','mastered_sect_crimson_flame','mastered_sect_moon_lake'];`);
     rootUI(ctx);
     ctx.run("renderRootSelection();selectRootUI('chaotic');");
@@ -189,7 +189,7 @@ test('UI не выбирает закрытый корень и не прини�
     assert.deepEqual(value(ctx, "game.selectSpiritualRoot('dual',_selectedElements).elements"), ['water','fire']);
 });
 
-test('Две обычные смерти без прорывов открывают dual/triple, но не дают карму', () => {
+test('Две смерти без Золотого Ядра не открывают dual/triple и не дают зачёт или карму', () => {
     const ctx = createContext();
     ctx.run("game.selectSpiritualRoot('common');Math.random=()=>0.99;");
     for (let life = 1; life <= 2; life++) {
@@ -198,11 +198,12 @@ test('Две обычные смерти без прорывов открыва�
         assert.equal(ctx.run('game.pendingRebirth.karmaEarned'), 0);
         ctx.run("game.rebirth('peasant',true);");
         assert.equal(ctx.run('game.prestige.totalRebirths'), life);
+        assert.equal(ctx.run('game.getQualifiedRebirths()'), 0);
+        assert.equal(ctx.run("game.getBodyLives('peasant')"), 0);
         assert.equal(ctx.run('game.prestige.karma'), 0);
-        if (life === 1) ctx.run("game.selectSpiritualRoot('dual');");
+        if (life === 1) ctx.run("game.selectSpiritualRoot('common');");
     }
-    assert.ok(rootIds(ctx).includes('triple'));
-    assert.equal(rootIds(ctx).includes('single'), false);
+    assert.deepEqual(rootIds(ctx), ['common']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

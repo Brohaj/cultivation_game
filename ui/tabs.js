@@ -33,19 +33,19 @@ function renderTechniques() {
     container.innerHTML = "";
 
     if (game.techniques.length === 0) {
-        container.innerHTML = '<p class="empty-msg">У вас пока нет изученных техник. Они появятся через события.</p>';
+        container.innerHTML = '<p class="empty-msg">Техники открываются в событиях и походах. Активируйте найденную технику: она усилит вас и будет расти с практикой.</p>';
         return;
     }
 
     // Слоты + эссенция
+    const closedLife = !!(game.gameOver || game.pendingRebirth);
     const maxSlots = game.getMaxTechSlots();
     const usedSlots = game.equippedTechniques.length;
     const countInfo = document.createElement("p");
     countInfo.className = "slots-info";
-    countInfo.innerHTML = `Слоты: <b>${usedSlots}/${maxSlots}</b> | Изучено: ${game.techniques.length} | <span style="color:#c89aff">\u2726</span> Эссенция Дао: <span style="color:#c89aff">${game.daoEssence}</span>`;
-    countInfo.title = "Карточки показывают полный эффект каждой техники. Для каждого эффекта бонусы сортируются: сильнейший 100%, затем 60%, 40%, 25%, остальные 15%. Только экипированные техники действуют и получают XP.";
+    countInfo.innerHTML = `Активных техник: <b>${usedSlots} из ${maxSlots}</b> · Изучено: ${game.techniques.length}`;
+    countInfo.title = "Карточки показывают полный эффект каждой техники. При совместном действии для каждого эффекта учитываются сильнейший бонус целиком, затем 60%, 40%, 25%, остальные по 15%.";
     container.appendChild(countInfo);
-
     // Свиток Озарения
     const insightDiv = document.createElement("div");
     insightDiv.className = "insight-section";
@@ -53,9 +53,8 @@ function renderTechniques() {
     const bulkPurchase = game.getInsightPurchaseInfo(10);
     const canBuy10 = game.canBuyInsight(10);
     insightDiv.innerHTML = `
-        <button id="btn-insight" class="btn btn-small btn-secondary" onclick="game.buyInsight(); renderTechniques();" ${game.canBuyInsight() ? "" : "disabled"}>Свиток Озарения (${iCost} эсс.)</button>
-        <button id="btn-insight-multi10" class="btn btn-small btn-secondary" onclick="game.buyInsight(10); renderTechniques();" ${canBuy10 ? "" : "disabled"} title="${bulkPurchase.count} ${_plural(bulkPurchase.count, 'озарение', 'озарения', 'озарений')}: ${bulkPurchase.cost} эссенции">До 10</button>
-        <span id="tip-insight" class="insight-tip">Сразу +10% XP текущего уровня экипированным техникам. Цена растёт (исп.: ${game._insightUses || 0}).</span>
+        <button id="btn-insight" class="btn btn-small btn-secondary" onclick="game.buyInsight(); renderTechniques();" ${game.canBuyInsight() ? "" : "disabled"} title="Дать всем активным техникам 10% опыта текущего уровня. Стоимость: ${iCost} эссенции.">Обучить техники (${iCost} эссенции)</button>
+        <button id="btn-insight-multi10" class="btn btn-small btn-secondary" onclick="game.buyInsight(10); renderTechniques();" ${canBuy10 ? "" : "disabled"} title="${bulkPurchase.count} обучений за ${bulkPurchase.cost} эссенции. Остановится раньше, если все активные техники достигнут максимального уровня.">До 10 раз (${bulkPurchase.cost} эссенции)</button>
     `;
     container.appendChild(insightDiv);
 
@@ -101,44 +100,47 @@ function renderTechniques() {
         const ascendInfo = game.getTechAscendInfo(techId);
         let ascendHtml = "";
         if (ascendInfo && isEquipped && atMax) {
-            const canAfford = game.daoEssence >= ascendInfo.essence;
+            const canAfford = !closedLife && game.daoEssence >= ascendInfo.essence;
             if (ascendInfo.locked) {
                 const realmName = REALMS[ascendInfo.realmReq] ? REALMS[ascendInfo.realmReq].name : "ступень " + ascendInfo.realmReq;
-                const reason = ascendInfo.insightPending ? "Дождитесь завершения озарения"
+                const reason = ascendInfo.insightPending ? "Дождитесь начисления оплаченного опыта"
                     : ascendInfo.eraLocked ? `Достигните эпохи «${ERAS.find(era => era.id === ascendInfo.eraReq)?.name || ascendInfo.eraReq}»`
-                    : `Вознесение доступно с «${realmName}»`;
-                ascendHtml = `<span class="tech-ascend-inline ascend-locked stat-with-tip">\uD83D\uDD12<span class="stat-tip">${reason}</span></span>`;
+                    : `Повысить качество можно со ступени «${realmName}»`;
+                ascendHtml = `<span class="tech-ascend-inline ascend-locked" title="${reason}">${reason}</span>`;
             } else {
-                ascendHtml = `<span class="tech-ascend-inline stat-with-tip"><button class="btn btn-tiny btn-ascend" onclick="event.stopPropagation();ascendTechniqueUI('${techId}')" ${canAfford ? "" : "disabled"}>\u2728</button><span class="stat-tip">Вознести \u2192 ${tierNames[ascendInfo.to]} (${ascendInfo.essence} \u2726)</span></span>`;
+                ascendHtml = `<button class="btn btn-small btn-ascend" onclick="event.stopPropagation();ascendTechniqueUI('${techId}')" ${canAfford ? "" : "disabled"} title="Новое качество: ${tierNames[ascendInfo.to]}. Стоимость: ${ascendInfo.essence} эссенции. Уровень станет 1, опыт — 0. Бонус обычно временно ослабеет: технику нужно обучить заново.">Повысить качество (${ascendInfo.essence} эссенции)</button>`;
             }
         }
 
         // Кнопка экипировки
         let equipBtnHtml;
         if (isEquipped) {
-            equipBtnHtml = `<button class="btn btn-tiny btn-unequip" onclick="event.stopPropagation();toggleTechEquip('${techId}')" title="Снять">\u2716</button>`;
+            equipBtnHtml = `<button class="btn btn-small btn-unequip" onclick="event.stopPropagation();toggleTechEquip('${techId}')" ${closedLife ? 'disabled' : ''} title="Прекратить действие и практику техники. Уровень и опыт сохранятся.">Отключить</button>`;
         } else {
-            const canEquip = usedSlots < maxSlots;
-            equipBtnHtml = `<button class="btn btn-tiny btn-equip" onclick="event.stopPropagation();toggleTechEquip('${techId}')" ${canEquip ? "" : "disabled"} title="${canEquip ? "Экипировать" : "Нет свободных слотов"}">\u2714</button>`;
+            const canEquip = !closedLife && usedSlots < maxSlots;
+            equipBtnHtml = `<button class="btn btn-small btn-equip" onclick="event.stopPropagation();toggleTechEquip('${techId}')" ${canEquip ? "" : "disabled"} title="${closedLife ? "Жизнь завершена. Техники больше нельзя менять." : canEquip ? "Техника начнёт действовать и получать опыт." : `Можно практиковать не более ${maxSlots} техник одновременно. Сначала отключите одну из активных.`}">Активировать</button>`;
         }
 
         // XP текст для нижней строки
         let xpText;
         if (atMax) {
-            xpText = `<span class="tech-xp-max">МАКС</span>`;
+            xpText = `<span class="tech-xp-max">Максимальный уровень</span>`;
         } else if (isEquipped) {
-            xpText = `<span class="tech-xp-nums">${Math.floor(currentXP)}/${neededXP}</span> <span class="tech-xp-speed stat-with-tip">+${xpSpeed.toFixed(1)}/с<span class="stat-tip tech-speed-tip">${_techSpeedBreakdown(techId)}</span></span>`;
+            xpText = `Опыт: <span class="tech-xp-nums">${Math.floor(currentXP)}/${neededXP}</span> <span class="tech-xp-speed stat-with-tip">+${xpSpeed.toFixed(1)}/с<span class="stat-tip tech-speed-tip">Опыт в секунду. Множители обучения: ${_techSpeedBreakdown(techId)}</span></span>`;
         } else {
-            xpText = `<span class="tech-xp-nums">${Math.floor(currentXP)}/${neededXP}</span> <span class="tech-paused">\u23F8</span>`;
+            xpText = `Опыт: <span class="tech-xp-nums">${Math.floor(currentXP)}/${neededXP}</span>`;
         }
+
+        const lore = window.V2_HELP?.techniqueLore?.[tech.id] || tech.description;
 
         card.innerHTML = `
             <div class="tech-row-top">
-                <span class="tech-name stat-with-tip">${elemHtml}${tech.name}${(() => { if (!game.techAscendedTiers || !game.techAscendedTiers[techId]) return ""; const to = ["uncommon","rare","epic","legendary","divine"]; const idx = to.indexOf(game.techAscendedTiers[techId]); return " " + "\u2728".repeat(idx + 1); })()}${hasAffinity ? " \u2605" : ""}<span class="stat-tip tech-desc-tip">${tech.description}</span></span>
+                <span class="tech-name">${elemHtml}${tech.name}${hasAffinity ? ' <span title="Элемент совпадает с корнем: +25% к бонусам, +50% к обучению">★</span>' : ""}</span>
                 <span class="tech-row-meta">
                     ${ascendHtml}
-                    <span class="tech-level">Ур.${level}/${tech.maxLevel}</span>
+                    <span class="tech-level">Уровень ${level}/${tech.maxLevel}</span>
                     <span class="tech-tier">${tierNames[tech.tier]}</span>
+                    <span class="tech-status ${isEquipped ? "tech-status-active" : "tech-status-inactive"}">${isEquipped ? "Активна" : "Неактивна"}</span>
                     ${equipBtnHtml}
                 </span>
             </div>
@@ -147,12 +149,15 @@ function renderTechniques() {
                 <span class="tech-xp-inline">${xpText}</span>
             </div>
             ${!atMax ? `<div class="tech-xp-strip"><div class="tech-xp-bar tech-xp-${tech.tier}" style="width:${xpPct}%"></div></div>` : ""}
+            ${ascendInfo && isEquipped && atMax && !ascendInfo.locked ? '<p class="v2-action-warning">Повышение качества сбросит уровень до 1 и опыт до 0. Бонус временно ослабеет — обучите технику заново.</p>' : ""}
+            <p class="v2-tech-lore v2-tech-lore-short">${lore}</p>
         `;
         container.appendChild(card);
     }
 }
 
 function toggleTechEquip(techId) {
+    if (game.gameOver || game.pendingRebirth) return;
     if (game.isTechEquipped(techId)) {
         game.unequipTechnique(techId);
     } else {
@@ -167,21 +172,23 @@ function formatTechEffects(tech, level, hasAffinity) {
     for (const key of Object.keys(tech.effects)) {
         const total = game.getTechniqueEffectBonus(tech, key, level);
         const names = {
-            qi: "Ци",
-            strength: "Множитель силы для ци",
+            qi: "Скорость накопления ци",
+            strength: "Вклад силы в медитацию",
             combatPower: "Боевая мощь",
-            qiRetention: "Удержание ци",
+            qiRetention: "Сохранение ци при провале",
             lifespan: "Долголетие",
             breakthroughBonus: "Шанс прорыва",
             luck: "Удача",
-            spirit: "Множитель духа для ци",
+            spirit: "Вклад духа в медитацию",
             timeSpeed: "Скорость времени",
-            statXpSpeed: "Совершенствование",
-            techXpSpeed: "Скорость техник",
-            daoSpeed: "Скорость Дао"
+            statXpSpeed: "Усиление медитации",
+            techXpSpeed: "Скорость обучения",
+            daoSpeed: "Скорость изучения Дао"
         };
         if (key === "luck") {
-            parts.push(`+${total.toFixed(2)}% шанс прорыва от удачи`);
+            parts.push(`+${total.toFixed(2)} процентных пункта к шансу прорыва`);
+        } else if (key === "breakthroughBonus") {
+            parts.push(`+${(total * 100).toFixed(1)} процентных пункта к шансу прорыва`);
         } else if (key === "combatPower") {
             parts.push(`×${(1 + total).toFixed(2)} ${names[key]}`);
         } else {
@@ -192,6 +199,7 @@ function formatTechEffects(tech, level, hasAffinity) {
 }
 
 function ascendTechniqueUI(techId) {
+    if (game.gameOver || game.pendingRebirth) return;
     const card = document.getElementById(`tech-card-${techId}`);
     const tech = TECHNIQUES.find(t => t.id === techId);
     if (!tech) return;

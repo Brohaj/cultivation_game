@@ -1,6 +1,6 @@
 {
   "name": "cultivation_game",
-  "version": "1.0.0",
+  "version": "0.7.0",
   "description": "",
   "main": "save.js",
   "directories": {
@@ -8,9 +8,9 @@
   },
   "scripts": {
     "test": "node test-all.js",
-    "test:scenery": "node test-scenery.js",
-    "test:ui-v2": "node test-ui-v2.js && node test-ui-v2-desktop.js && node test-ui-v2-density.js",
-    "test:browser": "node test-browser.js && node test-player-ui.js && node test-browser-decisions.js && node test-browser-prestige.js",
+    "test:browser": "node test-browser-current-profile.js && node test-browser-current-runtime-ui.js && node test-browser-current-sect-ui.js && node test-browser-disciples.js && node test-browser-current-karma-ui.js && node test-browser-current-actions.js && node test-browser-decisions.js && node test-browser-karma-paths.js && node test-browser-pause.js",
+    "balance:disciples": "node simulate-disciples.js",
+    "balance:expeditions": "node simulate-expedition-value.js",
     "balance:simulate": "node simulate-balance.js"
   },
   "repository": {

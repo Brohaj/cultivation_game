@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
         page.on('pageerror', error=>errors.push(error.message));
         const savePath=process.argv[2] || path.join(__dirname,'test-fixtures','player-report-v14.json');
         const save=JSON.parse(fs.readFileSync(savePath,'utf8').replace(/^\uFEFF/,''));
-        await page.addInitScript(data=>localStorage.setItem('cultivation_game_save',JSON.stringify(data)),save);
+        await page.addInitScript(data=>localStorage.setItem('cultivation_game_prototype_save',JSON.stringify(data)),save);
         await page.goto(pathToFileURL(path.join(__dirname,'index.html')).href);
         if (await page.locator('#btn-accept-root').isVisible()) {
             await page.locator('#btn-accept-root').click();
@@ -292,7 +292,38 @@ const { chromium } = require('playwright');
         assert.doesNotMatch(await realmCard('spirit_forest').innerText(),/Опасность значительно вырастет/);
         console.log('PASS показаны только существующие испытания локаций и 20 общих походов');
 
+        await page.evaluate(()=>{
+            game.reset();game.stop();game.selectSpiritualRoot('common');game.realmIndex=7;
+            game.years=1000;game.birthYear=900;game.stones=game.daoEssence=game.artifactDust=10000;
+            game.pills=10;game.refinedPills=10;game.daoScrolls=3;game.daoLevel=5;
+            game.learnTechnique('basic_breathing');game.techLevels.basic_breathing=10;
+            game.prestige.unlockedFormations=['qiPillar','breakthroughAltar'];game.selectFormation('qiPillar');
+            game.artifacts=[{id:'closed_blade',name:'Учебный меч',slot:'weapon',tier:'common',effects:{strength:1},
+                enhance:0,transcend:0,investedDust:0,investedEssence:0}];game.equipArtifact('closed_blade');
+            _selectedArtifactId='closed_blade';game.beginRebirth(false);
+            document.querySelectorAll('.modal-overlay.active').forEach(el=>el.classList.remove('active'));
+            switchTab('artifacts');renderArtifacts();updateTickUI();
+        });
+        const closedForge=page.locator('.artifact-forge-panel');
+        assert.match(await closedForge.innerText(),/Жизнь завершена/);
+        assert.doesNotMatch(await closedForge.innerText(),/\+10 МАКС|PEN.*АБСОЛЮТ/);
+        assert.equal(await closedForge.locator('.btn-enhance').isDisabled(),true);
+        assert.equal(await closedForge.locator('.btn-unequip').isDisabled(),true);
+        assert.equal(await page.locator('.btn-scroll').count(),0);
+        for(const button of await page.locator('#pill-table button.btn-pill').all())assert.equal(await button.isDisabled(),true);
+        console.log('PASS Закрытая жизнь блокирует снаряжение и пилюли, не выдавая +0 артефакт за +10');
+
+        await page.evaluate(()=>{switchTab('formations');renderFormations();updateTickUI();});
+        for(const button of await page.locator('#formations-list button[onclick^="selectFormationUI"],#formations-list button[data-cost]').all()) {
+            assert.equal(await button.isDisabled(),true);
+        }
+        assert.ok(await page.locator('#formations-list button[data-cost]').count()>0);
+        await page.evaluate(()=>{switchTab('techniques');renderTechniques();});
+        assert.match(await page.locator('.ascend-locked .stat-tip').first().textContent(),/Жизнь завершена/);
+        for(const button of await page.locator('#techniques-list .btn-equip,#techniques-list .btn-unequip').all())assert.equal(await button.isDisabled(),true);
+        console.log('PASS Превью формаций и техник объясняет запрет закрытой жизни, лёгкий тик его сохраняет');
+
         assert.deepEqual(errors,[]);
-        console.log('19 player UI checks passed, 0 page errors');
+        console.log('21 player UI checks passed, 0 page errors');
     } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

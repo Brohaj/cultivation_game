@@ -1,0 +1,25 @@
+/* Ученики версии0.7 в едином интерфейсе: карточки без назначений и режимов. */
+.ui-v2 #disciples-section { margin: 12px 0; padding: 10px; border: 1px solid var(--v2-line); border-radius: 8px; background: var(--v2-surface); min-width: 0; }
+.ui-v2 #disciples-section .disciples-heading { flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 6px; }
+.ui-v2 #disciples-section .disciples-heading h4 { margin: 0; font-size: 14px; color: var(--v2-gold); font-weight: 600; }
+.ui-v2 #disciples-section .disciples-capacity, .ui-v2 #disciples-section .disciple-delivery { font-size: 12px; color: var(--v2-muted); }
+.ui-v2 #disciples-section .disciples-help, .ui-v2 #disciples-section .disciples-budget { font-size: 12px; line-height: 1.45; margin: 5px 0 9px; }
+.ui-v2 #disciples-section .disciples-budget { color: var(--v2-jade); }
+.ui-v2 #disciples-section .disciple-roster, .ui-v2 #disciples-section .disciple-candidates { grid-template-columns: repeat(auto-fit, minmax(min(100%, 176px), 1fr)); gap: 8px; }
+.ui-v2 #disciples-section .disciple-card, .ui-v2 #disciples-section .disciple-candidate { padding: 10px; border-color: var(--v2-line); background: var(--v2-panel); border-radius: 7px; }
+.ui-v2 #disciples-section .disciple-name { font-size: 14px; color: var(--v2-text); }
+.ui-v2 #disciples-section .disciple-quality { font-size: 11px; padding: 1px 5px; }
+.ui-v2 #disciples-section .disciple-age, .ui-v2 #disciples-section .disciple-meta, .ui-v2 #disciples-section .disciple-price,
+.ui-v2 #disciples-section .disciple-income, .ui-v2 #disciples-section .disciple-offer-expiry,
+.ui-v2 #disciples-section .disciple-empty, .ui-v2 #disciples-section .disciple-unavailable { font-size: 12px; line-height: 1.45; }
+.ui-v2 #disciples-section .disciple-age, .ui-v2 #disciples-section .disciple-meta { color: #bcc8c3; }
+.ui-v2 #disciples-section .disciple-income { color: var(--v2-jade); }
+.ui-v2 #disciples-section .disciple-xp { height: 6px; background: #0d1416; margin: 6px 0 8px; }
+.ui-v2 #disciples-section .disciple-xp-fill { background: var(--v2-jade); transition: width .18s linear; }
+.ui-v2 #disciples-section .disciple-controls .btn, .ui-v2 #disciples-section .disciple-candidate > .btn { min-height: 30px; font-size: 12px; padding: 4px 9px; }
+.ui-v2 #disciples-section .disciple-training-offer { padding: 8px; border-color: #6b6350; background: #242b26; }
+.ui-v2 #disciples-section .disciple-delivery { text-align: left; }
+@media (max-width: 600px) {
+    .ui-v2 #disciples-section { padding: 9px; }
+    .ui-v2 #disciples-section .disciple-roster, .ui-v2 #disciples-section .disciple-candidates { grid-template-columns: minmax(0, 1fr); }
+}

@@ -446,9 +446,8 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Сесть и читать. Мастер Юнь ждал именно этого",
-                        description: "Знания и техника. +100% к накоплению ци во время изучения",
+                        description: "Знания. Техника. Долго",
                         duration: 15,
-                        waitEffects: { meditationQiMultiplier: 2 },
                         success: {
                             rewards: (flags) => ({
                                 essence: { min: 20, max: 50 },

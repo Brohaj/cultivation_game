@@ -7,8 +7,11 @@ Object.assign(game, {
     // === АКТИВНОСТИ ===
 
     setActivity(activity) {
-        if (this.gameOver) return;
+        if (this.gameOver || this.pendingRebirth) return;
+        const stoppedPlan = !!this.practicePlan?.enabled;
+        if (stoppedPlan) this.practicePlan.enabled = false;
         this.currentActivity = activity;
+        if (stoppedPlan) saveGame();
         const names = {
             meditation: "Медитация",
             body: "Закалка Тела",
@@ -69,7 +72,7 @@ Object.assign(game, {
             if (!this.meetsRealmRequirement(nextRealm)) {
                 const req = this.getRealmPrestigeRequirement(nextRealm);
                 addLog(`Небесный Барьер! Для входа в "${REALMS[nextRealm].name}" требуется:`, "danger");
-                if (req.rebirths) addLog(`  Перерождений: ${this.prestige.totalRebirths}/${req.rebirths}`, "danger");
+                if (req.rebirths) addLog(`  Зачётных жизней: ${this.getQualifiedRebirths()}/${req.rebirths}`, "danger");
                 if (req.karma) {
                     const totalKarma = this.prestige.karma + this._getTotalKarmaSpent();
                     addLog(`  Карма (всего): ${totalKarma}/${req.karma}`, "danger");
@@ -298,7 +301,7 @@ Object.assign(game, {
 
     // Тир 1: Пилюля Ци (+500 ци × бонусы)
     usePill() {
-        if (this.pills <= 0 || this.gameOver || this.qi >= this.qiNeeded()) return;
+        if (this.pills <= 0 || this.gameOver || this.pendingRebirth || this.qi >= this.qiNeeded()) return;
         this.pills--;
         this.flags.pillsUsedTotal = (this.flags.pillsUsedTotal || 0) + 1;
         const gain = this.getPillQi(1);
@@ -308,7 +311,7 @@ Object.assign(game, {
 
     // Тир 2: Очищенная Пилюля (+5000 ци × бонусы)
     useRefinedPill() {
-        if ((this.refinedPills || 0) <= 0 || this.gameOver || this.qi >= this.qiNeeded()) return;
+        if ((this.refinedPills || 0) <= 0 || this.gameOver || this.pendingRebirth || this.qi >= this.qiNeeded()) return;
         this.refinedPills--;
         const gain = this.getPillQi(2);
         this.qi = Math.min(this.qi + gain, this.qiNeeded());
@@ -318,7 +321,7 @@ Object.assign(game, {
 
     // Тир 3: Духовная Пилюля (+50000 ци × бонусы, +8% дао, +5% к следующему прорыву)
     useSpiritualPill() {
-        if ((this.spiritualPills || 0) <= 0 || this.gameOver) return;
+        if ((this.spiritualPills || 0) <= 0 || this.gameOver || this.pendingRebirth) return;
         this.spiritualPills--;
         // Ци
         const qiGain = this.getPillQi(3);
@@ -340,7 +343,7 @@ Object.assign(game, {
 
     // Тир 4: Небесная Пилюля (+1 стат, наименьший из 3)
     useHeavenlyPill() {
-        if ((this.heavenlyPills || 0) <= 0 || this.gameOver) return;
+        if ((this.heavenlyPills || 0) <= 0 || this.gameOver || this.pendingRebirth) return;
         this.heavenlyPills--;
         // Ци бонус
         const qiGain = this.getPillQi(4);
@@ -360,7 +363,7 @@ Object.assign(game, {
 
     // Массовое использование пилюль (для x10/x100)
     usePillMulti(tier, count) {
-        if (this.gameOver || count <= 0) return;
+        if (this.gameOver || this.pendingRebirth || count <= 0) return;
         const fields = ["pills", "refinedPills", "spiritualPills", "heavenlyPills"];
         const funcs = ["usePill", "useRefinedPill", "useSpiritualPill", "useHeavenlyPill"];
         const field = fields[tier - 1];
@@ -375,7 +378,7 @@ Object.assign(game, {
 
     // Массовый рефайн (для x10/x100)
     refinePillMulti(fromTier, count) {
-        if (this.gameOver || count <= 0) return;
+        if (this.gameOver || this.pendingRebirth || count <= 0) return;
         let done = 0;
         for (let i = 0; i < count; i++) {
             if (!this.canRefinePill(fromTier)) break;
@@ -396,7 +399,7 @@ Object.assign(game, {
     },
 
     canRefinePill(fromTier) {
-        if (this.gameOver) return false;
+        if (this.gameOver || this.pendingRebirth) return false;
         const fields = ["pills", "refinedPills", "spiritualPills", "heavenlyPills"];
         const fromField = fields[fromTier - 1];
         const toField = fields[fromTier];
@@ -422,7 +425,7 @@ Object.assign(game, {
     },
 
     refinePillTier(fromTier) {
-        if (this.gameOver || !this.canRefinePill(fromTier)) return;
+        if (this.gameOver || this.pendingRebirth || !this.canRefinePill(fromTier)) return;
         const fields = ["pills", "refinedPills", "spiritualPills", "heavenlyPills"];
         const names = ["Пилюля Ци", "Очищенная", "Духовная", "Небесная"];
         const fromField = fields[fromTier - 1];

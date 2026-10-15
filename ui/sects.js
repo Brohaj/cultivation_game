@@ -3,6 +3,19 @@
 // ============================================================
 
 let _sectAnimLock = false;
+let _sectLeaveConfirmVisible = false;
+const _v2SectDetails = {};
+
+function _v2SectTrainingText(sect) {
+    if (sect.id === "hidden_hermit") return "Любая тренировка, кроме медитации · ×0,5.";
+    const names = { meditation: "Медитация", body: "Тренировка силы", dao: "Развитие духа", fate: "Испытание судьбы" };
+    const activities = Array.isArray(sect.daoActivity) ? sect.daoActivity : [sect.daoActivity];
+    return activities.map(activity => names[activity] || activity).join(" или ") + ".";
+}
+
+function _v2SectOpen(key) {
+    return _v2SectDetails[key] ? " open" : "";
+}
 
 function updateSectRankBar() {
     const fill = document.getElementById("sect-rank-bar-fill");
@@ -22,16 +35,23 @@ function renderSects() {
     if (deferUIRender(renderSects)) return;
     const container = document.getElementById("sects-list");
     if (!container) return;
+    container.classList.add("v2-sect-screen");
+    container.classList.toggle("v2-sect-member", !!game.sect);
     // Не перерисовывать пока идёт анимация завершения/повышения
     if (_sectAnimLock || container.querySelector(".sect-rankup-overlay")) return;
+    container.querySelectorAll("details[data-sect-detail]").forEach(detail => {
+        _v2SectDetails[detail.dataset.sectDetail] = detail.open;
+    });
+    const existingDisciplesSection = container.querySelector("#disciples-section");
     container.innerHTML = "";
 
     if (!game.sect) {
+        _sectLeaveConfirmVisible = false;
         // Выбор секты
         container.innerHTML = "<h3>Выберите секту</h3>";
         const desc = document.createElement("p");
         desc.className = "empty-msg";
-        desc.textContent = "Вступление в секту даёт бонусы, техники и задания. Выбор влияет на весь путь культивации.";
+        desc.textContent = "Каждая секта хранит свой путь, техники и формации.";
         container.appendChild(desc);
 
         const grid = document.createElement("div");
@@ -46,7 +66,9 @@ function renderSects() {
             // Требования
             const req = sect.requirement;
             let reqText = [];
-            if (req.realm) reqText.push(`${REALMS[req.realm].name}+ ${game.realmIndex >= req.realm ? "✓" : "✗"}`);
+            const bodyRealmAccess = game.getActiveBodyPerks().sectFromRealm0;
+            if (req.realm) reqText.push(bodyRealmAccess ? "Доступ по происхождению ✓"
+                : `${REALMS[req.realm].name}+ ${game.realmIndex >= req.realm ? "✓" : "✗"}`);
             if (req.milestone) {
                 const msObj = MILESTONES.find(m => m.id === req.milestone);
                 const msName = msObj ? msObj.name : req.milestone;
@@ -56,12 +78,12 @@ function renderSects() {
 
             // Бонусы (из dao)
             const bonusNames = {
-                qi: "Ци", combatPower: "Боевая мощь",
+                qi: "Накопление ци", combatPower: "Боевая мощь",
                 breakthroughBonus: "Шанс прорыва", dangerReward: "Награды за опасность",
                 pillEffect: "Эффект пилюль", qiRetention: "Удержание ци",
-                techXpSpeed: "Скорость техник", statXpSpeed: "Совершенствование",
+                techXpSpeed: "Обучение техник", statXpSpeed: "Усиление медитации",
                 karmaMultiplier: "Карма", disassembleBonus: "Разбор артефактов",
-                missionCdMult: "КД заданий"
+                missionCdMult: "Ожидание заданий"
             };
             const bonusParts = [];
             if (sect.dao) {
@@ -80,7 +102,7 @@ function renderSects() {
             const elemObj = sect.element ? ELEMENTS.find(e => e.id === sect.element) : null;
             const elemText = elemObj ? elemObj.name : "Любой";
             const hasAffinity = sect.element && game.spiritualRoot && game.spiritualRoot.elements && game.spiritualRoot.elements.includes(sect.element);
-            const affinityText = !sect.element ? "" : hasAffinity ? ' <span style="color:#6aea8a" title="Совпадение элемента корня с сектой: все Дао-бонусы секты ×1.5">x1.5 бонусы</span>' : ' <span style="color:#ee7a7a" title="Элемент корня не совпадает: все Дао-бонусы секты ×0.75">x0.75 бонусы</span>';
+            const affinityText = !sect.element ? "" : hasAffinity ? ' <span class="v2-muted">· совпадает с корнем</span>' : ' <span class="v2-muted">· другая стихия</span>';
 
             const diffNames = { easy: "Лёгкая", medium: "Средняя", hard: "Сложная", very_hard: "Очень сложная" };
             const diffColors = { easy: "#6aea8a", medium: "#eebb44", hard: "#ee7a7a", very_hard: "#cc4a3a" };
@@ -89,12 +111,16 @@ function renderSects() {
             card.innerHTML = `
                 ${renderSceneryImage(getSectScenery(sect.id), 'sect-scenery')}
                 <div class="sect-name" style="color:${sect.color}">${sect.name}</div>
-                <div class="sect-path">${sect.path === "righteous" ? "Праведный" : sect.path === "combat" ? "Боевой" : sect.path === "alchemy" ? "Алхимический" : sect.path === "demonic" ? "Демонический" : "Отшельнический"} путь <span style="color:${diffColors[sect.difficulty] || '#aaa'}" title="Чем сложнее секта — тем больше вклада нужно для повышения ранга, но и бонусы Дао мощнее">(${diffNames[sect.difficulty] || sect.difficulty})</span></div>
-                ${daoPathText ? `<div class="sect-dao-path" style="color:${sect.color}">Дао: ${daoPathText}${daoLevelSaved}</div>` : ""}
+                <div class="sect-path">${sect.path === "righteous" ? "Праведный" : sect.path === "combat" ? "Боевой" : sect.path === "alchemy" ? "Алхимический" : sect.path === "demonic" ? "Демонический" : "Отшельнический"} путь <span style="color:${diffColors[sect.difficulty] || '#aaa'}" title="В сложных сектах нужно больше вклада для повышения ранга">(${diffNames[sect.difficulty] || sect.difficulty})</span></div>
+                ${daoPathText ? `<div class="sect-dao-path">Путь секты: ${daoPathText}${daoLevelSaved}</div>` : ""}
+                <p class="sect-training-hint">Тренировка пути: ${_v2SectTrainingText(sect)}</p>
+                <div class="sect-bonuses">Основные бонусы: ${Object.keys(sect.dao || {}).map(key => bonusNames[key] || key).join(", ")}</div>
+                <details class="v2-details" data-sect-detail="sect-${sect.id}"${_v2SectOpen(`sect-${sect.id}`)}><summary>Бонусы и история секты</summary>
                 <div class="sect-element">Стихия: ${elemObj ? `<span style="color:${elemObj.color}">${elemObj.icon} ${elemText}</span>` : elemText}${affinityText}</div>
                 <div class="sect-desc">${sect.description}</div>
-                <div class="sect-bonuses">Дао бонусы: ${bonusParts.join(" | ")}</div>
-                <div class="sect-req">${reqText.join(" | ")}</div>
+                <div class="sect-bonuses">От начального пути до 5-го уровня: ${bonusParts.join(" | ")}</div>
+                </details>
+                <div class="sect-req">Для вступления: ${reqText.length ? reqText.join(" | ") : "доступно сразу"}</div>
                 ${canJoin
                     ? `<button class="btn btn-small btn-primary" onclick="joinSectUI('${sect.id}')">Вступить</button>`
                     : `<span class="sect-locked-text">Недоступно</span>`
@@ -104,198 +130,156 @@ function renderSects() {
         }
         container.appendChild(grid);
     } else {
-        // В секте — показать инфо, ранг, задание
         const sect = SECTS.find(s => s.id === game.sect.id);
-        if (!sect) return;
-        const rank = game.getCurrentSectRank();
-        const nextRank = game.getNextSectRank();
-
-        // Заголовок
-        const header = document.createElement("div");
-        header.className = "sect-active-header";
-        header.innerHTML = `
-            ${renderSceneryImage(getSectScenery(sect.id), 'sect-scenery')}
-            <div class="sect-name" style="color:${sect.color}">${sect.name}</div>
-            <div class="sect-rank-info">
-                <span class="sect-rank-name">Ранг: ${rank.name}</span>
-                <span class="sect-contribution">Вклад: ${game.sect.contribution}</span>
-                ${nextRank ? `<span class="sect-next-rank">До «${nextRank.name}»: ${game.sect.contribution >= nextRank.contribution ? "✓" : nextRank.contribution - game.sect.contribution + " вклада"}${nextRank.realmReq > 0 ? `, ${REALMS[nextRank.realmReq] ? REALMS[nextRank.realmReq].name : "Ступень " + nextRank.realmReq}+ ${game.realmIndex >= nextRank.realmReq ? "✓" : "✗"}` : ""}</span>` : `<span class="sect-max-rank">Максимальный ранг!</span>`}
-            </div>
-        `;
-        container.appendChild(header);
-
-        // Ранг прогресс-бар
-        if (nextRank) {
-            const prevContrib = rank.contribution;
-            const pct = Math.min(100, ((game.sect.contribution - prevContrib) / (nextRank.contribution - prevContrib)) * 100);
-            const bar = document.createElement("div");
-            bar.className = "sect-rank-bar-container";
-            bar.innerHTML = `
-                <div class="sect-rank-bar" id="sect-rank-bar-fill" style="width:${pct}%"></div>
-                <span class="sect-rank-bar-text" id="sect-rank-bar-pct">${pct.toFixed(0)}%</span>
-            `;
-            container.appendChild(bar);
-        }
-
-        // Бонусы (из dao)
-        const bonusNames = {
-            qi: "Ци", combatPower: "Боевая мощь",
-            breakthroughBonus: "Шанс прорыва", dangerReward: "Награды за опасность",
-            pillEffect: "Эффект пилюль", qiRetention: "Удержание ци",
-            techXpSpeed: "Скорость техник", statXpSpeed: "Совершенствование",
-            karmaMultiplier: "Карма", disassembleBonus: "Разбор артефактов",
-            missionCdMult: "КД заданий"
-        };
-        const elemAffinity = game.getSectElementAffinity();
-        const elemObj = sect.element ? ELEMENTS.find(e => e.id === sect.element) : null;
-        const bonusDiv = document.createElement("div");
-        bonusDiv.className = "sect-active-bonuses";
-        let bonusHtml = `<h4>${sect.daoDisplayName || "Дао"} (ур. ${game.daoLevel}${elemAffinity !== 1 ? `, стихия x${elemAffinity.toFixed(1)}` : ""})</h4>`;
-        bonusHtml += `<span class="sect-bonus-item">Вклад заданий от ранга: x${Number(rank.bonusMult.toFixed(2))}</span>`;
-        if (elemObj) {
-            const affinityColor = elemAffinity >= 1.5 ? "#6aea8a" : elemAffinity < 1 ? "#ee7a7a" : "#aaa";
-            bonusHtml += `<span class="sect-bonus-item" style="color:${affinityColor}">Стихия: ${elemObj.icon} ${elemObj.name} (x${elemAffinity.toFixed(1)})</span>`;
-        }
-        if (sect.dao) {
-            for (const [key, val] of Object.entries(sect.dao)) {
-                const effective = game.getSectBonus(key);
-                if (key === "missionCdMult") {
-                    bonusHtml += `<span class="sect-bonus-item">${bonusNames[key] || key}: x${effective.toFixed(2)}</span>`;
-                } else if (key === "karmaMultiplier") {
-                    bonusHtml += `<span class="sect-bonus-item">${bonusNames[key] || key}: x${effective.toFixed(2)}</span>`;
-                } else {
-                    const color = effective > 0 ? "#6aea8a" : effective < 0 ? "#ee7a7a" : "#aaa";
-                    bonusHtml += `<span class="sect-bonus-item" style="color:${color}">${effective > 0 ? "+" : ""}${Math.round(effective * 100)}% ${bonusNames[key] || key}</span>`;
-                }
-            }
-        }
-        bonusDiv.innerHTML = bonusHtml;
-        container.appendChild(bonusDiv);
-
-        // Пожертвования
-        const donateDiv = document.createElement("div");
-        donateDiv.className = "sect-mission-section";
-        const rankIdx = game.getSectRankIndex();
-        const pillContrib = [5, 8, 12, 16, 20][rankIdx] || 5;
-        const stoneContrib = [1, 2, 3, 4, 5][rankIdx] || 1;
-        const essContrib = [2, 3, 5, 7, 10][rankIdx] || 2;
-        const dustContrib = [1, 2, 3, 5, 7][rankIdx] || 1;
-
-        const donateRows = [
-            { icon: "🔮", name: "Пилюли", resource: "pills", have: game.pills, amounts: [1, 5, game.pills],
-              perUnit: pillContrib, extra: (rankIdx >= 2 ? " + камни" : "") + (rankIdx >= 4 ? " + эссенция" : "") },
-            { icon: "💎", name: "Камни", resource: "stones", have: game.stones, amounts: [100, 500],
-              perUnit: stoneContrib, batch: 100, extra: "" },
-            { icon: "✦", name: "Эссенция", resource: "essence", have: game.daoEssence, amounts: [10, 50],
-              perUnit: essContrib, batch: 10, extra: ", 25% свиток" },
-            { icon: "◆", name: "Пыль", resource: "dust", have: game.artifactDust, amounts: [10, 50],
-              perUnit: dustContrib, batch: 10, extra: ", 10% свиток" },
-        ];
-
-        const donateFunc = { pills: "donatePills", stones: "donateStones", essence: "donateEssence", dust: "donateDust" };
-
-        let donateHtml = `<h4>Пожертвования</h4><div class="sect-donate-grid">`;
-        for (const row of donateRows) {
-            const batch = row.batch || 1;
-            const contribPer = batch > 1 ? `${batch}→${row.perUnit * batch}` : `1→${row.perUnit}`;
-            donateHtml += `<div class="sect-donate-item">`;
-            donateHtml += `<span class="sect-donate-label">${row.icon} ${row.name} <span class="sect-donate-rate">(${contribPer} вкл.${row.extra})</span></span>`;
-            donateHtml += `<span class="sect-donate-buttons">`;
-            for (const amt of row.amounts) {
-                if (amt <= 0) continue;
-                const label = amt === row.have && amt > 1 ? `Все (${amt})` : `×${amt}`;
-                const canAfford = row.have >= amt;
-                donateHtml += `<button class="btn btn-small btn-secondary" onclick="game.${donateFunc[row.resource]}(${amt}); renderSects();" ${canAfford ? "" : "disabled"}>${label}</button>`;
-            }
-            donateHtml += `</span></div>`;
-        }
-        donateHtml += `</div>`;
-        donateDiv.innerHTML = donateHtml;
-        container.appendChild(donateDiv);
-
-        // Задания
-        const missionDiv = document.createElement("div");
-        missionDiv.className = "sect-mission-section";
-        missionDiv.innerHTML = `<h4>Задания секты</h4><p class="empty-msg">Новое задание через ${game.getSectMissionCooldown()} ${_plural(game.getSectMissionCooldown(), "год", "года", "лет")} после выполнения. Кулдаун не зависит от ранга.</p>`;
-        if (game.sectMissions.length > 0) {
-            for (let i = 0; i < game.sectMissions.length; i++) {
-                const m = game.sectMissions[i];
-                const card = document.createElement("div");
-                card.className = "sect-mission-card";
-                card.setAttribute("data-index", i);
-
-                // Слот на кулдауне — та же структура что и активное задание
-                if (m.cooldown > 0) {
-                    card.classList.add("sect-mission-cooldown");
-                    card.innerHTML = `
-                        <div class="sect-mission-text" style="color:#555">Ожидание нового задания...</div>
-                        <div class="sect-mission-desc" style="color:#444">Новое задание через ${m.cooldown} ${_plural(m.cooldown, "год", "года", "лет")}</div>
-                        <div class="sect-mission-reward" style="color:#444">—</div>
-                        <button class="btn btn-small btn-secondary" disabled>Ожидание</button>
-                    `;
-                    missionDiv.appendChild(card);
-                    continue;
-                }
-
-                const canComplete = game.canCompleteSectMission(i);
-                const autoDonation = m.templateId === "donate_pills_sect";
-                let progressText = "";
-                if (m.check && m.check.meditationYears) {
-                    const done = game.meditationYears - (m.meditationYearsAtStart || 0);
-                    progressText = ` (${Math.min(done, m.check.meditationYears)}/${m.check.meditationYears} лет)`;
-                }
-                if (m.check && m.check.pillsDonated) {
-                    const done = (game.flags.pillsDonated || 0) - (m.pillsDonatedAtStart || 0);
-                    progressText = ` (${Math.min(done, m.check.pillsDonated)}/${m.check.pillsDonated} пожертвовано)`;
-                }
-                // Формируем текст стоимости
-                let costParts = [];
-                if (m.cost) {
-                    if (m.cost.stones) costParts.push(`${m.cost.stones} ${_plural(m.cost.stones, "камень", "камня", "камней")}`);
-                    if (m.cost.pills) costParts.push(`${m.cost.pills} ${_plural(m.cost.pills, "пилюля", "пилюли", "пилюль")}`);
-                    if (m.cost.dust) costParts.push(`<span style="color:#aaa">\u25C6 ${m.cost.dust} пыли</span>`);
-                    if (m.cost.essence) costParts.push(`<span style="color:#c89aff">\u2726 ${m.cost.essence} эссенции</span>`);
-                }
-                const costText = costParts.length > 0 ? ` | Цена: ${costParts.join(", ")}` : "";
-                const contributionMult = rank.bonusMult * (game.getActiveBodyPerks().contributionMult || 1);
-                const artifactReward = game.getSectMissionArtifactReward(m);
-                const artifactTierNames = {common:"обычный",uncommon:"необычный",rare:"редкий",epic:"эпический",legendary:"легендарный",divine:"божественный"};
-                const artifactText = artifactReward ? `, <span style="color:#cc7a3a">\u2694 ${artifactReward.firstReward ? "первый артефакт гарантирован" : `артефакт: ${Math.round(artifactReward.chance * 100)}%` } (${artifactTierNames[artifactReward.tier] || artifactReward.tier})</span>` : "";
-                card.innerHTML = `
-                    <div class="sect-mission-text">${m.text}</div>
-                    <div class="sect-mission-desc">${m.description}${progressText}</div>
-                    <div class="sect-mission-reward">Награда: ${m.reward.contribution ? `+${game.getSectMissionContribution(m.reward.contribution)} вклад${contributionMult > 1 ? ` (\u00D7${Number(contributionMult.toFixed(2))})` : ""}` : ""}${m.reward.stones ? `${m.reward.contribution ? ", " : ""}+${m.reward.stones} ${_plural(m.reward.stones, "камень", "камня", "камней")}` : ""}${m.reward.pills ? `, +${m.reward.pills} ${_plural(m.reward.pills, "пилюля", "пилюли", "пилюль")}` : ""}${m.reward.daoScroll ? `, <span style="color:#66ccff">\u2721 +${m.reward.daoScroll} ${_plural(m.reward.daoScroll, "свиток", "свитка", "свитков")}</span>` : ""}${artifactText}${game.realmIndex >= 3 ? `, <span style="color:#eebb44" title="2-5% от ${game.daoNeeded()} постижения">\u262F +Дао (2-5%)</span>` : ""}${costText}</div>
-                    ${autoDonation ? '<span class="sect-mission-auto">Награда автоматически при сдаче пилюль</span>' : `<button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>
-                        ${canComplete ? "Выполнить" : "Не готово"}
-                    </button>`}
-                `;
-                missionDiv.appendChild(card);
-            }
-        } else {
-            if (game.sectMissionTimer > 0) {
-                missionDiv.innerHTML += `<p class="empty-msg">Вы — новый ученик. Старейшины ещё присматриваются к вам. Задания появятся через ${game.sectMissionTimer} ${_plural(game.sectMissionTimer, "год", "года", "лет")}.</p>`;
-            } else {
-                missionDiv.innerHTML += `<p class="empty-msg">Нет заданий</p>`;
-            }
-        }
-        container.appendChild(missionDiv);
-
-        // Кнопка покинуть
-        const leaveDiv = document.createElement("div");
-        leaveDiv.className = "sect-leave";
-        leaveDiv.innerHTML = `
-            <button class="btn btn-small btn-danger-btn" id="btn-leave-sect" onclick="showLeaveSectConfirm()">Покинуть секту</button>
-            <div id="leave-sect-confirm" class="inline-confirm-panel" style="display:none">
-                <p class="inline-confirm-warning">Покинуть секту и сменить Путь Дао?</p>
-                <p class="inline-confirm-detail">Весь вклад и ранг будут потеряны. Прогресс Дао этой секты сохранён, но активный Путь сменится.</p>
-                <div class="inline-confirm-actions">
-                    <button class="btn btn-small btn-danger-btn" onclick="confirmLeaveSect()">Покинуть</button>
-                    <button class="btn btn-small btn-secondary" onclick="cancelLeaveSect()">Отмена</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(leaveDiv);
+        if (sect) _renderV2SectMember(container, sect, existingDisciplesSection);
     }
+}
+
+const _v2SectMissionTitles = {
+    gather_stones: "Камни для секты", slay_beast: "Зверь у границ", meditate_count: "Нефритовый сад",
+    donate_stones_alchemy: "Алхимический зал", purify_qi: "Священный исток", arena_challenge: "Арена Тысячи Клинков",
+    brew_elixir: "Эликсир для палаты", devour_essence: "Подношение Бездне", dark_ritual: "Тёмный ритуал",
+    donate_dust: "Материалы для мастеров", donate_essence: "Сосуд эссенции", gather_pills: "Запас пилюль",
+    prove_strength: "Испытание силы", prove_spirit: "Испытание духа", perform_breakthroughs: "Новый рубеж",
+    relic_hunt: "Охота за реликвией", treasure_expedition: "Забытая сокровищница", sect_armory: "Арсенал секты",
+    elder_trial_strength: "Испытание старейшин", elder_trial_spirit: "Совет старейшин", elder_offering: "Подношение старейшинам",
+    hall_master_treasury: "Стражи сокровищницы", hall_master_artifact: "Древний артефакт", hall_master_wisdom: "Закрытый совет",
+    deep_meditation: "Тишина отшельников", dao_comprehension: "Фрагмент Великого Дао", gather_herbs: "Травы для лекарей",
+    donate_pills_sect: "Лекарственная палата",
+};
+
+function _v2SectResource(text, kind) {
+    return `<span class="v2-resource-${kind}">${text}</span>`;
+}
+
+function _v2SectRequirements(mission) {
+    const checks = mission.check || {};
+    const values = {
+        combatPower: ["Боевая мощь", game.getCombatPower()],
+        strength: ["Сила", game.strength + game.getArtifactBonus("strength")],
+        spirit: ["Дух", game.spirit + game.getArtifactBonus("spirit")],
+        luck: ["Удача", game.luck + game.getArtifactBonus("luck") + game.getFormationBonus("luck")],
+        breakthroughs: ["Прорывы", game.totalBreakthroughs - (mission.breakthroughsAtStart || 0)],
+        meditationYears: ["Медитация, лет", game.meditationYears - (mission.meditationYearsAtStart || 0)],
+        pillsDonated: ["Пожертвовано пилюль", (game.flags.pillsDonated || 0) - (mission.pillsDonatedAtStart || 0)],
+    };
+    return Object.entries(values).filter(([key]) => checks[key]).map(([key, [label, value]]) =>
+        `<span class="${value >= checks[key] ? "sect-check-ready" : "sect-check-pending"}" title="${label}: требуется не менее ${checks[key]}">${label} ${Number(value.toFixed(1))} / ${checks[key]}</span>`
+    ).join(" · ");
+}
+
+function _renderV2SectMember(container, sect, existingDisciplesSection) {
+    const main = document.createElement("div");
+    main.className = "v2-sect-main";
+    container.appendChild(main);
+    const rank = game.getCurrentSectRank();
+    const nextRank = game.getNextSectRank();
+    const header = document.createElement("div");
+    header.className = "sect-active-header";
+    header.innerHTML = `${renderSceneryImage(getSectScenery(sect.id), 'sect-scenery')}<div class="sect-title-line"><div class="sect-name" style="color:${sect.color}">${sect.name}</div><span class="sect-rank-name">${rank.name}</span></div>
+        <p class="sect-lore-prose">${sect.description}</p>
+        <div class="sect-rank-info"><span class="sect-contribution" title="Вклад за поручения и пожертвования">Вклад ${game.sect.contribution}</span>
+        ${nextRank ? `<span class="sect-next-rank">${nextRank.name}: ${Math.max(0, nextRank.contribution - game.sect.contribution)} вклада${nextRank.realmReq > 0 ? ` · ${REALMS[nextRank.realmReq]?.name || "Ступень " + nextRank.realmReq} ${game.realmIndex >= nextRank.realmReq ? "✓" : "✗"}` : ""}</span>` : '<span class="sect-max-rank">Высший ранг</span>'}</div>`;
+    main.appendChild(header);
+    if (nextRank) {
+        const pct = Math.min(100, ((game.sect.contribution - rank.contribution) / (nextRank.contribution - rank.contribution)) * 100);
+        const bar = document.createElement("div");
+        bar.className = "sect-rank-bar-container";
+        bar.innerHTML = `<div class="sect-rank-bar" id="sect-rank-bar-fill" style="width:${pct}%"></div><span class="sect-rank-bar-text" id="sect-rank-bar-pct">${pct.toFixed(0)}%</span>`;
+        main.appendChild(bar);
+    }
+
+    const bonusNames = {
+        qi: "Ци", combatPower: "Боевая мощь", breakthroughBonus: "Шанс прорыва", dangerReward: "Награды за опасность",
+        pillEffect: "Пилюли", qiRetention: "Сохранение ци", techXpSpeed: "Обучение", statXpSpeed: "Медитация",
+        karmaMultiplier: "Карма", disassembleBonus: "Разбор", missionCdMult: "Ожидание заданий",
+    };
+    const bonusParts = Object.keys(sect.dao || {}).map(key => {
+        const value = game.getSectBonus(key);
+        const amount = key === "karmaMultiplier" || key === "missionCdMult" ? `×${Number(value.toFixed(2))}`
+            : `${value >= 0 ? "+" : ""}${Number((value * 100).toFixed(1))}%`;
+        const resource = key === "pillEffect" ? " v2-resource-pills" : "";
+        return `<span class="sect-bonus-item${resource}${value < 0 ? " sect-bonus-negative" : ""}">${bonusNames[key] || key} ${amount}</span>`;
+    });
+    const bonuses = document.createElement("div");
+    bonuses.className = "sect-active-bonuses";
+    const daoDescriptions = typeof DAO_LEVEL_DESCRIPTIONS !== "undefined" ? DAO_LEVEL_DESCRIPTIONS[sect.daoPath] : null;
+    const daoLore = game.daoLevel > 0 && daoDescriptions?.length ? daoDescriptions[Math.min(game.daoLevel - 1, daoDescriptions.length - 1)] : "";
+    bonuses.innerHTML = `<div class="sect-path-line"><h4>${sect.daoDisplayName || "Путь секты"} · ${game.daoLevel}</h4></div>${daoLore ? `<p class="sect-path-lore">${daoLore}</p>` : ""}<div class="sect-bonus-list">${bonusParts.join("")}</div>`;
+    main.appendChild(bonuses);
+
+    // Карточки и их анимация живут между обновлениями остальных частей секты.
+    const disciples = existingDisciplesSection || document.createElement("section");
+    disciples.id = "disciples-section";
+    disciples.className = "disciples-section";
+    main.appendChild(disciples);
+    if (typeof renderDisciples === "function") renderDisciples();
+
+    const missions = document.createElement("div");
+    missions.className = "sect-mission-section sect-missions";
+    missions.innerHTML = `<div class="sect-section-line"><h4>Поручения</h4><span>Новое через ${game.getSectMissionCooldown()} ${_plural(game.getSectMissionCooldown(), "год", "года", "лет")}</span></div>`;
+    if (!game.sectMissions.length) missions.innerHTML += `<p class="empty-msg">${game.sectMissionTimer > 0 ? `Поручения появятся через ${game.sectMissionTimer} ${_plural(game.sectMissionTimer, "год", "года", "лет")}.` : "Поручений пока нет."}</p>`;
+    for (let i = 0; i < game.sectMissions.length; i++) {
+        const mission = game.sectMissions[i] || {};
+        const card = document.createElement("div");
+        card.className = "sect-mission-card";
+        card.dataset.index = i;
+        if (mission.cooldown > 0 || !mission.reward) {
+            card.classList.add("sect-mission-cooldown");
+            card.innerHTML = `<div class="sect-mission-main"><div class="sect-mission-text">Старейшины готовят поручение</div><div class="sect-mission-desc">${mission.cooldown > 0 ? `Через ${mission.cooldown} ${_plural(mission.cooldown, "год", "года", "лет")}` : "Старейшины подбирают новое поручение."}</div></div><div class="sect-mission-action"><button class="btn btn-small btn-secondary" disabled>Ожидание</button></div>`;
+            missions.appendChild(card);
+            continue;
+        }
+        const autoDonation = mission.templateId === "donate_pills_sect";
+        const canComplete = game.canCompleteSectMission(i);
+        const costs = [];
+        const resourceNames = { stones: ["камень", "камня", "камней"], pills: ["пилюля", "пилюли", "пилюль"], dust: ["пыли", "пыли", "пыли"], essence: ["эссенции", "эссенции", "эссенции"] };
+        for (const [key, amount] of Object.entries(mission.cost || {})) {
+            if (amount) costs.push(_v2SectResource(`${amount} ${resourceNames[key] ? _plural(amount, ...resourceNames[key]) : key}`, key));
+        }
+        const reward = mission.reward || {};
+        const rewards = [];
+        if (reward.contribution) rewards.push(`<span title="Вклад с учётом ранга и происхождения">+${game.getSectMissionContribution(reward.contribution)} вклада</span>`);
+        if (reward.stones) rewards.push(_v2SectResource(`+${reward.stones} ${_plural(reward.stones, "камень", "камня", "камней")}`, "stones"));
+        if (reward.pills) rewards.push(_v2SectResource(`+${reward.pills} ${_plural(reward.pills, "пилюля", "пилюли", "пилюль")}`, "pills"));
+        if (reward.daoScroll) rewards.push(_v2SectResource(`+${reward.daoScroll} ${_plural(reward.daoScroll, "свиток", "свитка", "свитков")}`, "scrolls"));
+        const artifact = game.getSectMissionArtifactReward(mission);
+        if (artifact) rewards.push(`<span class="art-tier-${artifact.tier}">${ARTIFACT_TIERS[artifact.tier]?.name || artifact.tier} артефакт · ${artifact.firstReward ? "гарантирован" : `${Math.round(artifact.chance * 100)}%`}</span>`);
+        if (game.realmIndex >= 3) rewards.push('<span class="v2-resource-dao">+опыт Дао</span>');
+        const requirements = _v2SectRequirements(mission);
+        const title = _v2SectMissionTitles[mission.templateId] || mission.text || "Поручение секты";
+        card.innerHTML = `<div class="sect-mission-main"><div class="sect-mission-text">${title}</div>
+            ${requirements || costs.length ? `<div class="sect-mission-desc">${requirements}${requirements && costs.length ? " · " : ""}${costs.length ? `Цена: ${costs.join(", ")}` : ""}</div>` : ""}
+            <div class="sect-mission-reward">${rewards.join(" · ")}</div></div>
+            <div class="sect-mission-action">${autoDonation ? '<button class="btn btn-small btn-secondary" onclick="openSectDonations()" title="Награда за поручение придёт автоматически после пожертвования нужного количества пилюль">Пожертвовать</button>' : `<button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>${canComplete ? "Выполнить" : "Не готово"}</button>`}</div>`;
+        missions.appendChild(card);
+    }
+    main.appendChild(missions);
+
+    const rankIdx = game.getSectRankIndex();
+    const mult = game.getActiveBodyPerks().contributionMult || 1;
+    const donationRows = [
+        { key: "pills", name: "Пилюли", have: game.pills, amounts: [1, 5, game.pills], perUnit: [5, 8, 12, 16, 20][rankIdx] || 5, batch: 1, extra: (rankIdx >= 2 ? " · камни" : "") + (rankIdx >= 4 ? " · эссенция" : "") },
+        { key: "stones", name: "Камни", have: game.stones, amounts: [100, 500], perUnit: ([1, 2, 3, 4, 5][rankIdx] || 1) / 10, batch: 100, extra: "" },
+        { key: "essence", name: "Эссенция", have: game.daoEssence, amounts: [10, 50], perUnit: [2, 3, 5, 7, 10][rankIdx] || 2, batch: 10, extra: " · 25% свиток за каждые 10" },
+        { key: "dust", name: "Пыль", have: game.artifactDust, amounts: [10, 50], perUnit: [1, 2, 3, 5, 7][rankIdx] || 1, batch: 10, extra: " · 10% свиток за каждые 10" },
+    ];
+    const functions = { pills: "donatePills", stones: "donateStones", essence: "donateEssence", dust: "donateDust" };
+    const donations = document.createElement("section");
+    donations.className = "sect-donations";
+    donations.innerHTML = `<h4>Пожертвования</h4><div class="sect-donate-grid">${donationRows.map(row => `<div class="sect-donate-item"><span class="sect-donate-label v2-resource-${row.key}">${row.name}<span class="sect-donate-rate">${row.batch} → ${Math.floor(row.batch * row.perUnit * mult)} вклада${row.extra}</span></span><span class="sect-donate-buttons">${[...new Set(row.amounts)].filter(amount => amount > 0).map(amount => `<button class="btn btn-small btn-secondary" onclick="game.${functions[row.key]}(${amount}); renderSects();" title="Пожертвовать ${amount}; ресурсы расходуются сразу" ${!game.gameOver && !game.pendingRebirth && row.have >= amount ? "" : "disabled"}>${row.key === "pills" && amount === row.have && ![1, 5].includes(amount) ? "Все" : amount}</button>`).join("")}</span></div>`).join("")}</div>`;
+    container.appendChild(donations);
+
+    const leave = document.createElement("div");
+    leave.className = "sect-leave";
+    const closedLife = game.gameOver || game.pendingRebirth;
+    leave.innerHTML = `<button class="btn btn-small btn-danger-btn" id="btn-leave-sect" onclick="showLeaveSectConfirm()" style="display:${_sectLeaveConfirmVisible ? "none" : ""}" ${closedLife ? "disabled" : ""}>Покинуть секту</button>
+        <div id="leave-sect-confirm" class="inline-confirm-panel" style="display:${_sectLeaveConfirmVisible ? "block" : "none"}"><p class="inline-confirm-warning">Покинуть ${sect.name}?</p><p class="inline-confirm-detail">Вклад и ранг обнулятся; техники и бонусы секты перестанут действовать. Активный путь начнётся с нуля. Достигнутый уровень останется в истории, открытые формации сохранятся.${typeof getDiscipleLeaveWarning === "function" ? _discipleEscape(getDiscipleLeaveWarning()) : ""}</p><div class="inline-confirm-actions"><button class="btn btn-small btn-danger-btn" onclick="confirmLeaveSect()" ${closedLife ? "disabled" : ""}>Покинуть</button><button class="btn btn-small btn-secondary" onclick="cancelLeaveSect()">Отмена</button></div></div>`;
+    main.appendChild(leave);
+}
+
+function openSectDonations() {
+    document.querySelector("#sects-list .sect-donations")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function joinSectUI(sectId) {
@@ -320,6 +304,8 @@ function completeSectMissionUI(index) {
 
     // Блокируем renderSects() от тиков на время анимации
     _sectAnimLock = true;
+    // Награды видны сразу и на паузе; карточка остаётся до завершения анимации.
+    updateUI();
 
     // Анимация завершения на карточке
     if (card) {
@@ -388,16 +374,21 @@ function _showRankUpEffect() {
 }
 
 function showLeaveSectConfirm() {
+    if (!game.sect || game.gameOver || game.pendingRebirth) return;
+    _sectLeaveConfirmVisible = true;
     document.getElementById("btn-leave-sect").style.display = "none";
     document.getElementById("leave-sect-confirm").style.display = "block";
 }
 
 function confirmLeaveSect() {
+    if (!_sectLeaveConfirmVisible) return;
+    _sectLeaveConfirmVisible = false;
     game.leaveSect();
     renderSects();
 }
 
 function cancelLeaveSect() {
+    _sectLeaveConfirmVisible = false;
     document.getElementById("leave-sect-confirm").style.display = "none";
     document.getElementById("btn-leave-sect").style.display = "";
 }

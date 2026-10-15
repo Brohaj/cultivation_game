@@ -7,6 +7,7 @@ Object.assign(game, {
     // === ВОЗНЕСЕНИЕ ЛОКАЦИИ ===
 
     canAscendLocation(locationId) {
+        if (this.gameOver || this.pendingRebirth) return false;
         if (this.ascendedLocations[locationId]) return false;
         if (!this.flags["expedition_" + locationId]) return false; // нужна хотя бы 1 экспедиция
         const cost = LOCATION_ASCEND_COST;
@@ -56,7 +57,7 @@ Object.assign(game, {
 
     canStartExpedition(locationId) {
         if (this.expedition) return false; // уже в экспедиции
-        if (this.gameOver) return false;
+        if (this.gameOver || this.pendingRebirth) return false;
 
         const loc = LOCATIONS.find(l => l.id === locationId);
         if (!loc) return false;
@@ -90,11 +91,13 @@ Object.assign(game, {
 
         this._lastExpeditionId = locationId;
         const rewardMultipliers = this.getExpeditionRewardMultipliers(loc);
+        const cultivationReward = this.getExpeditionCultivationReward(loc);
         this.expedition = {
             locationId: locationId,
             startYear: this.years,
             baseDuration: loc.duration,
-            rewardMultipliers
+            rewardMultipliers,
+            cultivationReward
         };
 
         const estDuration = this.getAdjustedExpeditionDuration();
@@ -103,9 +106,11 @@ Object.assign(game, {
         return true;
     },
 
-    // Динамическая длительность экспедиции (пересчитывается с текущими бонусами)
+    // Условия похода фиксируются при отправлении; новые ускорения действуют на следующий.
     getAdjustedExpeditionDuration() {
         if (!this.expedition) return 0;
+        const promisedDuration = this.expedition.cultivationReward?.duration;
+        if (Number.isFinite(promisedDuration) && promisedDuration >= 10) return promisedDuration;
         const base = this.expedition.baseDuration || this.expedition.duration || 0;
         return this.getExpeditionDuration({ duration: base });
     },
@@ -150,7 +155,7 @@ Object.assign(game, {
         if (danger <= 0) return 0;
         const power = this.getCombatPower();
         if (power >= danger) return 0;
-        // Чем сильнее не дотягиваешь, тем выше шанс (макс ~8% в год)
+        // Чем сильнее не дотягиваешь, тем выше шанс (максимум 25% в год).
         const deficit = (danger - power) / danger;
         return Math.min(0.25, deficit * 0.30);
     },
@@ -217,11 +222,13 @@ Object.assign(game, {
         };
     },
 
-    // Старый сейв не хранит условия отправления: фиксируем доступные при загрузке.
+    // Для незавершённого снимка фиксируем доступные при загрузке условия.
     ensureExpeditionRewardSnapshot() {
-        if (!this.expedition || this.expedition.rewardMultipliers) return;
+        if (!this.expedition) return;
         const loc = LOCATIONS.find(l => l.id === this.expedition.locationId);
-        if (loc) this.expedition.rewardMultipliers = this.getExpeditionRewardMultipliers(loc);
+        if (!loc) return;
+        if (!this.expedition.rewardMultipliers) this.expedition.rewardMultipliers = this.getExpeditionRewardMultipliers(loc);
+        if (!this.expedition.cultivationReward) this.expedition.cultivationReward = this.getExpeditionCultivationReward(loc);
     },
 
     getExpeditionArtifactReward(loc) {
@@ -253,12 +260,34 @@ Object.assign(game, {
         return { guaranteed: ascTier >= 2 ? 1 : 0, chance: loc.rewards.scrollChance || ascChance };
     },
 
+    getExpeditionCultivationReward(loc) {
+        if (this.expedition && this.expedition.locationId === loc.id && this.expedition.cultivationReward) {
+            return this.expedition.cultivationReward;
+        }
+        const duration = this.getExpeditionDuration(loc);
+        const ascTier = this.ascendedLocations[loc.id] || 0;
+        const grade = loc.cultivationRealm === null ? null : Math.min(10, loc.cultivationRealm + 2 * ascTier);
+        const relevance = grade === null ? 0 : Math.pow(0.5, Math.max(0, this.realmIndex - grade));
+        const needed = this.qiNeeded();
+        const meditationQi = this.getMeditationQiPerSec() * 5 * duration;
+        const qi = Number.isFinite(needed)
+            ? Math.floor(Math.max(0, Math.min(needed, meditationQi * EXPEDITION_CULTIVATION.qiReturn * relevance))) : 0;
+        const sectMultiplier = this.sect && (loc.daoSect === this.sect.id || loc.daoSect === "current_sect") ? 2 : 1;
+        let daoMin = 0;
+        if (this.realmIndex >= 3 && this.sect && loc.daoSect !== "no_dao" && grade !== null) {
+            const rewardRealm = Math.min(this.realmIndex, grade);
+            const base = 15 + rewardRealm * 8 + (this.subLevel - 1) * 3;
+            daoMin = base * duration / EXPEDITION_CULTIVATION.daoYears * sectMultiplier * this.getDaoSpeedMultiplier();
+        }
+        return { qi, meditationQi, duration, grade, relevance,
+            daoMin, daoMax: daoMin * 1.5, sectMultiplier, sectId: this.sect ? this.sect.id : null };
+    },
+
     getExpeditionDaoReward(loc) {
-        if (this.realmIndex < 3 || !this.sect || loc.daoSect === "no_dao") return { min: 0, max: 0, sectMultiplier: 1 };
-        const sectMultiplier = loc.daoSect === this.sect.id || loc.daoSect === "current_sect" ? 2 : 1;
-        const base = 15 + this.realmIndex * 8 + (this.subLevel - 1) * 3;
-        const min = base * sectMultiplier * this.getDaoSpeedMultiplier();
-        return { min, max: min * 1.5, sectMultiplier };
+        const reward = this.getExpeditionCultivationReward(loc);
+        // Постижение относится к Пути секты, в которой был начат поход.
+        const sameSect = this.sect && this.sect.id === reward.sectId;
+        return { min: sameSect ? reward.daoMin : 0, max: sameSect ? reward.daoMax : 0, sectMultiplier: reward.sectMultiplier };
     },
 
     _completeExpedition() {
@@ -383,12 +412,26 @@ Object.assign(game, {
             }
         }
 
+        const cultivationReward = this.getExpeditionCultivationReward(loc);
+        if (cultivationReward.qi > 0) {
+            const qiBefore = this.qi;
+            this.qi += cultivationReward.qi;
+            this.checkQiCap();
+            const qiGain = Math.max(0, Math.floor(this.qi - qiBefore));
+            if (qiGain > 0) results.push(`+${qiGain.toLocaleString("ru-RU")} ци`);
+        }
+
         const daoReward = this.getExpeditionDaoReward(loc);
         if (daoReward.max > 0) {
-            const daoGain = daoReward.min + Math.random() * (daoReward.max - daoReward.min);
-            this.daoProgress += daoGain;
-            this._checkDaoLevelUp();
-            results.push(`+${Math.floor(daoGain)} постижение Дао${daoReward.sectMultiplier > 1 ? " (×2 секта)" : ""}`);
+            const rolledDao = daoReward.min + Math.random() * (daoReward.max - daoReward.min);
+            const daoGain = Math.min(rolledDao, this.getDaoProgressRoom());
+            if (daoGain > 0) {
+                this.daoProgress += daoGain;
+                this._checkDaoLevelUp();
+                results.push(`+${Math.floor(daoGain)} постижение Дао${daoReward.sectMultiplier > 1 ? " (×2 секта)" : ""}`);
+            } else {
+                results.push("Дао: достигнут предел текущей ступени");
+            }
         }
 
         addLog(`Экспедиция в "${loc.name}" завершена!`, "breakthrough");

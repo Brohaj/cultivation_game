@@ -72,7 +72,7 @@ test('Сейв v14 с активным старым событием получ�
     old.worldEvent.name='Открытие Тайного Царства'; old.worldEvent.modifiers={rewardWeight:2};
     const loaded = createContext(old);
     loaded.run('applyLoadedState(loadGame()); saveGame();');
-    assert.equal(loaded.saved().version, 16);
+    assert.equal(loaded.saved().version, 18);
     assert.equal(loaded.run('game.expedition.rewardMultipliers.event'), 1);
     assert.equal(loaded.run('game.stones'), old.stones);
     assert.match(loaded.run('game.worldEvent.name'), /Прилив/);
