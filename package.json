@@ -11,7 +11,8 @@
     "test:browser": "node tests/test-browser-current-profile.js && node tests/test-browser-current-runtime-ui.js && node tests/test-browser-current-sect-ui.js && node tests/test-browser-disciples.js && node tests/test-browser-current-karma-ui.js && node tests/test-browser-current-actions.js && node tests/test-browser-decisions.js && node tests/test-browser-karma-paths.js && node tests/test-browser-pause.js",
     "balance:disciples": "node tools/simulate-disciples.js",
     "balance:expeditions": "node tools/simulate-expedition-value.js",
-    "balance:simulate": "node tools/simulate-balance.js"
+    "balance:simulate": "node tools/simulate-balance.js",
+    "balance:check": "node tools/check-balance.js"
   },
   "repository": {
     "type": "git",
