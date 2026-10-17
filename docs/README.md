@@ -9,6 +9,7 @@
 | [release.md](release.md) | Краткое описание релиза, запуск и проверенный объём. |
 | [prototype_report.md](prototype_report.md) | Действующие правила учеников, кармических путей, царств и сохранений; название файла осталось от этапа прототипа. |
 | [balance_thresholds.json](balance_thresholds.json) | Контрольные диапазоны четырёх жизней для проверки баланса в CI. |
+| [sect_balance_review.md](sect_balance_review.md) | Актуальное сравнение пяти сект, адресные правки и открытая поздняя проверка. |
 | [ui_v2.md](ui_v2.md) | Текущий интерфейс и его проверка. |
 | [content_guide.md](content_guide.md) | Правила написания событий и приключений. |
 | [worldbuilding.md](worldbuilding.md) | Канон мира и тон новых текстов. |

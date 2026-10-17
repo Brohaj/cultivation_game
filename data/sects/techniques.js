@@ -56,7 +56,7 @@ const SECT_TECHNIQUES = {
     },
     flame_tempering: {
         id: "flame_tempering", name: "Закалка Алым Пламенем",
-        description: "Тайная техника Ордена, рождённая в пламени кузнечных горнов Арены Тысячи Клинков. Внутренний огонь закаляет тело, увеличивая силу и стойкость.",
+        description: "Тайная техника Ордена, рождённая в пламени кузнечных горнов Арены Тысячи Клинков. Внутренний огонь укрепляет тело и ускоряет накопление ци во время медитации.",
         tier: "epic", type: "combat", element: "fire", maxLevel: 10,
         effects: { strength: 0.03 },
         requirement: { realm: 4 }, source: "sect"

@@ -128,13 +128,12 @@ EVENTS.push(
     },
     {
         id: "moon_herb_exchange",
-        text: "Сёстры-алхимики Лунного Озера предлагают обмен: ваши камни — их редкие травы.",
-        type: "event",
-        condition: (g) => g.sect && g.sect.id === "moon_lake" && g.stones >= 15,
+        text: "Сёстры-алхимики Лунного Озера дарят вам пилюли из редких лекарственных трав.",
+        type: "reward",
+        condition: (g) => g.sect && g.sect.id === "moon_lake",
         effect: (g) => {
-            g.stones -= 15;
-            g.pills += 5;
-            return "-15 камней, +5 пилюль. Выгодный обмен!";
+            g.pills += 2;
+            return "+2 пилюли из редких трав.";
         }
     },
 

@@ -70,10 +70,9 @@ Object.assign(game, {
                 const sect = SECTS.find(s => s.id === this.sect.id);
                 if (sect && sect.daoActivity) {
                     const activities = Array.isArray(sect.daoActivity) ? sect.daoActivity : [sect.daoActivity];
-                    const isHidden = sect.id === "hidden_hermit";
                     let givesDao = false;
-                    if (isHidden && this.currentActivity !== "meditation") {
-                        // Скрытая секта: любая активность кроме медитации, но x0.5
+                    if (sect.id === "hidden_hermit" && this.currentActivity !== "meditation") {
+                        // Скрытая секта: любая активность кроме медитации.
                         givesDao = true;
                     } else if (activities.includes(this.currentActivity)) {
                         givesDao = true;
@@ -84,9 +83,7 @@ Object.assign(game, {
                         const daoSpeedBonus = this.getDaoSpeedMultiplier();
                         const daoPerYear = 3 * techBonus * daoSpeedBonus;
                         const secondsPerYear = 5;
-                        let daoPerSec = daoPerYear / secondsPerYear;
-                        // Скрытая секта: x0.5 (любая активность, но медленнее)
-                        if (isHidden) daoPerSec *= 0.5;
+                        const daoPerSec = daoPerYear / secondsPerYear;
                         this.daoProgress += daoPerSec * tickFraction;
                     }
                 }

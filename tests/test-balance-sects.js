@@ -40,6 +40,67 @@ test('Множители вклада рангов растут до ×2 без 
     assert.equal(ctx.run('game.sect.contribution'), 1873);
 });
 
+test('Скачок через Ядрового ученика сразу выдаёт продвинутую технику', () => {
+    for (const [method, resource, amount] of [
+        ['donatePills', 'pills', 600],
+        ['donateStones', 'stones', 30000],
+        ['donateEssence', 'daoEssence', 1500],
+        ['donateDust', 'artifactDust', 3000],
+    ]) {
+        const ctx = createContext();
+        ctx.run(`game.realmIndex=5;game.sect={id:'moon_lake',rank:0,contribution:0};game.${resource}=${amount};`);
+        assert.equal(ctx.run(`game.${method}(${amount})`), true, method);
+        assert.equal(ctx.run('game.getSectRankIndex()'), 3, method);
+        assert.equal(ctx.run("game.hasTechnique('moon_elixir_body')"), true, method);
+    }
+
+    const ctx = createContext();
+    ctx.run("game.realmIndex=5;game.sect={id:'moon_lake',rank:0,contribution:0};game.sectMissions=[{templateId:'prove_spirit',reward:{contribution:3000},cooldown:0}];");
+    assert.equal(ctx.run('game.completeSectMission(0)'), true);
+    assert.equal(ctx.run('game.getSectRankIndex()'), 3);
+    assert.equal(ctx.run("game.hasTechnique('moon_elixir_body')"), true);
+});
+
+test('Старое задание у Главы показывает и выдаёт конвертированную награду', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7;game.sect={id:'moon_lake',rank:3,contribution:11950};
+        game.spirit=999;game.daoEssence=8;
+        var excludes=SECTS.find(s=>s.id==='moon_lake').missions.filter(id=>id!=='prove_spirit');
+        game.sectMissions=[game._generateOneMission(excludes)];`);
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(game.sectMissions[0].reward)')), { contribution: 43 });
+    assert.equal(ctx.run('game.donateEssence(8)'), true);
+    assert.equal(ctx.run('game.getSectRankIndex()'), 4);
+
+    const rewards = JSON.parse(ctx.run(`JSON.stringify({
+        old:game.sectMissions[0].reward,
+        effective:game.getSectMissionReward(game.sectMissions[0]),
+        newMission:game._generateOneMission(excludes).reward
+    })`));
+    assert.deepEqual(rewards.old, { contribution: 43 });
+    assert.deepEqual(rewards.effective, { stones: 36, pills: 1 });
+    assert.deepEqual(rewards.effective, rewards.newMission);
+
+    const html = ctx.run(`var rendered=[];
+        document.createElement=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
+        document.getElementById=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
+        renderSects(); rendered.map(el=>el.innerHTML).join(' ');`);
+    assert.match(html, /\+36 камн/);
+    assert.match(html, /\+1 пилюл/);
+    assert.doesNotMatch(html, /\+86 вклада/);
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(game.sectMissions[0].reward)')), { contribution: 43 });
+
+    assert.equal(ctx.run('game.completeSectMission(0)'), true);
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify([game.stones,game.pills,game.sect.contribution])')), [36, 1, 12006]);
+});
+
+test('Задание, которое само повышает до Главы, начисляет вклад', () => {
+    const ctx = createContext();
+    ctx.run("game.realmIndex=7;game.sect={id:'moon_lake',rank:3,contribution:11950};game.spirit=999;game.sectMissions=[{templateId:'prove_spirit',reward:{contribution:43},cooldown:0}];");
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(game.getSectMissionReward(game.sectMissions[0]))')), { contribution: 43 });
+    assert.equal(ctx.run('game.completeSectMission(0)'), true);
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify([game.sect.rank,game.sect.contribution,game.stones,game.pills])')), [4, 12025, 0, 0]);
+});
+
 test('Карма вклада нормализована по сложности и ограничена восемью у Главы', () => {
     const ctx = createContext();
     const result = JSON.parse(ctx.run(`JSON.stringify(SECTS.map(sect=>{

@@ -4,6 +4,7 @@ const suites = [
     './test-balance-expeditions',
     './test-expedition-cultivation',
     './test-balance-sects',
+    './test-sect-dao-balance',
     './test-balance-artifacts',
     './test-balance-inheritance',
     './test-balance-events',

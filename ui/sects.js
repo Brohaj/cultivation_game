@@ -7,7 +7,7 @@ let _sectLeaveConfirmVisible = false;
 const _v2SectDetails = {};
 
 function _v2SectTrainingText(sect) {
-    if (sect.id === "hidden_hermit") return "Любая тренировка, кроме медитации · ×0,5.";
+    if (sect.id === "hidden_hermit") return "Любая тренировка, кроме медитации.";
     const names = { meditation: "Медитация", body: "Тренировка силы", dao: "Развитие духа", fate: "Испытание судьбы" };
     const activities = Array.isArray(sect.daoActivity) ? sect.daoActivity : [sect.daoActivity];
     return activities.map(activity => names[activity] || activity).join(" или ") + ".";
@@ -136,7 +136,7 @@ function renderSects() {
 }
 
 const _v2SectMissionTitles = {
-    gather_stones: "Камни для секты", slay_beast: "Зверь у границ", meditate_count: "Нефритовый сад",
+    gather_stones: "Камни для секты", slay_beast: "Зверь у границ", meditate_count: "Совместная медитация",
     donate_stones_alchemy: "Алхимический зал", purify_qi: "Священный исток", arena_challenge: "Арена Тысячи Клинков",
     brew_elixir: "Эликсир для палаты", devour_essence: "Подношение Бездне", dark_ritual: "Тёмный ритуал",
     donate_dust: "Материалы для мастеров", donate_essence: "Сосуд эссенции", gather_pills: "Запас пилюль",
@@ -254,7 +254,7 @@ function _renderV2SectMember(container, sect, existingDisciplesSection) {
         for (const [key, amount] of Object.entries(mission.cost || {})) {
             if (amount) costs.push(_v2SectResource(`${amount} ${resourceNames[key] ? _plural(amount, ...resourceNames[key]) : key}`, key));
         }
-        const reward = mission.reward || {};
+        const reward = game.getSectMissionReward(mission) || {};
         const rewards = [];
         if (reward.contribution) rewards.push(`<span title="Вклад с учётом ранга и происхождения">+${game.getSectMissionContribution(reward.contribution)} вклада</span>`);
         if (reward.stones) rewards.push(_v2SectResource(`+${reward.stones} ${_plural(reward.stones, "камень", "камня", "камней")}`, "stones"));

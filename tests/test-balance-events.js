@@ -49,3 +49,47 @@ for (const entry of cases) {
         assert.deepEqual(negative.gains,[entry.base,entry.base]);
     });
 }
+
+test('Медитация Скрытой секты занимает 36 и 51 год на реалмах 7 и 11', () => {
+    const ctx=createContext();
+    const missions=JSON.parse(ctx.run(`JSON.stringify([7,11].map(realm => {
+        game.realmIndex=realm;
+        return SECT_MISSION_TEMPLATES.deep_meditation.generate(game,SECT_DIFFICULTY.very_hard);
+    }))`));
+    assert.deepEqual(missions.map(m => m.check.meditationYears),[36,51]);
+    assert.deepEqual(missions.map(m => m.reward),[
+        {contribution:147,stones:94},
+        {contribution:200,stones:129},
+    ]);
+});
+
+test('Общее задание медитации подходит и Нефриту, и Лунному Озеру', () => {
+    const ctx=createContext();
+    const content=JSON.parse(ctx.run(`JSON.stringify({
+        sects:SECTS.filter(s => s.missions.includes('meditate_count')).map(s => s.id),
+        text:SECT_MISSION_TEMPLATES.meditate_count.text,
+        title:_v2SectMissionTitles.meditate_count,
+    })`));
+    assert.deepEqual(content.sects,['jade_purity','moon_lake']);
+    assert.doesNotMatch(content.text,/Нефрит/);
+    assert.doesNotMatch(content.title,/Нефрит/);
+});
+
+test('Подарок трав Лунного Озера не списывает камни', () => {
+    const ctx=createContext();
+    const result=JSON.parse(ctx.run(`JSON.stringify([0,15].map(stones => {
+        game.sect={id:'moon_lake',rank:0,contribution:0};
+        game.stones=stones;
+        game.pills=4;
+        const event=EVENTS.find(e => e.id==='moon_herb_exchange');
+        const available=event.condition(game);
+        event.effect(game);
+        return {type:event.type,available,stones:game.stones,pills:game.pills};
+    }))`));
+    assert.deepEqual(result,[
+        {type:'reward',available:true,stones:0,pills:6},
+        {type:'reward',available:true,stones:15,pills:6},
+    ]);
+    assert.equal(ctx.run(`EVENTS.find(e => e.id==='moon_herb_exchange')
+        .condition({...game,sect:{id:'jade_purity'}})`),false);
+});

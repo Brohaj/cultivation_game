@@ -147,6 +147,20 @@ const makeSyntheticSectPlayer=require('./test-synthetic-player');
             await page.waitForFunction(()=>document.querySelector('.sect-mission-card[data-index="0"] .sect-mission-action button')?.disabled);
             assert.equal(await page.locator('.sect-mission-card[data-index="0"] .sect-mission-action button').isEnabled(),false);
         });
+        await check('Подсказки Скрытой секты показывают реальную скорость Дао без прежнего штрафа',async()=>{
+            await page.evaluate(()=>{
+                game.reset();game.stop();game.selectSpiritualRoot('common');
+                game.realmIndex=7;game.prestige.totalRebirths=3;game.daoLevel=0;
+                switchTab('sect');updateUI();
+            });
+            const hiddenCard=page.locator('.sect-card').filter({hasText:'Скрытая Секта'});
+            assert.match(await hiddenCard.innerText(),/Любая тренировка, кроме медитации/);
+            assert.doesNotMatch(await hiddenCard.innerText(),/×0[.,]5/);
+            await page.evaluate(()=>{game.sect={id:'hidden_hermit',rank:0,contribution:0};updateUI();});
+            const daoTip=await page.locator('#tip-dao-bar').innerText();
+            assert.match(daoTip,/\+3[.,]0 опыта пути\/год/);
+            assert.doesNotMatch(daoTip,/×0[.,]5/);
+        });
         assert.deepEqual(errors,[]);console.log(`${passed} current sect UI scenarios passed,0 page errors`);
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

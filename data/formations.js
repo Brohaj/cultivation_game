@@ -86,7 +86,7 @@ const CULT_FORMATIONS = [
         effectPerLevel: 0.05,   // -5% шанс демона за уровень
         baseCost: 80,
         costPerLevel: 50,
-        maxLevel: 20,
+        maxLevel: 16,
         sect: "abyss_cult",
         color: "#cc5a7a"
     },

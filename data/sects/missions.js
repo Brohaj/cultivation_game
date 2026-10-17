@@ -44,7 +44,7 @@ const SECT_MISSION_TEMPLATES = {
     },
     meditate_count: {
         id: "meditate_count",
-        text: "Старейшины открыли Нефритовый Сад для коллективной медитации. Каждый ученик укрепляет ауру секты.",
+        text: "Старейшины созвали учеников на совместную медитацию. Каждый участник укрепляет ауру секты.",
         type: "meditation",
         generate: (g, diff) => {
             const r = g.realmIndex;
@@ -440,7 +440,7 @@ const SECT_MISSION_TEMPLATES = {
         type: "meditation",
         generate: (g, diff) => {
             const r = g.realmIndex;
-            const years = Math.floor((10 + r * 3 + Math.floor(r / 3) * 4) * diff.missionCostMult);
+            const years = Math.floor((6 + r * 1.5 + Math.floor(r / 3) * 2) * diff.missionCostMult);
             return {
                 description: `Медитировать ${years} ${_plural(years, "год", "года", "лет")}`,
                 check: { meditationYears: years },

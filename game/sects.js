@@ -201,23 +201,7 @@ Object.assign(game, {
 
         // Проверка повышения ранга
         const newRankIdx = this.getSectRankIndex();
-        if (newRankIdx > oldRankIdx) {
-            const ranks = getSectRanks(this.sect.id);
-            const newRank = ranks[newRankIdx];
-            this.sect.rank = newRankIdx;
-            addLog(`Повышение! Новый ранг: ${newRank.name}`, "breakthrough");
-            if (newRank.unlockTechnique) {
-                const sect = SECTS.find(s => s.id === this.sect.id);
-                if (sect && sect.advancedTechnique) {
-                    const advTech = SECT_TECHNIQUES[sect.advancedTechnique];
-                    if (advTech && !this.hasTechnique(advTech.id)) {
-                        if (!TECHNIQUES.find(t => t.id === advTech.id)) TECHNIQUES.push(advTech);
-                        this.learnTechnique(advTech.id);
-                        addLog(`Изучена продвинутая техника секты: ${advTech.name}!`, "reward");
-                    }
-                }
-            }
-        }
+        this._applySectRankPromotion(oldRankIdx, newRankIdx);
 
         // Сдача уже выполнила требование задания: выдаём его обычную награду
         // после повышения от пожертвования, чтобы учесть актуальный ранг.
@@ -248,23 +232,7 @@ Object.assign(game, {
         addLog(`Пожертвовано ${amount} камней секте. +${contrib} вклад.`, "reward");
 
         const newRankIdx = this.getSectRankIndex();
-        if (newRankIdx > oldRankIdx) {
-            const ranks = getSectRanks(this.sect.id);
-            const newRank = ranks[newRankIdx];
-            this.sect.rank = newRankIdx;
-            addLog(`Повышение! Новый ранг: ${newRank.name}`, "breakthrough");
-            if (newRank.unlockTechnique) {
-                const sect = SECTS.find(s => s.id === this.sect.id);
-                if (sect && sect.advancedTechnique) {
-                    const advTech = SECT_TECHNIQUES[sect.advancedTechnique];
-                    if (advTech && !this.hasTechnique(advTech.id)) {
-                        if (!TECHNIQUES.find(t => t.id === advTech.id)) TECHNIQUES.push(advTech);
-                        this.learnTechnique(advTech.id);
-                        addLog(`Изучена продвинутая техника секты: ${advTech.name}!`, "reward");
-                    }
-                }
-            }
-        }
+        this._applySectRankPromotion(oldRankIdx, newRankIdx);
         this.checkMilestones();
         updateUI();
         if (newRankIdx > oldRankIdx) {
@@ -301,23 +269,7 @@ Object.assign(game, {
         addLog(`Пожертвовано ${amount} эссенции секте. ${parts.join(", ")}.`, "reward");
 
         const newRankIdx = this.getSectRankIndex();
-        if (newRankIdx > oldRankIdx) {
-            const ranks = getSectRanks(this.sect.id);
-            const newRank = ranks[newRankIdx];
-            this.sect.rank = newRankIdx;
-            addLog(`Повышение! Новый ранг: ${newRank.name}`, "breakthrough");
-            if (newRank.unlockTechnique) {
-                const sect = SECTS.find(s => s.id === this.sect.id);
-                if (sect && sect.advancedTechnique) {
-                    const advTech = SECT_TECHNIQUES[sect.advancedTechnique];
-                    if (advTech && !this.hasTechnique(advTech.id)) {
-                        if (!TECHNIQUES.find(t => t.id === advTech.id)) TECHNIQUES.push(advTech);
-                        this.learnTechnique(advTech.id);
-                        addLog(`Изучена продвинутая техника секты: ${advTech.name}!`, "reward");
-                    }
-                }
-            }
-        }
+        this._applySectRankPromotion(oldRankIdx, newRankIdx);
         this.checkMilestones();
         updateUI();
         if (newRankIdx > oldRankIdx) {
@@ -354,23 +306,7 @@ Object.assign(game, {
         addLog(`Пожертвовано ${amount} пыли секте. ${parts.join(", ")}.`, "reward");
 
         const newRankIdx = this.getSectRankIndex();
-        if (newRankIdx > oldRankIdx) {
-            const ranks = getSectRanks(this.sect.id);
-            const newRank = ranks[newRankIdx];
-            this.sect.rank = newRankIdx;
-            addLog(`Повышение! Новый ранг: ${newRank.name}`, "breakthrough");
-            if (newRank.unlockTechnique) {
-                const sect = SECTS.find(s => s.id === this.sect.id);
-                if (sect && sect.advancedTechnique) {
-                    const advTech = SECT_TECHNIQUES[sect.advancedTechnique];
-                    if (advTech && !this.hasTechnique(advTech.id)) {
-                        if (!TECHNIQUES.find(t => t.id === advTech.id)) TECHNIQUES.push(advTech);
-                        this.learnTechnique(advTech.id);
-                        addLog(`Изучена продвинутая техника секты: ${advTech.name}!`, "reward");
-                    }
-                }
-            }
-        }
+        this._applySectRankPromotion(oldRankIdx, newRankIdx);
         this.checkMilestones();
         updateUI();
         if (newRankIdx > oldRankIdx) {
@@ -383,6 +319,27 @@ Object.assign(game, {
 
     // === РАНГИ (динамические пороги по difficulty) ===
 
+    _ensureSectAdvancedTechnique(rankIdx) {
+        const ranks = getSectRanks(this.sect.id);
+        if (!ranks.slice(0, rankIdx + 1).some(rank => rank.unlockTechnique)) return false;
+        const sect = SECTS.find(s => s.id === this.sect.id);
+        const tech = sect && SECT_TECHNIQUES[sect.advancedTechnique];
+        if (!tech || this.hasTechnique(tech.id)) return false;
+        if (!TECHNIQUES.find(t => t.id === tech.id)) TECHNIQUES.push(tech);
+        this.learnTechnique(tech.id);
+        addLog(`Изучена продвинутая техника секты: ${tech.name}!`, "reward");
+        return true;
+    },
+
+    _applySectRankPromotion(oldRankIdx, newRankIdx) {
+        if (newRankIdx <= oldRankIdx) return false;
+        const ranks = getSectRanks(this.sect.id);
+        this.sect.rank = newRankIdx;
+        addLog(`Повышение! Новый ранг: ${ranks[newRankIdx].name}`, "breakthrough");
+        this._ensureSectAdvancedTechnique(newRankIdx);
+        return true;
+    },
+
     _syncSectRank(announce = true) {
         if (!this.sect) return false;
         const ranks = getSectRanks(this.sect.id);
@@ -394,16 +351,7 @@ Object.assign(game, {
             addLog(`Повышение! Новый ранг: ${ranks[rankIdx].name}`, "breakthrough");
         }
         // Ранг может открыться после прорыва реалма или перескочить Ядрового ученика.
-        if (ranks.slice(0, rankIdx + 1).some(r => r.unlockTechnique)) {
-            const sect = SECTS.find(s => s.id === this.sect.id);
-            const tech = sect && SECT_TECHNIQUES[sect.advancedTechnique];
-            if (tech && !this.hasTechnique(tech.id)) {
-                if (!TECHNIQUES.find(t => t.id === tech.id)) TECHNIQUES.push(tech);
-                this.learnTechnique(tech.id);
-                addLog(`Изучена продвинутая техника секты: ${tech.name}!`, "reward");
-                changed = true;
-            }
-        }
+        if (this._ensureSectAdvancedTechnique(rankIdx)) changed = true;
         return changed;
     },
 
@@ -547,6 +495,23 @@ Object.assign(game, {
         });
     },
 
+    // Показывает и выдаёт одну и ту же награду, включая задания из старого ранга.
+    getSectMissionReward(mission) {
+        const reward = mission?.reward;
+        if (!reward || !this.sect || !(reward.contribution > 0) || this.getNextSectRank() !== null) return reward || null;
+        const contribution = reward.contribution;
+        const converted = {
+            ...reward,
+            stones: (reward.stones || 0) + Math.floor(contribution * 0.5 * (1 + this.realmIndex * 0.1))
+        };
+        delete converted.contribution;
+        if (contribution >= 25) {
+            const pillBonus = Math.floor(this.realmIndex * 0.25);
+            if (pillBonus > 0) converted.pills = (reward.pills || 0) + pillBonus;
+        }
+        return converted;
+    },
+
     // Сгенерировать одно задание, избегая шаблонов уже активных слотов
     _generateOneMission(excludeTemplates) {
         const sect = SECTS.find(s => s.id === this.sect.id);
@@ -561,29 +526,6 @@ Object.assign(game, {
 
         const mission = template.generate(this, diff);
 
-        // На максимальном ранге: конвертировать вклад в реальные награды
-        const isMaxRank = this.getNextSectRank() === null;
-        if (isMaxRank && mission.reward) {
-            const contrib = mission.reward.contribution || 0;
-            if (contrib > 0) {
-                // Конвертировать вклад в камни + бонусные награды
-                const r = this.realmIndex;
-                if (!mission.reward.stones) mission.reward.stones = 0;
-                mission.reward.stones += Math.floor(contrib * 0.5 * (1 + r * 0.1));
-                // Убираем вклад — он бесполезен
-                delete mission.reward.contribution;
-                // Небольшой бонус пилюль; свитки остаются только явной
-                // наградой конкретного задания.
-                if (contrib >= 25) {
-                    const pillBonus = Math.floor(r * 0.25);
-                    if (pillBonus > 0) {
-                        if (!mission.reward.pills) mission.reward.pills = 0;
-                        mission.reward.pills += pillBonus;
-                    }
-                }
-            }
-        }
-
         return {
             templateId: template.id,
             text: template.text,
@@ -591,7 +533,7 @@ Object.assign(game, {
             description: mission.description,
             cost: mission.cost || null,
             check: mission.check || null,
-            reward: mission.reward,
+            reward: this.getSectMissionReward(mission),
             cooldown: 0,
             meditationYearsAtStart: this.meditationYears,
             breakthroughsAtStart: this.totalBreakthroughs,
@@ -687,6 +629,7 @@ Object.assign(game, {
         if (source === "disciple" && !this.canAutoCompleteDiscipleMission(index)) return false;
         if (!this.canCompleteSectMission(index)) return false;
         const m = this.sectMissions[index];
+        const reward = this.getSectMissionReward(m);
         if (typeof this._markDiscipleSlotPaid === "function") this._markDiscipleSlotPaid(index);
 
         // Оплата
@@ -702,21 +645,21 @@ Object.assign(game, {
 
         // Вклад масштабируется с рангом и телом; предметные награды не умножаются.
         const rewardParts = [];
-        if (m.reward.contribution) {
-            const contrib = this.getSectMissionContribution(m.reward.contribution);
+        if (reward.contribution) {
+            const contrib = this.getSectMissionContribution(reward.contribution);
             this.sect.contribution += contrib;
             rewardParts.push(`+${contrib} вклад`);
         }
-        if (m.reward.stones) {
-            this.stones += m.reward.stones;
-            rewardParts.push(`+${m.reward.stones} камней`);
+        if (reward.stones) {
+            this.stones += reward.stones;
+            rewardParts.push(`+${reward.stones} камней`);
         }
-        if (m.reward.pills) {
-            this.pills += m.reward.pills;
-            rewardParts.push(`+${m.reward.pills} пилюль`);
+        if (reward.pills) {
+            this.pills += reward.pills;
+            rewardParts.push(`+${reward.pills} пилюль`);
         }
-        if (m.reward.daoScroll) {
-            const added = this.addDaoScroll(m.reward.daoScroll);
+        if (reward.daoScroll) {
+            const added = this.addDaoScroll(reward.daoScroll);
             if (added > 0) rewardParts.push(`+${added} Свиток Воли Дао`);
         }
         const artifactReward = this.getSectMissionArtifactReward(m);
@@ -731,26 +674,7 @@ Object.assign(game, {
 
         // Проверка повышения ранга (после добавления вклада)
         const newRankIdx = this.getSectRankIndex();
-        if (newRankIdx > oldRankIdx) {
-            const ranks = getSectRanks(this.sect.id);
-            const newRank = ranks[newRankIdx];
-            this.sect.rank = newRankIdx;
-            addLog(`Повышение! Новый ранг: ${newRank.name}`, "breakthrough");
-
-            if (newRank.unlockTechnique) {
-                const sect = SECTS.find(s => s.id === this.sect.id);
-                if (sect && sect.advancedTechnique) {
-                    const advTech = SECT_TECHNIQUES[sect.advancedTechnique];
-                    if (advTech && !this.hasTechnique(advTech.id)) {
-                        if (!TECHNIQUES.find(t => t.id === advTech.id)) {
-                            TECHNIQUES.push(advTech);
-                        }
-                        this.learnTechnique(advTech.id);
-                        addLog(`Изучена продвинутая техника секты: ${advTech.name}!`, "reward");
-                    }
-                }
-            }
-        }
+        this._applySectRankPromotion(oldRankIdx, newRankIdx);
 
         // Дао прогресс от задания секты (+3-8%)
         if (this.realmIndex >= 3) {

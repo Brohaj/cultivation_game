@@ -198,7 +198,7 @@ function updateTickUI() {
                 const daoAct = sect.daoActivity;
                 let actText;
                 if (sect.id === "hidden_hermit") {
-                    actText = "Любая тренировка (×0.5)";
+                    actText = "Любая тренировка, кроме медитации";
                 } else if (Array.isArray(daoAct)) {
                     actText = daoAct.map(a => activityNames[a] || a).join(" / ");
                 } else {
@@ -206,7 +206,7 @@ function updateTickUI() {
                 }
                 const daoSpeedMult = game.getDaoSpeedMultiplier();
                 const trainingMult = 1 + game.getTechBonus("techXpSpeed") + game.getArtifactBonus("techXpSpeed") * 0.01 + game.getFormationBonus("techXpSpeed");
-                const daoPerYear = (3 * trainingMult * daoSpeedMult * (sect.id === "hidden_hermit" ? 0.5 : 1)).toFixed(1);
+                const daoPerYear = (3 * trainingMult * daoSpeedMult).toFixed(1);
                 const daoDesc = document.getElementById("dao-desc");
 
                 const tipDaoBar = document.getElementById("tip-dao-bar");
