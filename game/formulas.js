@@ -300,7 +300,7 @@ Object.assign(game, {
 
     // === ПРОРЫВ ===
 
-    getBreakthroughChance() {
+    getBreakthroughChance(includePill = true) {
         if (this.realmIndex < 3) return 1.0;
 
         // Штраф: -2.5% за подуровень внутри реалма, -10% за полный смертный реалм (3-9), -15% за бессмертный (10+)
@@ -331,7 +331,7 @@ Object.assign(game, {
         const dreamBonus = this.flags.prophetic_dream ? 0.05 : 0;
 
         // Бонус от духовной пилюли (расходуется при попытке)
-        const pillBonus = this.flags._pillBreakthroughBonus || 0;
+        const pillBonus = includePill ? (this.flags._pillBreakthroughBonus || 0) : 0;
 
         const chance = baseChance + luckBonus
             + techBonus + artifactBonus + sectBonus + techLuckBonus + formationBonus + bodyBonus + dreamBonus + pillBonus;
@@ -341,10 +341,10 @@ Object.assign(game, {
 
     // === ВНУТРЕННИЙ ДЕМОН ===
 
-    // Шанс встречи с внутренним демоном (только при провале прорыва, когда шанс < 65%)
+    // Шанс встречи с внутренним демоном при провале: бонус пилюли уже израсходован.
     getDemonChance() {
-        const btChance = this.getBreakthroughChance();
-        // Давление Дао снижает порог (65% → 70/75/80%)
+        const btChance = this.getBreakthroughChance(false);
+        // Давление Дао повышает порог (65% → 70/75/80%).
         const daoLevel = this.daoLevel || 0;
         let threshold = 0.65;
         if (daoLevel >= 25) threshold = 0.80;

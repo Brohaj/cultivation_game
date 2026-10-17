@@ -146,6 +146,31 @@ Object.assign(game, {
 
     // === ПОЖЕРТВОВАНИЕ ПИЛЮЛЬ ===
 
+    getSectPillDonationRemaining(index) {
+        const mission = this.sectMissions?.[index];
+        if (!this.sect || mission?.templateId !== "donate_pills_sect"
+            || !mission.reward || mission.cooldown > 0 || !mission.check?.pillsDonated) return null;
+        const donated = (this.flags.pillsDonated || 0) - (mission.pillsDonatedAtStart || 0);
+        return Math.max(0, mission.check.pillsDonated - donated);
+    },
+
+    donatePillsForMission(index) {
+        const remaining = this.getSectPillDonationRemaining(index);
+        if (remaining === null || this.gameOver || this.pendingRebirth
+            || (typeof this.isDiscipleSlotBlocked === "function" && this.isDiscipleSlotBlocked(index))) return false;
+        // Старый сейв мог сохранить уже готовое поручение до его автозачёта.
+        if (remaining === 0) {
+            if (!this.completeSectMission(index)) return false;
+            this.checkMilestones();
+            updateUI();
+            if (typeof renderSects === "function") renderSects();
+            return true;
+        }
+        // При нехватке не списываем часть: один клик всегда закрывает поручение.
+        if (this.pills < remaining) return false;
+        return this.donatePills(remaining);
+    },
+
     donatePills(amount) {
         if (!this.sect || this.gameOver || this.pendingRebirth || this.pills < amount || amount <= 0) return false;
         const rankIdx = this.getSectRankIndex();

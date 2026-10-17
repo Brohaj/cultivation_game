@@ -32,6 +32,7 @@ const {chromium}=require('playwright');
         await page.goto(url);let passed=0;
         async function check(name,fn){await fn();passed++;console.log('PASS '+name);}
         async function fresh(){await page.evaluate(()=>{
+            document.activeElement?.blur();
             game.reset();document.querySelectorAll('.modal-overlay.active').forEach(el=>el.classList.remove('active'));
             game.selectSpiritualRoot('common');game.learnTechnique('basic_breathing');
             game.realmIndex=3;game.subLevel=1;game.years=100;game.birthYear=0;
@@ -65,6 +66,44 @@ const {chromium}=require('playwright');
             assert.equal(await page.locator('#btn-pause').isDisabled(),true);
             assert.equal(await page.locator('#btn-breakthrough').isDisabled(),true);
             assert.equal(await page.locator('#v2-breakthrough-risk').isVisible(),false);
+        });
+        await check('Подсказка демона видна при нулевом риске и объясняет порог с клавиатуры',async()=>{
+            await fresh();
+            await page.evaluate(()=>{game.realmIndex=3;game.subLevel=1;game.daoLevel=0;game.luck=100;updateUI();});
+            const badge=page.locator('#demon-chance');
+            assert.equal(await badge.isVisible(),true);
+            assert.match(await badge.innerText(),/Демон при провале: 0%/);
+            await badge.focus();
+            assert.match(await badge.getAttribute('aria-describedby'),/v2-floating-tooltip/);
+            const tip=page.locator('#v2-floating-tooltip');
+            assert.equal(await tip.isVisible(),true);
+            assert.match(await tip.innerText(),/только после неудачного прорыва/);
+            assert.match(await tip.innerText(),/ниже порога 65%/);
+            assert.match(await tip.innerText(),/Первая встреча в этой жизни автоматически отражается/);
+        });
+        await check('Подсказка показывает реальный риск после пилюли, давление Дао и потери',async()=>{
+            await fresh();
+            const expected=await page.evaluate(()=>{
+                game.realmIndex=5;game.subLevel=1;game.daoLevel=9;game.luck=1;
+                game.flags._pillBreakthroughBonus=0.25;
+                game.flags.demonFailsafeUsed=true;
+                game.selectedFormations=['wardCircle'];game.formations.wardCircle=2;
+                updateUI();
+                return {risk:game.getEffectiveDemonChance(),success:game.getBreakthroughChance(),
+                    successWithoutPill:game.getBreakthroughChance(false)};
+            });
+            assert.ok(expected.risk>0);
+            assert.ok(expected.success>expected.successWithoutPill);
+            const shown=Math.round(expected.risk*1000)/10;
+            assert.match(await page.locator('#demon-chance').innerText(),new RegExp(`Демон при провале: ${shown.toLocaleString('ru-RU')}%`));
+            await page.locator('#demon-chance').focus();
+            assert.equal(await page.locator('#v2-floating-tooltip').isVisible(),true);
+            const tip=await page.locator('#v2-floating-tooltip').innerText();
+            assert.match(tip,/Уровень Дао 9 повышает порог на 5 п\.п\./);
+            assert.match(tip,/Снижение от тела, формаций и артефактов: 10 п\.п\./);
+            assert.match(tip,/Духовная пилюля повышает шанс успешного прорыва, но при провале уже израсходована/);
+            assert.match(tip,/Защита первой встречи в этой жизни уже израсходована/);
+            assert.match(tip,/отбрасывает на 1 ступень/);
         });
         await check('Ученики обновляют XP на тике, расписание доступно в текущем интерфейсе',async()=>{
             await fresh();await page.evaluate(()=>{

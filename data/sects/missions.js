@@ -494,7 +494,7 @@ const SECT_MISSION_TEMPLATES = {
             const r = g.realmIndex;
             const amount = Math.max(2, Math.floor((2 + r * 1.5) * diff.missionCostMult));
             return {
-                description: `Пожертвовать ${amount} ${_plural(amount, "пилюлю", "пилюли", "пилюль")} через кнопку «Сдать пилюли»`,
+                description: `Пожертвовать ${amount} ${_plural(amount, "пилюлю", "пилюли", "пилюль")} секте`,
                 check: { pillsDonated: amount },
                 reward: {
                     contribution: Math.floor((25 + r * 6) * diff.missionRewardMult),

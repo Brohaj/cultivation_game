@@ -168,6 +168,22 @@ function _v2SectRequirements(mission) {
     ).join(" · ");
 }
 
+function _v2SectPillDonationAction(index) {
+    const remaining = game.getSectPillDonationRemaining(index);
+    const ready = remaining !== null && !game.gameOver && !game.pendingRebirth
+        && game.pills >= remaining
+        && !(typeof game.isDiscipleSlotBlocked === "function" && game.isDiscipleSlotBlocked(index));
+    return {
+        ready,
+        label: remaining === null ? "Недоступно" : remaining === 0 ? "Завершить" : `Пожертвовать ${remaining}`,
+        title: remaining === null ? "Поручение недоступно" : remaining === 0
+            ? "Получить награду за уже сделанное пожертвование"
+            : game.pills < remaining
+                ? `Требуется ${remaining} ${_plural(remaining, "пилюля", "пилюли", "пилюль")} (есть ${game.pills})`
+                : `Сдать ${remaining} ${_plural(remaining, "пилюлю", "пилюли", "пилюль")} и сразу получить награду за поручение`
+    };
+}
+
 function _renderV2SectMember(container, sect, existingDisciplesSection) {
     const main = document.createElement("div");
     main.className = "v2-sect-main";
@@ -231,6 +247,7 @@ function _renderV2SectMember(container, sect, existingDisciplesSection) {
             continue;
         }
         const autoDonation = mission.templateId === "donate_pills_sect";
+        const donationAction = autoDonation ? _v2SectPillDonationAction(i) : null;
         const canComplete = game.canCompleteSectMission(i);
         const costs = [];
         const resourceNames = { stones: ["камень", "камня", "камней"], pills: ["пилюля", "пилюли", "пилюль"], dust: ["пыли", "пыли", "пыли"], essence: ["эссенции", "эссенции", "эссенции"] };
@@ -251,7 +268,7 @@ function _renderV2SectMember(container, sect, existingDisciplesSection) {
         card.innerHTML = `<div class="sect-mission-main"><div class="sect-mission-text">${title}</div>
             ${requirements || costs.length ? `<div class="sect-mission-desc">${requirements}${requirements && costs.length ? " · " : ""}${costs.length ? `Цена: ${costs.join(", ")}` : ""}</div>` : ""}
             <div class="sect-mission-reward">${rewards.join(" · ")}</div></div>
-            <div class="sect-mission-action">${autoDonation ? '<button class="btn btn-small btn-secondary" onclick="openSectDonations()" title="Награда за поручение придёт автоматически после пожертвования нужного количества пилюль">Пожертвовать</button>' : `<button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>${canComplete ? "Выполнить" : "Не готово"}</button>`}</div>`;
+            <div class="sect-mission-action">${autoDonation ? `<button class="btn btn-small ${donationAction.ready ? "btn-primary" : "btn-secondary"}" onclick="game.donatePillsForMission(${i})" title="${donationAction.title}" ${donationAction.ready ? "" : "disabled"}>${donationAction.label}</button>` : `<button class="btn btn-small ${canComplete ? "btn-primary" : "btn-secondary"}" onclick="completeSectMissionUI(${i})" ${canComplete ? "" : "disabled"}>${canComplete ? "Выполнить" : "Не готово"}</button>`}</div>`;
         missions.appendChild(card);
     }
     main.appendChild(missions);
@@ -276,10 +293,6 @@ function _renderV2SectMember(container, sect, existingDisciplesSection) {
     leave.innerHTML = `<button class="btn btn-small btn-danger-btn" id="btn-leave-sect" onclick="showLeaveSectConfirm()" style="display:${_sectLeaveConfirmVisible ? "none" : ""}" ${closedLife ? "disabled" : ""}>Покинуть секту</button>
         <div id="leave-sect-confirm" class="inline-confirm-panel" style="display:${_sectLeaveConfirmVisible ? "block" : "none"}"><p class="inline-confirm-warning">Покинуть ${sect.name}?</p><p class="inline-confirm-detail">Вклад и ранг обнулятся; техники и бонусы секты перестанут действовать. Активный путь начнётся с нуля. Достигнутый уровень останется в истории, открытые формации сохранятся.${typeof getDiscipleLeaveWarning === "function" ? _discipleEscape(getDiscipleLeaveWarning()) : ""}</p><div class="inline-confirm-actions"><button class="btn btn-small btn-danger-btn" onclick="confirmLeaveSect()" ${closedLife ? "disabled" : ""}>Покинуть</button><button class="btn btn-small btn-secondary" onclick="cancelLeaveSect()">Отмена</button></div></div>`;
     main.appendChild(leave);
-}
-
-function openSectDonations() {
-    document.querySelector("#sects-list .sect-donations")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function joinSectUI(sectId) {

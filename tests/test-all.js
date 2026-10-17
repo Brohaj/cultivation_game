@@ -13,6 +13,7 @@ const suites = [
     './test-background-progress',
     './test-content-integrity',
     './test-coherent-previews',
+    './test-demon-preview',
     './test-closed-life-actions',
     './test-user-decisions',
     './test-technique-balance',

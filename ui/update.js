@@ -814,7 +814,7 @@ function updateUI() {
             btChanceText.style.color = chance >= 0.7 ? "#6aea8a" : chance >= 0.5 ? "#eebb44" : "#ee7a7a";
 
             const demonChance = game.getEffectiveDemonChance();
-            if (demonChance > 0 && demonEl && demonText && tipDemon) {
+            if (demonEl && demonText && tipDemon) {
                 demonEl.style.display = "";
                 const realmLoss = game.getDemonRealmLoss();
                 const rawChance = game.getDemonChance();
@@ -824,10 +824,21 @@ function updateUI() {
                 const statLoss = demonPctLoss > 0
                     ? `${Math.round(demonPctLoss * 100)}% силы, духа и удачи`
                     : `до ${Math.min(Math.floor(realmLoss * 1.5) + 1, 6)} силы, духа и удачи`;
-                demonText.textContent = `Внутренний демон: ${(demonChance * 100).toFixed(0)}%`;
-                demonText.style.color = "#cc4a3a";
                 const daoPressure = game.daoLevel >= 25 ? 15 : game.daoLevel >= 17 ? 10 : game.daoLevel >= 9 ? 5 : 0;
-                tipDemon.textContent = `Внутренний демон может проявиться после неудачного прорыва. Потеря ${realmLoss} ступеней и ${statLoss}.${game.flags.demonFailsafeUsed ? "" : " Первая встреча в этой жизни защищена."}`;
+                const threshold = 0.65 + daoPressure / 100;
+                const fmt = value => value > 0 && value < 0.001 ? "<0,1" : (Math.round(value * 1000) / 10).toLocaleString("ru-RU");
+                const daoLoss = Math.min(game.daoLevel || 0, Math.max(0, realmLoss - 1));
+                const realmWord = realmLoss === 1 ? "ступень" : "ступени";
+                demonEl.classList.toggle("demon-safe", demonChance === 0);
+                demonText.textContent = `Демон при провале: ${fmt(demonChance)}%`;
+                const parts = [
+                    `Внутренний демон проверяется только после неудачного прорыва. Сейчас шанс встречи при провале ${fmt(demonChance)}%, за всю попытку ${fmt((1 - chance) * demonChance)}%.`,
+                    `Демон возможен, когда шанс успеха без пилюли ниже порога ${fmt(threshold)}%. Уровень Дао ${game.daoLevel || 0} повышает порог на ${daoPressure} п.п.; сейчас успех без пилюли ${fmt(game.getBreakthroughChance(false))}%. Чем ниже успех, тем выше базовый риск: ${fmt(rawChance)}% (максимум 80%). Снижение от тела, формаций и артефактов: ${fmt(flatRed)} п.п.`,
+                    game.flags.demonFailsafeUsed ? "Защита первой встречи в этой жизни уже израсходована." : "Первая встреча в этой жизни автоматически отражается.",
+                    `После защиты демон отбрасывает на ${realmLoss} ${realmWord}, обнуляет ци и возвращает на первый подуровень; потери характеристик: ${statLoss}.${daoLoss ? ` Дао: −${daoLoss} ур.` : ""} Откат может сократить предел жизни и снять лишние экипированные техники.`
+                ];
+                if (game.flags._pillBreakthroughBonus) parts.splice(2, 0, "Духовная пилюля повышает шанс успешного прорыва, но при провале уже израсходована и риск демона не снижает.");
+                tipDemon.textContent = parts.join(" | ");
             } else if (demonEl) {
                 demonEl.style.display = "none";
             }
@@ -1235,8 +1246,11 @@ function _updateSectMissionProgress() {
         const btn = card.querySelector(".btn");
         if (btn) {
             if (m?.templateId === "donate_pills_sect") {
-                btn.disabled = !!(game.gameOver || game.pendingRebirth);
-                btn.textContent = "Пожертвовать";
+                const action = _v2SectPillDonationAction(idx);
+                btn.disabled = !action.ready;
+                btn.textContent = action.label;
+                btn.title = action.title;
+                btn.className = `btn btn-small ${action.ready ? "btn-primary" : "btn-secondary"}`;
                 return;
             }
             const canComplete = game.canCompleteSectMission(idx);

@@ -39,6 +39,20 @@ test('Частичная сдача даёт только вклад; после
     assert.ok(ctx.run('uiUpdates.sect > 0 && uiUpdates.all > 0'));
 });
 
+test('Кнопка поручения сдаёт ровно остаток за один раз и ничего не тратит при нехватке', () => {
+    const ctx = donationContext();
+    ctx.run('game.donatePills(2);game.pills=3;');
+    const before = json(ctx, '[game.pills,game.flags.pillsDonated,game.sect.contribution,game.stones,game.sectMissions[0].cooldown]');
+    assert.equal(ctx.run('game.getSectPillDonationRemaining(0)'), 4);
+    assert.equal(ctx.run('game.donatePillsForMission(0)'), false);
+    assert.deepEqual(json(ctx, '[game.pills,game.flags.pillsDonated,game.sect.contribution,game.stones,game.sectMissions[0].cooldown]'), before);
+    ctx.run('game.pills=4;');
+    assert.equal(ctx.run('game.donatePillsForMission(0)'), true);
+    assert.deepEqual(json(ctx, '[game.pills,game.flags.pillsDonated,game.sect.contribution,game.stones,game.flags.sectMissionsCompleted,game.sectMissions[0].cooldown]'), [0,6,73,19,1,20]);
+    assert.equal(ctx.run('game.donatePillsForMission(0)'), false);
+    assert.equal(ctx.run('game.stones'), 19);
+});
+
 test('Сдача сверх требования учитывает все пилюли, но задание оплачивается один раз', () => {
     const ctx = donationContext();
     ctx.run('game.donatePills(8);');
@@ -101,6 +115,16 @@ test('Готовый квест старого сейва автоматичес
     assert.deepEqual(json(again, '[game.sect.contribution,game.stones,game.flags.sectMissionsCompleted,game.sectMissions[0].cooldown]'), [73,19,1,19]);
 });
 
+test('Кнопка старого готового поручения не списывает пилюли и не выдаёт награду повторно', () => {
+    const ctx = donationContext();
+    ctx.run('game.flags.pillsDonated=6;game.pills=94;game.sect.contribution=30;');
+    assert.equal(ctx.run('game.getSectPillDonationRemaining(0)'), 0);
+    assert.equal(ctx.run('game.donatePillsForMission(0)'), true);
+    assert.deepEqual(json(ctx, '[game.pills,game.sect.contribution,game.stones,game.flags.sectMissionsCompleted,game.sectMissions[0].cooldown]'), [94,73,19,1,20]);
+    assert.equal(ctx.run('game.donatePillsForMission(0)'), false);
+    assert.equal(ctx.run('game.stones'), 19);
+});
+
 test('Повышение от самого пожертвования учитывается в награде задания', () => {
     const ctx = donationContext('game.sect.contribution=120;');
     ctx.run('game.donatePills(6);');
@@ -146,10 +170,10 @@ test('Отказ при недостатке пилюль или нулевой 
     assert.deepEqual(json(ctx, '[game.pills,game.sect.contribution,game.stones,game.flags,game.sectMissions]'), before);
 });
 
-test('Карточка пожертвования показывает автозачёт и прогресс без второй кнопки; другие кнопки остаются', () => {
+test('Карточка пожертвования сдаёт остаток напрямую и сохраняет кнопку обычного поручения', () => {
     const ctx = createContext();
     const html = ctx.run([
-        "game.realmIndex=3;game.sect={id:'moon_lake',rank:0,contribution:0};game.flags.pillsDonated=2;",
+        "game.realmIndex=3;game.sect={id:'moon_lake',rank:0,contribution:0};game.flags.pillsDonated=2;game.pills=4;",
         "var mission=SECT_MISSION_TEMPLATES.donate_pills_sect.generate(game,SECT_DIFFICULTY.medium);",
         "game.sectMissions=[{templateId:'donate_pills_sect',description:mission.description,check:mission.check,reward:mission.reward,pillsDonatedAtStart:0},",
         "{templateId:'prove_spirit',description:'Испытание',check:{spirit:1},reward:{stones:1}}];",
@@ -158,8 +182,9 @@ test('Карточка пожертвования показывает авто�
         "document.getElementById=()=>({..._testElement(),appendChild(el){rendered.push(el);}});",
         "renderSects();rendered.map(el=>el.innerHTML).join(' ');"
     ].join('\n'));
-    assert.match(html, /Награда за поручение придёт автоматически после пожертвования/);
+    assert.match(html, /onclick="game\.donatePillsForMission\(0\)"[^>]*>Пожертвовать 4<\/button>/);
     assert.match(html, /Пожертвовано пилюль[^<]*2 \/ 6/);
+    assert.doesNotMatch(html, /openSectDonations\(\)/);
     assert.doesNotMatch(html, /onclick="completeSectMissionUI\(0\)"/);
     assert.match(html, /onclick="completeSectMissionUI\(1\)"/);
 });

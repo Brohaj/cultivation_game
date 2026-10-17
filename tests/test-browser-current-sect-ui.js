@@ -119,6 +119,34 @@ const makeSyntheticSectPlayer=require('./test-synthetic-player');
             await clickAcrossRefresh(page.locator('#leave-sect-confirm button[onclick="confirmLeaveSect()"]'));
             assert.equal(await page.evaluate(()=>game.sect),null);assert.equal(await page.locator('#disciples-section').count(),0);
         });
+        await check('Кнопка поручения сдаёт только недостающие пилюли и сразу выдаёт награду',async()=>{
+            await page.evaluate(()=>{
+                game.reset();game.stop();game.selectSpiritualRoot('common');
+                game.realmIndex=3;game.subLevel=1;game.years=100;
+                game.sect={id:'moon_lake',rank:0,contribution:0};
+                game.pills=6;game.stones=0;game.flags.pillsDonated=0;
+                Math.random=()=>.5;
+                const excludes=SECTS.find(s=>s.id==='moon_lake').missions.filter(id=>id!=='donate_pills_sect');
+                game.sectMissions=[game._generateOneMission(excludes)];
+                switchTab('sect');updateUI();
+                game.donatePills(2);game.pills=3;updateTickUI();
+            });
+            const action=page.locator('.sect-mission-card[data-index="0"] .sect-mission-action button');
+            assert.equal(await action.getAttribute('onclick'),'game.donatePillsForMission(0)');
+            assert.equal(await action.innerText(),'Пожертвовать 4');
+            assert.equal(await action.isEnabled(),false);
+            assert.match(await action.getAttribute('title'),/Требуется 4 пилюли \(есть 3\)/);
+            assert.equal(await page.evaluate(()=>game.pills),3);
+            await page.evaluate(()=>{game.pills=4;updateTickUI();});
+            assert.equal(await action.isEnabled(),true);
+            await action.click();
+            assert.deepEqual(await page.evaluate(()=>({
+                pills:game.pills,donated:game.flags.pillsDonated,contribution:game.sect.contribution,
+                stones:game.stones,completed:game.flags.sectMissionsCompleted,cooldown:game.sectMissions[0].cooldown
+            })),{pills:0,donated:6,contribution:73,stones:19,completed:1,cooldown:20});
+            await page.waitForFunction(()=>document.querySelector('.sect-mission-card[data-index="0"] .sect-mission-action button')?.disabled);
+            assert.equal(await page.locator('.sect-mission-card[data-index="0"] .sect-mission-action button').isEnabled(),false);
+        });
         assert.deepEqual(errors,[]);console.log(`${passed} current sect UI scenarios passed,0 page errors`);
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
