@@ -10,7 +10,7 @@ const DISCIPLE_CONFIG = {
     rankDiscounts: [0, 0.05, 0.10, 0.15, 0.20],
     xpPerYear: 6,
     xpGrowth: 1.2,
-    minSkill: 0.35,
+    minSkill: 0.75,
     householdStipendShare: 0.40,
     stipends: [1, 2, 4, 8, 15],
     errandBaseChance: 0.60,

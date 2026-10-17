@@ -329,4 +329,6 @@ const KARMA_UPGRADES = [
         requirement: (g) => g.prestige.permanentMilestones.includes('realm_4'), requirementHint: "Требуется: достичь Золотого Ядра" },
     { id: "mentorEye", name: "Глаз наставника", description: "Три видимых кандидата в ученики вместо двух. Состав не расширяется; найм оплачивается отдельно.", cost: 40, maxLevel: 1, effect: {},
         requirement: (g) => g.prestige.permanentMilestones.includes('joined_sect'), requirementHint: "Требуется: вступить в секту" },
+    { id: "autoDiscipleHire", name: "Зов наставника", description: "Автоматически нанимает лучших доступных учеников на свободные места за камни. Сначала по качеству, затем по оставшимся годам жизни. Можно выключить в секте.", cost: 40, maxLevel: 1, effect: {},
+        requirement: (g) => g.prestige.permanentMilestones.includes('joined_sect'), requirementHint: "Требуется: вступить в секту" },
 ];

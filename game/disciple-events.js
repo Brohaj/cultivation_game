@@ -17,7 +17,6 @@ Object.assign(game, {
             if (!Number.isFinite(needed) || needed <= 0 || disciple.xp < needed) break;
             disciple.xp -= needed;
             disciple.level++;
-            addLog(`${disciple.name} достиг ${disciple.level} уровня обучения.`, "cultivation");
         }
         return true;
     },

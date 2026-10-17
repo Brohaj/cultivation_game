@@ -53,6 +53,86 @@ test('Вакансия и срок прихода нового кандидат�
 test('Глаз наставника добавляет третий выбор, сохраняя прежних кандидатов',()=>{
  const ctx=setup(),before=json(ctx,'game.getDiscipleCandidates().map(c=>c.id)');ctx.run('game.prestige.karmaUpgrades.mentorEye=1;');const after=json(ctx,'game.getDiscipleCandidates().map(c=>c.id)');assert.equal(after.length,3);assert.deepEqual(after.slice(0,2),before);assert.equal(ctx.run('game.getDiscipleCapacity()'),6);
 });
+test('Автонаём покупается за карму после вступления в секту и включён сразу',()=>{
+ const ctx=setup('game.prestige.karma=40;');
+ assert.equal(ctx.run('game.setDiscipleAutoHireEnabled(false)'),false);
+ assert.equal(ctx.run('game.buyKarmaUpgrade("autoDiscipleHire")'),false);
+ assert.equal(ctx.run('game.prestige.karma'),40);
+ ctx.run('game.prestige.permanentMilestones.push("joined_sect");');
+ assert.equal(ctx.run('game.getUpgradeCost("autoDiscipleHire")'),40);
+ assert.equal(ctx.run('game.buyKarmaUpgrade("autoDiscipleHire")'),true);
+ assert.equal(ctx.run('game.prestige.karma'),0);
+ assert.equal(ctx.run('game.isDiscipleAutoHireEnabled()'),true);
+ assert.equal(ctx.run('game.buyKarmaUpgrade("autoDiscipleHire")'),false);
+ ctx.run('saveGame();');const onReload=createContext(ctx.saved());onReload.run('applyLoadedState(loadGame());');
+ assert.equal(onReload.run('game.isDiscipleAutoHireEnabled()'),true);
+ assert.equal(ctx.run('game.setDiscipleAutoHireEnabled(false)'),true);
+ assert.equal(ctx.run('game.isDiscipleAutoHireEnabled()'),false);
+ const loaded=createContext(ctx.saved());loaded.run('applyLoadedState(loadGame());');
+ assert.equal(loaded.run('game.isDiscipleAutoHireEnabled()'),false);
+ loaded.run('game.reset(true);');
+ assert.equal(loaded.run('game.isDiscipleAutoHireEnabled()'),false);
+ assert.equal(loaded.run('game.setDiscipleAutoHireEnabled(true)'),true);
+ assert.equal(loaded.run('game.isDiscipleAutoHireEnabled()'),true);
+});
+test('Автонаём берёт лучшего доступного, платит один раз и начинает работу со следующего года',()=>{
+ const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;game.stones=90;Math.random=()=>0;');
+ ctx.run('game.getDiscipleCandidates();game.disciplesState.offersBySect.jade_purity.candidates[0].quality="common";game.disciplesState.offersBySect.jade_purity.candidates[1].quality="rare";window._autoHireLogs=[];addLog=message=>{if(message.startsWith("Автонаём:"))window._autoHireLogs.push(message);};');
+ const before=ctx.run('game.stones');year(ctx);
+ assert.deepEqual(json(ctx,'game.disciplesState.roster.map(d=>d.quality)'),['rare','common']);
+ assert.equal(ctx.run('game.stones'),before-72-16);
+ assert.equal(ctx.run('game.flags.sectMissionsCompleted||0'),0);
+ assert.equal(ctx.run('window._autoHireLogs.length'),2);
+ ctx.run('saveGame();');const loaded=createContext(ctx.saved());loaded.run('applyLoadedState(loadGame());Math.random=()=>0;');
+ assert.equal(loaded.run('game.tickDisciples()'),false);
+ assert.equal(loaded.run('game.stones'),ctx.run('game.stones'));
+ year(loaded);assert.equal(loaded.run('game.flags.sectMissionsCompleted'),1);
+});
+test('При равном качестве автонаём предпочитает долгую жизнь, но не тратит недостающие камни',()=>{
+ const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;game.stones=20;');
+ ctx.run('game.getDiscipleCandidates();const offers=game.disciplesState.offersBySect.jade_purity.candidates;offers[0].quality=offers[1].quality="common";offers[0].maxAge=100;offers[1].maxAge=200;');
+ const names=json(ctx,'game.getDiscipleCandidates().map(c=>c.name)');year(ctx);
+ assert.equal(ctx.run('game.disciplesState.roster.length'),1);
+ assert.equal(ctx.run('game.disciplesState.roster[0].name'),names[1]);
+ assert.equal(ctx.run('game.stones'),4);
+ year(ctx);assert.equal(ctx.run('game.disciplesState.roster.length'),1);
+ ctx.run('game.stones=100;');year(ctx);
+ assert.equal(ctx.run('game.disciplesState.roster.length'),2);
+});
+test('Автонаём закрывает место после смерти, но не заменяет живого ученика',()=>{
+ const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;');
+ const originalId=hire(ctx);
+ ctx.run('game.disciplesState.roster[0].birthYear=game.years+1-game.disciplesState.roster[0].maxAge;');
+ year(ctx);
+ assert.equal(ctx.run('game.disciplesState.roster.length'),1);
+ assert.notEqual(ctx.run('game.disciplesState.roster[0].id'),originalId);
+ const replacementId=ctx.run('game.disciplesState.roster[0].id');
+ year(ctx);assert.equal(ctx.run('game.disciplesState.roster[0].id'),replacementId);
+ ctx.run('game.setDiscipleAutoHireEnabled(false);game.disciplesState.roster=[];');
+ year(ctx);assert.equal(ctx.run('game.disciplesState.roster.length'),0);
+});
+test('Автонаём не действует после завершения жизни и не принимает просроченную заявку',()=>{
+ for(const ending of ['game.gameOver=true;','game.pendingRebirth={karmaEarned:0};']){
+  const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;');
+  ctx.run('game.getDiscipleCandidates();'+ending);
+  const before=json(ctx,'game.disciplesState'),wallet=ctx.run('game.stones');
+  ctx.run('game.years++;game.tickDisciples();');
+  assert.deepEqual(json(ctx,'game.disciplesState'),before);
+  assert.equal(ctx.run('game.stones'),wallet);
+ }
+ const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;');
+ ctx.run('game.getDiscipleCandidates();const bucket=game.disciplesState.offersBySect.jade_purity;bucket.candidates[0].name="Просроченный";bucket.candidates[0].expiresYear=game.years+1;bucket.refreshYears[0]=game.years+1;');
+ year(ctx);
+ assert.equal(ctx.run('game.disciplesState.roster.some(d=>d.name==="Просроченный")'),false);
+});
+test('В последний год жизни автонаём не тратит камни на ученика без будущей работы',()=>{
+ const ctx=setup('game.prestige.karmaUpgrades.autoDiscipleHire=1;');
+ ctx.run('game.getDiscipleCandidates();game.birthYear=game.years+1-game.maxAge();');
+ const wallet=ctx.run('game.stones');year(ctx);
+ assert.equal(ctx.run('game.characterAge()>=game.maxAge()'),true);
+ assert.equal(ctx.run('game.disciplesState.roster.length'),0);
+ assert.equal(ctx.run('game.stones'),wallet);
+});
 test('Увольнение и замена не удорожают все последующие наймы',()=>{
  const ctx=setup(),price=ctx.run('game.getDiscipleCandidates()[0].cost'),id=hire(ctx);assert.equal(ctx.run(`game.dismissDisciple('${id}')`),true);assert.equal(ctx.run('game.getDiscipleCandidates()[0].cost'),price);hire(ctx);year(ctx,46);assert.equal(ctx.run('game.getDiscipleCandidates()[0].cost'),price);
 });
@@ -70,7 +150,19 @@ test('Неудача не перебрасывается другим учени
  const ctx=setup();hire(ctx);hire(ctx);ctx.run('Math.random=()=>.999;');year(ctx);assert.equal(ctx.run('game.flags.sectMissionsCompleted||0'),0);ctx.run('saveGame();');const loaded=createContext(ctx.saved());loaded.run('applyLoadedState(loadGame());Math.random=()=>0;');assert.equal(loaded.run('game.tickDisciples()'),false);year(loaded);assert.equal(loaded.run('game.flags.sectMissionsCompleted'),1);
 });
 test('Обычный достигает максимума за 77 лет, обучение повышает доход',()=>{
- const ctx=setup('game.sectMissions=Array.from({length:3},()=>({cooldown:100000}));');hire(ctx);const rate=ctx.run('game.getDiscipleHouseholdRate(game.disciplesState.roster[0])');year(ctx,77);assert.equal(ctx.run('game.disciplesState.roster[0].level'),10);assert.ok(ctx.run('game.getDiscipleHouseholdRate(game.disciplesState.roster[0])')>rate*2.8);assert.ok(Number.isFinite(ctx.run('game.disciplesState.roster[0].xp')));
+ const ctx=setup('game.sectMissions=Array.from({length:3},()=>({cooldown:100000}));');hire(ctx);const rate=ctx.run('game.getDiscipleHouseholdRate(game.disciplesState.roster[0])');year(ctx,77);assert.equal(ctx.run('game.disciplesState.roster[0].level'),10);assert.ok(Math.abs(ctx.run('game.getDiscipleHouseholdRate(game.disciplesState.roster[0])')/rate-4/3)<1e-9);assert.ok(Number.isFinite(ctx.run('game.disciplesState.roster[0].xp')));
+});
+
+test('Редкий новичок сразу не слабее зрелого обычного и затем обгоняет его',()=>{
+ const ctx=setup('Math.random=()=>.95;');
+ const skill=json(ctx,'({common10:game.getDiscipleSkill({quality:"common",level:10}),uncommon4:game.getDiscipleSkill({quality:"uncommon",level:4}),uncommon10:game.getDiscipleSkill({quality:"uncommon",level:10}),rare1:game.getDiscipleSkill({quality:"rare",level:1}),rare2:game.getDiscipleSkill({quality:"rare",level:2}),rare10:game.getDiscipleSkill({quality:"rare",level:10})})');
+ const close=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-9,`${actual} != ${expected}`);
+ close(skill.common10,.75);close(skill.uncommon4,.75);close(skill.uncommon10,.9);
+ close(skill.rare1,.75);assert.ok(skill.rare2>skill.common10);close(skill.rare10,1);
+ const candidate=json(ctx,'game.getDiscipleCandidates()[0]');assert.equal(candidate.quality,'rare');
+ assert.equal(ctx.run(`game.hireDisciple('${candidate.id}')`),true);
+ const view=json(ctx,'game.getDiscipleView()');close(view.disciples[0].incomeRate,.75);
+ close(view.disciples[0].autoMissionChance,.9);close(view.autoMissionChance,.9);
 });
 test('Шесть зрелых редких не превышают 40% стипендии при больших внешних бонусах',()=>{
  const ctx=setup('Math.random=()=>.95;game.prestige.karmaUpgrades.mentorEye=1;game.sectMissions=Array.from({length:3},()=>({cooldown:100000}));');fill(ctx,6);ctx.run('for(const d of game.disciplesState.roster)d.level=10;game.getCombatPower=()=>1e9;game.getCurrentEra=()=>({rewardWeight:100,stoneIncome:100});');const wallet=ctx.run('game.stones');year(ctx,20);assert.equal(ctx.run('game.stones')-wallet,120);assert.equal(ctx.run('game.getDiscipleHouseholdCap()'),6);assert.equal(ctx.run('game.flags.sectMissionsCompleted||0'),0);

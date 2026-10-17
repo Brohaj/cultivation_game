@@ -165,20 +165,58 @@ Object.assign(game, {
         if (typeof renderDisciples === "function") renderDisciples();
     },
 
-    hireDisciple(candidateId) {
+    isDiscipleAutoHireEnabled() {
+        return (this.prestige.karmaUpgrades.autoDiscipleHire || 0) >= 1
+            && this.prestige.discipleAutoHireEnabled !== false;
+    },
+
+    setDiscipleAutoHireEnabled(enabled) {
+        if ((this.prestige.karmaUpgrades.autoDiscipleHire || 0) < 1 || typeof enabled !== "boolean") return false;
+        this.prestige.discipleAutoHireEnabled = enabled;
+        this._refreshDiscipleUI();
+        return true;
+    },
+
+    _hireDiscipleCandidate(candidateId, automatic = false, refresh = true) {
         if (!this.sect || !this.getDiscipleCapacity() || this.gameOver || this.pendingRebirth) return false;
         const candidate = this.getDiscipleCandidates().find(item => item.id === candidateId);
         if (!candidate?.canHire) return false;
         const state = this._getDiscipleState();
         const bucket = state.offersBySect[this.sect.id];
         const index = bucket.candidates.findIndex(item => item?.id === candidateId);
+        if (index < 0) return false;
         this.stones -= candidate.cost;
         state.roster.push({ id: this._newDiscipleId("disciple_"), name: candidate.name, quality: candidate.quality,
             birthYear: candidate.birthYear, maxAge: candidate.maxAge, level: 1, xp: 0, learningXpThisYear: 0, hiredYear: this.years });
         bucket.candidates[index] = null; // Дедлайн места сохраняется; покупка не бросает следующего кандидата.
-        addLog("Вы поддержали обучение: " + candidate.name + " становится вашим учеником. −" + candidate.cost + " камней.", "reward");
-        this._refreshDiscipleUI();
+        addLog((automatic ? "Автонаём: " : "Вы поддержали обучение: ") + candidate.name
+            + " становится вашим учеником. −" + candidate.cost + " камней.", "reward");
+        if (refresh) this._refreshDiscipleUI();
         return true;
+    },
+
+    hireDisciple(candidateId) {
+        return this._hireDiscipleCandidate(candidateId);
+    },
+
+    _autoHireDisciples() {
+        if (!this.isDiscipleAutoHireEnabled() || !this.sect || this.gameOver || this.pendingRebirth) return 0;
+        // Новичок начнёт работать только в следующем году; в год естественной смерти его покупка бесполезна.
+        if (this.characterAge() >= this.maxAge()) return 0;
+        const capacity = this.getDiscipleCapacity();
+        const state = this._getDiscipleState();
+        if (!capacity || state.roster.length >= capacity) return 0;
+        const qualityOrder = { common: 0, uncommon: 1, rare: 2 };
+        const offers = this.getDiscipleCandidates().filter(item => item.canHire).sort((a, b) =>
+            qualityOrder[b.quality] - qualityOrder[a.quality]
+            || b.remainingYears - a.remainingYears || a.id.localeCompare(b.id));
+        let hired = 0;
+        for (const offer of offers) {
+            if (state.roster.length >= capacity) break;
+            // После предыдущей покупки заново проверяем остаток камней, срок и вместимость.
+            if (this._hireDiscipleCandidate(offer.id, true, false)) hired++;
+        }
+        return hired;
     },
 
     dismissDisciple(discipleId) {
@@ -218,7 +256,6 @@ Object.assign(game, {
         while (disciple.level < DISCIPLE_CONFIG.maxLevel && disciple.xp >= this.getDiscipleXpNeeded(disciple)) {
             disciple.xp -= this.getDiscipleXpNeeded(disciple);
             disciple.level++;
-            addLog(disciple.name + " достиг " + disciple.level + " уровня обучения.", "cultivation");
         }
         return true;
     },
@@ -322,6 +359,7 @@ Object.assign(game, {
             return { householdIncome: 0, missionsCompleted: 0, deaths, missionAttempts: 0 };
         }
         this._prepareDiscipleOffers(false);
+        this._autoHireDisciples();
         const workers = state.roster.filter(item => item.hiredYear < this.years);
         for (const disciple of workers) {
             const alreadyLearned = Math.max(0, Math.min(DISCIPLE_CONFIG.xpPerYear, disciple.learningXpThisYear || 0));

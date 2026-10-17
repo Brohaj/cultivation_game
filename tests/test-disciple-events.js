@@ -54,6 +54,21 @@ test('Добровольная практика стоит 20 эссенции, 
     assert.equal(ctx.run('game.canTriggerDiscipleLetterEvent()'),false);assert.equal(ctx.run(`game.acceptDiscipleTrainingOffer('${offer.id}')`),false);
 });
 
+test('Повышение уровня ученика не засоряет хронику при обычной учёбе и событиях',()=>{
+    const ctx=setup(),id=firstId(ctx);
+    ctx.run('globalThis.discipleLogEntries=[];addLog=(text,type)=>discipleLogEntries.push({text,type});');
+    assert.equal(ctx.run('game._addDiscipleLearningXp(game.disciplesState.roster[0],game.getDiscipleXpNeeded(game.disciplesState.roster[0]))'),true);
+    assert.equal(ctx.run('game.disciplesState.roster[0].level'),2);
+    const nextLevelCost=ctx.run('game.getDiscipleXpNeeded(game.disciplesState.roster[0])');
+    assert.equal(ctx.run(`game._grantDiscipleEventXP('${id}',${nextLevelCost})`),true);
+    assert.equal(ctx.run('game.disciplesState.roster[0].level'),3);
+    assert.deepEqual(json(ctx,'discipleLogEntries'),[]);
+
+    ctx.run(`game.triggerDiscipleLetterEvent('${id}');game.acceptDiscipleTrainingOffer(game.getDiscipleTrainingOffer().id);`);
+    assert.deepEqual(json(ctx,'discipleLogEntries.map(entry=>entry.type)'),['reward']);
+    assert.match(ctx.run('discipleLogEntries[0].text'),/практика поддержана/);
+});
+
 test('Отказ оставляет обычный рост, не платит и не создаёт будущую награду',()=>{
     const ctx=setup(),id=firstId(ctx);ctx.run(`game.triggerDiscipleLetterEvent('${id}');`);const offer=json(ctx,'game.getDiscipleTrainingOffer()'),before=ledger(ctx,id);
     assert.equal(ctx.run(`game.declineDiscipleTrainingOffer('${offer.id}')`),true);assert.equal(ctx.run('game.daoEssence'),25);assert.equal(ledger(ctx,id),before);

@@ -18,6 +18,9 @@ function _discipleIncomeText(rate) {
     const amount = Number.isFinite(rate) ? rate : 0;
     return `${_discipleRate(amount)} ${Number.isInteger(amount) ? _plural(amount, "камень", "камня", "камней") : "камня"}/год`;
 }
+function _discipleSkillPercent(person, level = person.level) {
+    return Math.round(game.getDiscipleSkill({ ...person, level }) * 100);
+}
 function _discipleIdentity(person) {
     return `<div class="disciple-topline"><span class="disciple-name">${_discipleEscape(person.name)}</span><span class="disciple-quality disciple-quality-${_discipleEscape(person.quality)}" style="color:${_discipleQualityColor(person.quality)}">${_discipleEscape(_discipleQualityName(person.quality))}</span></div>`;
 }
@@ -42,6 +45,21 @@ function _discipleCard(disciple, training) {
     </article>`;
 }
 
+function _discipleAutoHireStatus(view, enabled) {
+    if (game.gameOver || game.pendingRebirth) return "Найм возобновится в новой жизни после вступления в секту.";
+    if (view.disciples.length >= view.capacity) return "Свободных мест нет. Автонаём не заменяет нынешних учеников.";
+    const qualityRank = { common: 0, uncommon: 1, rare: 2 };
+    const byPriority = (a, b) => (qualityRank[b.quality] ?? -1) - (qualityRank[a.quality] ?? -1)
+        || game._getDiscipleAgeView(b).remainingYears - game._getDiscipleAgeView(a).remainingYears || a.id.localeCompare(b.id);
+    const offers = view.candidates.filter(candidate => candidate.expiresYear > game.years && game._isDiscipleAlive(candidate))
+        .sort(byPriority);
+    const best = offers.find(candidate => game.stones >= candidate.cost);
+    if (best) return `Лучшее доступное предложение: ${_discipleQualityName(best.quality)} · ${best.cost} камней · предложение ещё ${_discipleYears(best.expiresYear - game.years)}. ${enabled ? "Автонаём проверит предложения в следующем году." : "Включите автонаём для найма."}`;
+    if (offers.length) return `Пока не хватает камней. Лучшее предложение: ${_discipleQualityName(offers[0].quality)} · ${offers[0].cost} камней · предложение ещё ${_discipleYears(offers[0].expiresYear - game.years)}.`;
+    return view.nextDeliveryIn === null ? "Действующих предложений нет. Ожидаем новых кандидатов."
+        : `Действующих предложений нет. Новые кандидаты через ${_discipleYears(view.nextDeliveryIn)}.`;
+}
+
 function renderDisciples() {
     if (deferUIRender(renderDisciples)) return;
     const section = document.getElementById("disciples-section");
@@ -49,9 +67,13 @@ function renderDisciples() {
     const view = game.getDiscipleView();
     if (!view.disciples.some(d => d.id === _discipleDismissPendingId)) _discipleDismissPendingId = null;
     const training = typeof game.getDiscipleTrainingOffer === "function" ? game.getDiscipleTrainingOffer() : null;
+    const autoHirePurchased = (game.prestige?.karmaUpgrades?.autoDiscipleHire || 0) > 0;
+    const autoHireEnabled = autoHirePurchased && typeof game.isDiscipleAutoHireEnabled === "function"
+        && game.isDiscipleAutoHireEnabled();
     const structure = JSON.stringify({
         sectId:view.sectId, available:view.available, unlocked:view.unlocked, capacity:view.capacity, discount:view.discount,
         disabled:!!(game.gameOver || game.pendingRebirth), message:_discipleUIMessage, dismiss:_discipleDismissPendingId,
+        autoHirePurchased, autoHireEnabled,
         disciples:view.disciples.map(d => ({id:d.id,name:d.name,quality:d.quality})),
         candidates:view.candidates.map(c => ({id:c.id,name:c.name,quality:c.quality,cost:c.cost,
             canHire:c.canHire,expired:c.expiresIn <= 0,affordable:game.stones >= c.cost})),
@@ -76,6 +98,7 @@ function renderDisciples() {
         return `<article class="disciple-candidate" data-candidate-id="${id}">
             ${_discipleIdentity(candidate)}
             <p class="disciple-age"></p>
+            <p class="disciple-meta">Навык: ${_discipleSkillPercent(candidate, 1)}% при найме → ${_discipleSkillPercent(candidate, DISCIPLE_CONFIG.maxLevel)}% на 10 ур.</p>
             <p class="disciple-price">Приём: <b>${candidate.cost}</b> камней${discount > 0 ? ` · скидка ${discount}%` : ""}</p>
             <p class="disciple-offer-expiry"></p>
             <button class="btn btn-small btn-primary" data-candidate-id="${id}" onclick="hireDiscipleUI(this.dataset.candidateId)" ${candidate.canHire && !game.gameOver && !game.pendingRebirth ? "" : "disabled"}>${candidate.expiresIn <= 0 ? "Срок истёк" : full ? "Нет свободных мест" : game.stones < candidate.cost ? "Не хватает камней" : "Принять"}</button>
@@ -84,6 +107,11 @@ function renderDisciples() {
     section.innerHTML = `<div class="disciples-heading"><h4>Ваши ученики</h4><span class="disciples-capacity">${view.disciples.length}/${view.capacity} мест</span></div>
         <p class="disciples-help">Ученики растут, приносят камни и выполняют доступные задания секты автоматически.</p>
         <p class="disciples-budget"><span class="disciples-total-income"></span> · <span class="disciples-auto-status">${_discipleEscape(view.autoMissionStatus)}</span></p>
+        <div class="disciples-autohire">
+            <p class="disciples-help"><b>Автонаём:</b> заполняет только свободные места лучшими доступными кандидатами за обычные камни. Уже обученных учеников не увольняет.</p>
+            ${autoHirePurchased ? `<div class="disciple-controls"><button class="btn btn-small btn-secondary disciples-autohire-toggle" type="button" aria-pressed="${autoHireEnabled}" onclick="toggleDiscipleAutoHireUI()" ${game.gameOver || game.pendingRebirth ? "disabled" : ""}>Автонаём: ${autoHireEnabled ? "включён" : "выключен"}</button></div><p class="disciples-help disciples-autohire-status"></p>`
+                : '<p class="disciple-unavailable">Открывается за карму в окне перерождения.</p>'}
+        </div>
         ${_discipleUIMessage ? `<p class="disciple-unavailable" role="status">${_discipleEscape(_discipleUIMessage)}</p>` : ""}
         ${view.disciples.length ? `<div class="disciple-roster">${view.disciples.map(d => _discipleCard(d,training)).join("")}</div>` : '<p class="disciple-empty">У вас пока нет учеников.</p>'}
         <div class="disciples-heading disciples-candidates-heading"><h4>Ищут наставника</h4><span class="disciple-delivery"></span></div>
@@ -115,7 +143,7 @@ function updateDisciplesProgress(view = null) {
         const rate = game.getDiscipleHouseholdRate(disciple);
         income += rate;
         _setDiscipleText(card.querySelector(".disciple-age"),`Возраст: ${age.age} / ${age.lifespan} лет · осталось ${_discipleYears(age.remainingYears)}`);
-        _setDiscipleText(card.querySelector(".disciple-level-xp"),`Уровень ${disciple.level} · ${xpText}`);
+        _setDiscipleText(card.querySelector(".disciple-level-xp"),`Уровень ${disciple.level} · навык ${_discipleSkillPercent(disciple)}% · ${xpText}`);
         _setDiscipleText(card.querySelector(".disciple-income"),`Доход: ${_discipleIncomeText(rate)}`);
         const bar = card.querySelector(".disciple-xp"), fill = card.querySelector(".disciple-xp-fill");
         if (!bar || !fill) continue;
@@ -136,6 +164,10 @@ function updateDisciplesProgress(view = null) {
     const next = view ? view.nextDeliveryIn : section._discipleNextRefreshYear === null ? null
         : Math.max(0,(section._discipleNextRefreshYear ?? game.years)-game.years);
     _setDiscipleText(section.querySelector(".disciple-delivery"),`Новые кандидаты через ${_discipleYears(next)}`);
+    const statusView = view || { disciples: roster, capacity: game.getDiscipleCapacity(),
+        candidates: section._discipleCandidates || [], nextDeliveryIn: next };
+    const autoHireStatus = section.querySelector(".disciples-autohire-status");
+    if (autoHireStatus) _setDiscipleText(autoHireStatus,_discipleAutoHireStatus(statusView,game.isDiscipleAutoHireEnabled()));
     const candidates = new Map((section._discipleCandidates || []).map(c => [c.id,c]));
     for (const card of section.querySelectorAll(".disciple-candidate")) {
         const candidate = candidates.get(card.dataset.candidateId);
@@ -152,6 +184,10 @@ function hireDiscipleUI(candidateId) {
     const success = game.hireDisciple(candidateId);
     _discipleUIMessage = success ? "" : "Предложение истекло, состав заполнен или не хватает камней.";
     renderSects();
+}
+function toggleDiscipleAutoHireUI() {
+    if (typeof game.isDiscipleAutoHireEnabled !== "function" || typeof game.setDiscipleAutoHireEnabled !== "function") return;
+    game.setDiscipleAutoHireEnabled(!game.isDiscipleAutoHireEnabled());
 }
 function showDismissDiscipleUI(id) { _discipleDismissPendingId = id; renderDisciples(); }
 function cancelDismissDiscipleUI() { _discipleDismissPendingId = null; renderDisciples(); }
