@@ -98,11 +98,13 @@ function renderSects() {
                 }
             }
 
-            // Элемент секты и предрасположенность
+            // Стихия секты совпадает со стихией её техник: корень усиливает именно их.
             const elemObj = sect.element ? ELEMENTS.find(e => e.id === sect.element) : null;
             const elemText = elemObj ? elemObj.name : "Любой";
             const hasAffinity = sect.element && game.spiritualRoot && game.spiritualRoot.elements && game.spiritualRoot.elements.includes(sect.element);
-            const affinityText = !sect.element ? "" : hasAffinity ? ' <span class="v2-muted">· совпадает с корнем</span>' : ' <span class="v2-muted">· другая стихия</span>';
+            const affinityText = !sect.element ? "" : hasAffinity
+                ? ' <span class="v2-muted">· корень усиливает техники секты на 25%</span>'
+                : ' <span class="v2-muted">· техники секты без бонуса корня</span>';
 
             const diffNames = { easy: "Лёгкая", medium: "Средняя", hard: "Сложная", very_hard: "Очень сложная" };
             const diffColors = { easy: "#6aea8a", medium: "#eebb44", hard: "#ee7a7a", very_hard: "#cc4a3a" };

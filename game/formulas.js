@@ -289,15 +289,6 @@ Object.assign(game, {
             + bodyRetention);
     },
 
-    // Элементальная предрасположенность к секте (совпадение элемента корня и секты)
-    getSectElementAffinity() {
-        if (!this.sect || !this.spiritualRoot) return 1;
-        const sect = SECTS.find(s => s.id === this.sect.id);
-        if (!sect || !sect.element) return 1; // секта без элемента — нет бонуса/штрафа
-        const hasElement = this.spiritualRoot.elements && this.spiritualRoot.elements.includes(sect.element);
-        return hasElement ? 1.5 : 0.75;
-    },
-
     // === ПРОРЫВ ===
 
     getBreakthroughChance(includePill = true) {

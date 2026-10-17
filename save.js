@@ -591,7 +591,7 @@ function exportDetailedSave() {
         sectRankMult: rank ? rank.bonusMult : 0,
         sectContribution: game.sect ? game.sect.contribution : 0,
         sectNextRank: nextRank ? { name: nextRank.name, contribution: nextRank.contribution } : null,
-        sectElementAffinity: game.sect ? game.getSectElementAffinity() : 1,
+        sectTechniqueElementMatch: !!(sect && sect.element && root?.elements?.includes(sect.element)),
 
         // --- Эпоха и мир ---
         eraName: era ? era.name : "?",

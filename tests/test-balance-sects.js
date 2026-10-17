@@ -221,6 +221,29 @@ test('UI показывает фактический шанс, тир и нез�
     assert.doesNotMatch(html, /art-tier-epic/);
 });
 
+test('Карточка секты объясняет бонус корня к техникам без обещания пассивного бонуса секты', () => {
+    const ctx = createContext();
+    const html = ctx.run(`game.spiritualRoot={elements:['fire']};
+        var rendered=[];
+        document.createElement=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
+        document.getElementById=()=>({..._testElement(),appendChild(el){rendered.push(el);}});
+        renderSects(); rendered.map(el=>el.innerHTML).join(' ');`);
+    assert.match(html, /корень усиливает техники секты на 25%/);
+    assert.match(html, /техники секты без бонуса корня/);
+    assert.doesNotMatch(html, /совпадает с корнем/);
+});
+
+test('Подробный экспорт показывает совпадение с техниками секты и не вызывает старую формулу', () => {
+    const ctx = createContext();
+    const computed = JSON.parse(ctx.run(`game.spiritualRoot={name:'Огненный',tier:'common',qiMultiplier:1,elements:['fire']};
+        game.sect={id:'crimson_flame',rank:0,contribution:0};
+        navigator.clipboard={writeText(text){globalThis._exported=text;return Promise.resolve();}};
+        exportDetailedSave();
+        JSON.stringify(JSON.parse(_exported)._computed);`));
+    assert.equal(computed.sectTechniqueElementMatch, true);
+    assert.equal('sectElementAffinity' in computed, false);
+});
+
 test('Пожертвование Главы Лунного Озера нельзя замкнуть через обмен Торговца', () => {
     const ctx = createContext();
     for (let realm = 7; realm <= 14; realm++) {

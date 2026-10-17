@@ -45,6 +45,27 @@ test('Бонус трансценда усиливается отдельно о
     assert.equal(result.upgraded.essence - result.base.essence, 120);
 });
 
+test('Трофей Алого Пламени сохраняется при переходе в Лунное Озеро, но новое Дао начинается с нуля', () => {
+    const ctx = alchemistContext(0);
+    ctx.run(`game.realmIndex=6; game.milestones.push('win_combat','ten_breakthroughs');
+        game.sect={id:'crimson_flame',rank:1,contribution:150};
+        game.sectMissions=[{templateId:'treasure_expedition',reward:{artifact:'rare'},cooldown:0}];
+        game.completeSectMission(0);
+        var trophy=game.artifacts[0];
+        var crimsonReward=game.getDisassembleReward(trophy);
+        game.daoLevel=5;
+        game.leaveSect();
+        game.joinSect('moon_lake');
+        var entryReward=game.getDisassembleReward(trophy);
+        game.daoLevel=5;
+        var trainedReward=game.getDisassembleReward(trophy);`);
+    assert.equal(ctx.run('game.artifacts[0].tier'), 'rare');
+    assert.equal(ctx.run('game.artifacts[0].id === trophy.id'), true);
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(crimsonReward)')), {dust:18,essence:12});
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(entryReward)')), {dust:18,essence:12});
+    assert.deepEqual(JSON.parse(ctx.run('JSON.stringify(trainedReward)')), {dust:20,essence:13});
+});
+
 test('Успех и провал заточки не создают материалы при последующем разборе', () => {
     const ctx = alchemistContext(3);
     ctx.run(`game.artifactDust=1000; game.daoEssence=1000;
