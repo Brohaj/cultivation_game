@@ -11,7 +11,7 @@
 | [balance_thresholds.json](balance_thresholds.json) | Контрольные диапазоны четырёх жизней для проверки баланса в CI. |
 | [sect_balance_review.md](sect_balance_review.md) | Актуальное сравнение пяти сект, адресные правки и открытая поздняя проверка. |
 | [sect_system_redesign.md](sect_system_redesign.md) | Аудит лишних и недостающих связей системы сект; проект пересборки, не реализованные правила. |
-| [longevity_progression_review.md](longevity_progression_review.md) | Предложение плавного постоянного долголетия за зачётные жизни; пока не внедрено. |
+| [longevity_progression_review.md](longevity_progression_review.md) | Аудит путей долголетия и предложение закрытого вознесения тела; пока не внедрено. |
 | [ui_v2.md](ui_v2.md) | Текущий интерфейс и его проверка. |
 | [content_guide.md](content_guide.md) | Правила написания событий и приключений. |
 | [worldbuilding.md](worldbuilding.md) | Канон мира и тон новых текстов. |
