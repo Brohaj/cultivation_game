@@ -58,55 +58,6 @@ test('Смена Пути по-прежнему обнуляет Дао, зат�
     near(practiceYear(ctx, 'fate'), 3);
 });
 
-test('Боевой путь снижает стоимость прогресса Дао, но не число уровней или ци', () => {
-    const ctx = createContext();
-    ctx.run(`game.realmIndex=7;game.subLevel=2;game.daoLevel=5;
-        game.sect={id:'jade_purity',rank:0,contribution:0};`);
-    const baseQi = ctx.run('game.qiNeeded()');
-    assert.equal(ctx.run('game.daoNeeded()'), 180);
-    assert.equal(ctx.run('game.getDaoProgressReduction()'), 0);
-
-    ctx.run("game.prestige.lastBody='wandering_warrior';");
-    near(ctx.run('game.getDaoProgressReduction()'), 0.10);
-    assert.equal(ctx.run('game.daoNeeded()'), 162);
-
-    ctx.run("game.prestige.lastBody='peasant';game.sect.id='crimson_flame';");
-    near(ctx.run('game.getDaoProgressReduction()'), 0.10);
-    assert.equal(ctx.run('game.daoNeeded()'), 162);
-
-    ctx.run("game.prestige.lastBody='wandering_warrior';");
-    near(ctx.run('game.getDaoProgressReduction()'), 0.20);
-    assert.equal(ctx.run('game.daoNeeded()'), 144);
-    ctx.run('game.daoLevel=18;');
-    assert.equal(ctx.run('game.daoNeeded()'), 1240);
-    ctx.run("game.prestige.lastBody='peasant';game.sect.id='jade_purity';");
-    assert.equal(ctx.run('game.daoNeeded()'), 1550);
-    ctx.run("game.prestige.lastBody='wandering_warrior';game.sect.id='crimson_flame';game.daoLevel=5;");
-    ctx.run('game.getSectBonus=key=>key===\'daoCostReduction\'?0.15:0;');
-    near(ctx.run('game.getDaoProgressReduction()'), 0.20);
-    assert.equal(ctx.run('game.daoNeeded()'), 144);
-    assert.equal(ctx.run('game.qiNeeded()'), baseQi);
-    assert.equal(ctx.run('(game.realmIndex-3)*SUB_LEVELS+(game.subLevel-1)+1'), 18);
-});
-
-test('Скидка Алого растёт с текущим Дао и не меняет накопленные очки при смене пути', () => {
-    const ctx = createContext();
-    ctx.run(`game.realmIndex=7;game.subLevel=2;game.daoLevel=0;game.daoProgress=45;
-        game.sect={id:'crimson_flame',rank:0,contribution:0};`);
-    assert.equal(ctx.run('game.daoNeeded()'), 80);
-    assert.equal(ctx.run('game.daoProgress'), 45);
-    ctx.run('game.daoLevel=3;');
-    near(ctx.run('game.getDaoProgressReduction()'), 0.06);
-    assert.equal(ctx.run('game.daoNeeded()'), 132);
-    // atLevel меняет базовую стоимость, а скидка привязана к реально достигнутому Дао.
-    assert.equal(ctx.run('game.daoNeeded(8)'), 226);
-    ctx.run("game.sect.id='moon_lake';");
-    assert.equal(ctx.run('game.daoNeeded()'), 140);
-    assert.equal(ctx.run('game.daoProgress'), 45);
-    ctx.run("game.sect.id='crimson_flame';game.daoLevel=5;");
-    assert.equal(ctx.run('game.daoNeeded(8)'), 216);
-});
-
 test('Круг Подавления Демонов останавливается на достаточных 80 процентных пунктах', () => {
     const ctx = createContext();
     ctx.run(`game.realmIndex=14;game.daoLevel=20;game.stones=100000;

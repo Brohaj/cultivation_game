@@ -161,35 +161,6 @@ const makeSyntheticSectPlayer=require('./test-synthetic-player');
             assert.match(daoTip,/\+3[.,]0 опыта пути\/год/);
             assert.doesNotMatch(daoTip,/×0[.,]5/);
         });
-        await check('Боевой путь показывает снижение нужного опыта Дао без ложного бонуса к скорости',async()=>{
-            const state=await page.evaluate(()=>{
-                game.reset();game.stop();game.selectSpiritualRoot('common');
-                game.realmIndex=7;game.subLevel=2;game.daoLevel=18;game.daoProgress=200;
-                game.prestige.lastBody='wandering_warrior';
-                game.sect={id:'crimson_flame',rank:0,contribution:0};
-                switchTab('sect');updateUI();
-                return {needed:game.daoNeeded(),reduction:game.getDaoProgressReduction()};
-            });
-            assert.equal(state.reduction,0.2);
-            assert.match(await page.locator('#dao-text').innerText(),new RegExp(`200/${state.needed} · порог −20%`));
-            assert.match(await page.locator('#tip-dao-bar').innerText(),/Требуется на 20% меньше опыта Дао/);
-            assert.match(await page.locator('#tip-body').innerText(),/для каждого уровня Дао нужно на 10% меньше опыта/);
-            assert.match(await page.locator('.sect-active-bonuses').innerText(),/Требуемое Дао −10%/);
-            assert.doesNotMatch(await page.locator('.sect-active-bonuses').innerText(),/Требуемое Дао \+10%/);
-            await page.evaluate(()=>switchTab('cultivation'));
-            for(const width of [1280,390]){
-                await page.setViewportSize({width,height:900});
-                const barWidth=await page.locator('#dao-bar-section').evaluate(section=>({
-                    text:section.querySelector('#dao-text').getBoundingClientRect().width,
-                    container:section.querySelector('.dao-bar-container').getBoundingClientRect().width
-                }));
-                assert.ok(barWidth.text<=barWidth.container-8,`Порог Дао виден целиком при ширине ${width}px`);
-            }
-            await page.setViewportSize({width:1280,height:900});
-            await page.evaluate(()=>{game.sect=null;switchTab('sect');updateUI();});
-            const crimsonCard=page.locator('.sect-card').filter({hasText:'Орден Алого Пламени'});
-            assert.match(await crimsonCard.textContent(),/0% -> −10% Требуемое Дао/);
-        });
         assert.deepEqual(errors,[]);console.log(`${passed} current sect UI scenarios passed,0 page errors`);
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

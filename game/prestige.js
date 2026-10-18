@@ -146,7 +146,6 @@ Object.assign(game, {
             case "warrior":
                 perks.expeditionSpeed = 0.05;
                 perks.combatMult = 1.3;
-                perks.daoCostReduction = 0.10;
                 break;
             case "demonPact":
                 perks.karmaBonus = 0.25;

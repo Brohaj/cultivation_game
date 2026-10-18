@@ -158,8 +158,6 @@ function updateTickUI() {
             daoSection.style.display = "";
             const sect = SECTS.find(s => s.id === game.sect.id);
             const daoNeeded = game.daoNeeded();
-            const daoReduction = typeof game.getDaoProgressReduction === "function" ? game.getDaoProgressReduction() : 0;
-            const daoReductionText = daoReduction > 0 ? ` · порог −${Math.round(daoReduction * 100)}%` : "";
             const daoPct = Math.min(100, (game.daoProgress / daoNeeded) * 100);
             const daoBar = document.getElementById("dao-bar");
             const daoText = document.getElementById("dao-text");
@@ -177,8 +175,8 @@ function updateTickUI() {
                 const daoReady = game.daoLevel >= requiredDao;
                 const reqText = daoReady ? "" : ` | Для прорыва: уровень ${requiredDao}`;
                 const rankText = rankName ? ` «${rankName}»` : "";
-                daoText.textContent = `Дао · ур. ${game.daoLevel} · ${Math.floor(game.daoProgress)}/${daoNeeded}${daoReductionText}`;
-                daoText.title = `${daoLabel}${rankText}. Дао — развитие пути вашей секты. С Золотого Ядра для каждого прорыва нужен следующий уровень Дао.${daoReduction > 0 ? ` Для текущего уровня нужно на ${Math.round(daoReduction * 100)}% меньше опыта благодаря действующим бонусам.` : ""}`;
+                daoText.textContent = `Путь секты · уровень ${game.daoLevel} · ${Math.floor(game.daoProgress)} / ${daoNeeded}`;
+                daoText.title = `${daoLabel}${rankText}. Дао — развитие пути вашей секты. С Золотого Ядра для каждого прорыва нужен следующий уровень Дао.`;
 
                 // Описание уровня Дао под баром
                 const daoDescEl = document.getElementById("dao-desc");
@@ -215,7 +213,6 @@ function updateTickUI() {
                 if (tipDaoBar) {
                     let tip = `Дао развивает путь вашей секты. С Золотого Ядра для каждого прорыва нужен следующий уровень. Подходящая тренировка: ${actText} (+${daoPerYear} опыта пути/год)`;
                     if (daoSpeedMult > 1) tip += ` | Скорость: ×${daoSpeedMult.toFixed(2)}`;
-                    if (daoReduction > 0) tip += ` | Требуется на ${Math.round(daoReduction * 100)}% меньше опыта Дао: ${daoNeeded} для текущего уровня`;
                     tipDaoBar.textContent = tip;
                 }
             }
