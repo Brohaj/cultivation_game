@@ -410,14 +410,28 @@ Object.assign(game, {
         return min + (max - min) * (daoLevel / 5);
     },
 
-    // Необходимый прогресс Дао для текущего уровня (линейный рост)
+    // Боевые пути требуют меньше прогресса на каждый уровень Дао.
+    // Скидка секты зависит от уже достигнутого уровня, а не от atLevel:
+    // этот параметр задаёт базовую стоимость при расчёте будущей ёмкости.
+    getDaoProgressReduction() {
+        const bodyReduction = this.getActiveBodyPerks().daoCostReduction || 0;
+        const sectReduction = this.getSectBonus("daoCostReduction");
+        return Math.min(0.20, Math.max(0, bodyReduction + sectReduction));
+    },
+
+    // Необходимый прогресс Дао для текущего уровня (линейный рост до уровня 8)
     daoNeeded(atLevel = this.daoLevel) {
         const lvl = atLevel;
-        if (lvl <= 8) return 80 + lvl * 20; // 80-240, линейно
+        let base;
+        if (lvl <= 8) base = 80 + lvl * 20; // 80-240, линейно
         // После 8: экспоненциальный рост, округление до 50
-        const base = 80 + lvl * 20;
-        const scaleMult = 1 + (lvl - 8) * 0.25;
-        return Math.round(base * scaleMult / 50) * 50;
+        else {
+            const linearBase = 80 + lvl * 20;
+            const scaleMult = 1 + (lvl - 8) * 0.25;
+            base = Math.round(linearBase * scaleMult / 50) * 50;
+        }
+        // Округление вверх не позволяет скидке превысить заявленный процент.
+        return Math.max(1, Math.ceil(base * (1 - this.getDaoProgressReduction())));
     },
 
     getDaoLevelCap() {

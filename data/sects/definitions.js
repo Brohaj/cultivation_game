@@ -252,7 +252,8 @@ const SECTS = [
         formations: ["bodyPagoda", "bladeArena"],
         dao: {
             combatPower: { min: 0.10, max: 0.25 },
-            pillEffect:  { min: -0.10, max: 0.10 }
+            pillEffect:  { min: -0.10, max: 0.10 },
+            daoCostReduction: { min: 0, max: 0.10 }
         },
         missions: ["slay_beast", "arena_challenge", "prove_strength", "perform_breakthroughs", "relic_hunt", "treasure_expedition", "elder_trial_strength", "hall_master_treasury", "hall_master_artifact", "hall_master_wisdom"],
         technique: "blazing_fist",
