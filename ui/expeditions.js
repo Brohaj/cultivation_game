@@ -152,6 +152,25 @@ function renderExpeditions() {
         if (scrollReward.guaranteed || scrollReward.chance) mainRewards.push('<span class="reward-item v2-resource-scrolls">Свитки заточки</span>');
         if (r.techniqueChance && game.getRewardTechniquePool().length) mainRewards.push('<span class="reward-item">Техники</span>');
 
+        let forestAscension = "";
+        if (loc.id === "spirit_forest") {
+            const completions = Math.max(0, Math.floor(Number(game.expeditionCompletions?.spirit_forest) || 0));
+            const technique = game.hasTechnique("wood_rejuvenation")
+                ? "техника уже изучена"
+                : "награда: «Восстановление Древесной Ци»";
+            if (ascTier >= 2) {
+                forestAscension = '<div class="expedition-ascended">Корень Мира раскрыт</div>';
+            } else if (ascTier === 1) {
+                const progress = `${Math.min(completions, 20)}/20 общих походов`;
+                const ready = completions >= 20;
+                forestAscension = `<div class="expedition-ascend-${ready ? "ready" : "progress"}">${progress} · ${ready ? "Доступно высшее испытание" : "До Корня Мира"} · ${technique}</div>`;
+            } else {
+                const progress = `${Math.min(completions, 10)}/10 общих походов`;
+                const ready = completions >= 10;
+                forestAscension = `<div class="expedition-ascend-${ready ? "ready" : "progress"}">${progress} · ${ready ? "Первое испытание открыто" : "до Сердца Древнего Леса"} · затем Корень Мира (20) · ${technique}</div>`;
+            }
+        }
+
         const card = document.createElement("div");
         card.className = `expedition-card${isActive ? " expedition-current" : ""}`;
         card.dataset.location = loc.id;
@@ -166,6 +185,7 @@ function renderExpeditions() {
             </div>
             <div class="expedition-rewards v2-expedition-main-rewards">${mainRewards.join("")}</div>
             ${artifactPreview}
+            ${forestAscension}
             ${unmet.length ? `<div class="expedition-req">${unmet.join(" · ")}</div>` : ""}
             <div class="v2-expedition-footer">
                 <div class="expedition-actions">${isActive ? '<span class="expedition-in-progress">В пути…</span>' : canStart ? `<button class="btn btn-small btn-primary" onclick="startExpeditionUI('${loc.id}')">Отправиться</button>` : game.expedition ? '<span class="expedition-busy">Уже в походе</span>' : '<span class="expedition-unavailable">Недоступно</span>'}</div>

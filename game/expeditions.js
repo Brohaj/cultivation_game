@@ -471,8 +471,9 @@ Object.assign(game, {
                 }
             }
         }
-        // При 20 завершениях — слух о вознесении тир 3
-        if (this.expeditionCompletions[loc.id] === 20 && this.ascendedLocations[loc.id] === 1) {
+        // После 20 завершений повторяем выдачу, если слух пропустили или прервали.
+        // Дубликаты и уже завершённые испытания отсекает addAdventureRumor.
+        if (this.expeditionCompletions[loc.id] >= 20 && this.ascendedLocations[loc.id] === 1) {
             const ascAdvId = "ascend2_" + loc.id;
             const ascAdv = ADVENTURES.find(a => a.id === ascAdvId);
             if (ascAdv && ascAdv.condition(this)) {

@@ -3,6 +3,13 @@
 // Завершение = локация вознесена (×2 награды)
 // Зависит от: adventures/_base.js, locations.js
 
+function revealSpiritForestDepth(g) {
+    if ((g.expeditionCompletions?.spirit_forest || 0) < 20) return;
+    if (g.addAdventureRumor("ascend2_spirit_forest")) {
+        addLog("Двадцать походов открыли проход к Корню Мира.", "breakthrough");
+    }
+}
+
 ADVENTURES.push(
     // ── Вознесение: Лес Духовных Трав → Сердце Древнего Леса ──
     {
@@ -59,6 +66,7 @@ ADVENTURES.push(
                                     g.learnTechnique("stone_meditation");
                                     addLog("Древо научило вас: Медитация Каменного Будды!", "reward");
                                 }
+                                revealSpiritForestDepth(g);
                             },
                             rewards: (flags) => ({
                                 dust: { min: 20, max: 40 },
@@ -79,6 +87,7 @@ ADVENTURES.push(
                                 g.flags.ancient_tree_seed = true;
                                 addLog("\u2728 Лес Духовных Трав вознесён! Награды экспедиций ×2.", "breakthrough");
                                 addLog("Древо уронило семя — маленькое, тёплое, пульсирующее. Оно усилит карму этой жизни на 30% при перерождении. Второе семя не увеличит бонус.", "reward");
+                                revealSpiritForestDepth(g);
                             },
                             rewards: { dust: { min: 15, max: 30 }, essence: { min: 15, max: 30 } },
                             flag: "took_seed"
@@ -501,7 +510,7 @@ ADVENTURES.push(
                 choices: [
                     {
                         text: "Пить из источника. Стать частью леса",
-                        description: "Вознесение. Пыль + эссенция + дао",
+                        description: "Вознесение. Пыль + эссенция + дао + техника «Восстановление Древесной Ци» (если ещё не изучена)",
                         success: {
                             effect: (g, flags) => {
                                 g.ascendedLocations.spirit_forest = 2;

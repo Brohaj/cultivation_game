@@ -73,6 +73,59 @@ test('Финальный эффект вознесения переживает 
     assert.equal(ctx.run('game.prestige.totalAdventures'), total);
 });
 
+test('Лесное испытание второго тира открывается на 20-м походе после первого вознесения', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7; game.spirit=100; game.strength=1000;
+        game.stones=10000; game.daoEssence=1000; game.artifactDust=1000;
+        game.expeditionCompletions.spirit_forest=9; Math.random=()=>.999;
+        game.startExpedition('spirit_forest'); game._completeExpedition();`);
+    assert.equal(ctx.run('game.expeditionCompletions.spirit_forest'), 10);
+    assert.equal(ctx.run(`game.adventureRumors.some(r=>r.id==='ascend_spirit_forest')`), true);
+    ctx.run(`game.acceptAdventure('ascend_spirit_forest');
+        game.chooseAdventureOption(0,0); game.chooseAdventureOption(0,0);
+        game.years+=25; game.tickAdventures();`);
+    assert.equal(ctx.run('game.ascendedLocations.spirit_forest'), 1);
+    assert.equal(ctx.run(`game.adventureRumors.some(r=>r.id==='ascend2_spirit_forest')`), false);
+    ctx.run(`for(let i=0;i<10;i++) { game.startExpedition('spirit_forest'); game._completeExpedition(); }`);
+    assert.equal(ctx.run('game.expeditionCompletions.spirit_forest'), 20);
+    assert.equal(ctx.run(`game.adventureRumors.filter(r=>r.id==='ascend2_spirit_forest').length`), 1);
+    ctx.run(`game.acceptAdventure('ascend2_spirit_forest'); game.abandonAdventure(0);
+        game.startExpedition('spirit_forest'); game._completeExpedition();`);
+    assert.equal(ctx.run('game.expeditionCompletions.spirit_forest'), 21);
+    assert.equal(ctx.run(`game.adventureRumors.filter(r=>r.id==='ascend2_spirit_forest').length`), 1,
+        'После отказа следующий поход возвращает постоянный слух');
+});
+
+test('Корень Мира появляется после первого вознесения при уже выполненных 20 походах и полном списке слухов', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7; game.spirit=100; game.strength=1000;
+        game.stones=10000; game.daoEssence=1000; game.artifactDust=1000;
+        game.expeditionCompletions={spirit_forest:19,beast_cave:10,forgotten_ruins:10,
+            heavenly_auction:10,demon_abyss:10,immortal_palace:10};
+        Math.random=()=>.999;
+        game.startExpedition('spirit_forest'); game._completeExpedition();
+        game.addAdventureRumor('ascend_spirit_forest');
+        game.acceptAdventure('ascend_spirit_forest');
+        for (const id of ['beast_cave','forgotten_ruins','heavenly_auction','demon_abyss','immortal_palace']) {
+            if (!game.addAdventureRumor('ascend_'+id)) throw new Error('Не удалось создать исходный слух: '+id);
+        }`);
+    assert.equal(ctx.run('game.expeditionCompletions.spirit_forest'), 20);
+    assert.equal(ctx.run('game.adventureRumors.length'), 5);
+    assert.equal(ctx.run(`game.adventureRumors.some(r=>r.id==='ascend2_spirit_forest')`), false);
+    ctx.run(`game.chooseAdventureOption(0,0); game.chooseAdventureOption(0,1);
+        game.years+=25; game.tickAdventures();`);
+    assert.equal(ctx.run('game.ascendedLocations.spirit_forest'), 1);
+    assert.equal(ctx.run('game.adventureRumors.length'), 6, 'Пять старых слухов не потеряны');
+    assert.equal(ctx.run(`game.adventureRumors.filter(r=>r.id==='ascend2_spirit_forest').length`), 1);
+    assert.equal(ctx.run(`game.addAdventureRumor('ascend2_spirit_forest')`), false, 'Слух не дублируется');
+    ctx.run(`game.acceptAdventure('ascend2_spirit_forest');
+        game.chooseAdventureOption(0,0); game.chooseAdventureOption(0,0);
+        game.years+=20; game.tickAdventures();`);
+    assert.equal(ctx.run('game.ascendedLocations.spirit_forest'), 2);
+    assert.equal(ctx.run(`game.hasTechnique('wood_rejuvenation')`), true);
+    assert.equal(ctx.run('game.adventureRumors.length'), 5, 'Исходные слухи остались после Корня Мира');
+});
+
 test('Старое финальное ожидание без сериализованного эффекта восстанавливается из истории', () => {
     let ctx = createContext();
     ctx.run(`game.realmIndex=3; game.spirit=100; game.stones=1000; game.daoEssence=100; game.artifactDust=100;

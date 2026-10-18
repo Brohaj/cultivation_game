@@ -91,7 +91,9 @@ Object.assign(game, {
         if (this.activeAdventures.find(a => a.id === adventureId)) return false;
         // Одноразовые — не давать повторно завершённые
         if (this.completedAdventures && this.completedAdventures.includes(adventureId)) return false;
-        if (this.adventureRumors.length >= 5) return false;
+        // Испытания вознесения открываются гарантированно за походы и не
+        // должны теряться из-за пяти уже накопленных обычных слухов.
+        if (this.adventureRumors.length >= 5 && !adventureId.startsWith("ascend")) return false;
 
         this.adventureRumors.push({
             id: adventureId,
