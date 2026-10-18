@@ -51,7 +51,7 @@ function _statSpeedBreakdown(stat) {
     parts.push(`Уровень ${level}: ×${levelMult.toFixed(2)}`);
     const realmMult = 1 + game.realmIndex * 0.15;
     if (game.realmIndex > 0) parts.push(`Ступень ${game.realmIndex}: ×${realmMult.toFixed(2)}`);
-    parts.push("Усиление медитации ускоряет накопление ци через дух; скорость роста характеристик не меняет");
+    parts.push("Усиление медитации ускоряет накопление ци, но не рост характеристик");
     return parts.join(" | ");
 }
 
@@ -515,12 +515,6 @@ function updateUI() {
     document.getElementById("luck").textContent = Math.floor(totalLuck);
     document.getElementById("combat-power").textContent = game.getCombatPower();
 
-    // Усиление медитации повышает множитель духа.
-    const perfBonus = game.getFormationBonus("statXpSpeed") + game.getSectBonus("statXpSpeed")
-        + game.getArtifactBonus("statXpSpeed") * 0.01 + game.getTechBonus("statXpSpeed")
-        + ((game.prestige.karmaUpgrades.statSpeed || 0) + (game.getActiveBodyPerks().freeUpgradeLevel || 0)) * 0.05;
-    const perfText = perfBonus > 0 ? ` | Усиление медитации: +${Math.round(softcap(perfBonus, 3, 0.5) * 100)}%` : "";
-
     // Тултипы статов
     const tipStr = document.getElementById("tip-strength");
     if (tipStr) {
@@ -531,17 +525,17 @@ function updateUI() {
         parts.push(`Эффект: +${((strMult - 1) * 100).toFixed(0)}% ци`);
         parts.push(`Боевая мощь: ${cp}`);
         if (game.realmIndex >= 7) parts.push(game.realmIndex >= 10 ? "-2 при провале" : "-1 при провале");
-        tipStr.textContent = "Сила ускоряет медитацию и помогает пережить опасные события и экспедиции. " + parts.join(" | ") + perfText;
+        tipStr.textContent = "Сила ускоряет медитацию и помогает пережить опасные события и экспедиции. " + parts.join(" | ");
     }
     const tipSpi = document.getElementById("tip-spirit");
     if (tipSpi) {
-        const spiMult = game.getSpiritMultiplier();
+        const spiMult = game.getSpiritBaseMultiplier();
         const techSpeed = (1 + game.spirit * 0.02);
         const parts = [`База: ${game.spirit}`];
         if (artSpi > 0) parts.push(`Артефакт: +${artSpi.toFixed(1)}`);
         parts.push(`Эффект: +${((spiMult - 1) * 100).toFixed(0)}% ци`);
         parts.push(`Обучение техник: ×${techSpeed.toFixed(2)}`);
-        tipSpi.textContent = "Дух ускоряет накопление ци и обучение активных техник. " + parts.join(" | ") + perfText;
+        tipSpi.textContent = "Дух ускоряет накопление ци и обучение активных техник. " + parts.join(" | ");
     }
     const tipLuck = document.getElementById("tip-luck");
     if (tipLuck) {
@@ -612,31 +606,6 @@ function updateUI() {
         tipRet.textContent = parts.length > 0
             ? `Сохраняет ${Math.round(ret * 100)}% ци и накопленного опыта пути секты при обычном провале прорыва. На высоких ступенях с тем же шансом защищает силу и дух от потери. ${parts.join(" | ")} (максимум 95%)`
             : "Сохраняет часть ци и опыта пути секты при обычном провале прорыва. На высоких ступенях с тем же шансом защищает силу и дух от потери. Максимум 95%. Источники: техники, артефакты, секта, тело.";
-    }
-
-    // Усиление медитации (бонус множителя духа)
-    const perfRow = document.getElementById("perfection-row");
-    const perfVal = document.getElementById("perfection-value");
-    const tipPerf = document.getElementById("tip-perfection");
-    if (perfRow && perfVal) {
-        const formB = game.getFormationBonus("statXpSpeed");
-        const sectB = game.getSectBonus("statXpSpeed");
-        const artB = game.getArtifactBonus("statXpSpeed") * 0.01;
-        const techB = game.getTechBonus("statXpSpeed");
-        const karmaB = ((game.prestige.karmaUpgrades.statSpeed || 0) + (game.getActiveBodyPerks().freeUpgradeLevel || 0)) * 0.05;
-        const total = formB + sectB + artB + techB + karmaB;
-        perfRow.style.display = total > 0 ? "" : "none";
-        const effective = softcap(total, 3, 0.5);
-        perfVal.textContent = `+${Math.round(effective * 100)}%`;
-        if (tipPerf) {
-            const parts = [`Бонус к духу: +${Math.round(total * 100)}%`];
-            if (formB > 0) parts.push(`Формация: +${Math.round(formB * 100)}%`);
-            if (sectB > 0) parts.push(`Секта: +${Math.round(sectB * 100)}%`);
-            if (artB > 0) parts.push(`Артефакт: +${Math.round(artB * 100)}%`);
-            if (techB > 0) parts.push(`Техника: +${Math.round(techB * 100)}%`);
-            if (karmaB > 0) parts.push(`Карма: +${Math.round(karmaB * 100)}%`);
-            tipPerf.textContent = `Помогает духу быстрее накапливать ци при медитации. Скорость тренировки характеристик не меняет. ${parts.join(" | ")}. После +300% рост замедляется; итог +${Math.round(effective * 100)}%.`;
-        }
     }
 
     // Мастерство техник (скорость XP техник)
@@ -716,7 +685,12 @@ function updateUI() {
         bodyNameEl.textContent = displayName + (ascLevel > 0 ? ` ★${ascLevel}` : "");
         bodyNameEl.style.color = body ? body.color : "#888";
         if (tipBody && body) {
-            tipBody.textContent = `Тело задаёт особенности этой жизни. ${_v2UpdateCopy(body.description)}${body.perkDesc ? " | " + _v2UpdateCopy(body.perkDesc) : ""}`;
+            const ascension = ascLevel > 0 ? ascensions?.[ascLevel - 1] : null;
+            const basePerk = body.perkDesc ? ` | Базовые особенности: ${_v2UpdateCopy(body.perkDesc)}` : "";
+            const ascendedPerk = ascension
+                ? ` | ★${ascLevel}: ${_v2UpdateCopy(ascension.desc)}. Указанные значения заменяют базовые.`
+                : "";
+            tipBody.textContent = `Тело задаёт особенности этой жизни. ${_v2UpdateCopy(body.description)}${basePerk}${ascendedPerk}`;
         }
     }
 
@@ -779,12 +753,14 @@ function updateUI() {
         const parts = [];
         const base = 5 + game.realmIndex * 3;
         parts.push(`База: ${base}`);
-        const spiMult = game.getSpiritMultiplier();
+        const spiMult = game.getSpiritBaseMultiplier();
         if (spiMult > 1) parts.push(`Дух: ×${spiMult.toFixed(2)}`);
+        const meditationMult = game.getMeditationBoostMultiplier();
+        if (meditationMult > 1) parts.push(`Усиление медитации: ×${meditationMult.toFixed(2)}`);
         const strMult = game.getStrengthMultiplier();
         if (strMult > 1) parts.push(`Сила: ×${strMult.toFixed(2)}`);
         const qiMult = game.getQiMultiplier();
-        if (qiMult > 1) parts.push(`Корень и эпоха: ×${qiMult.toFixed(2)}`);
+        if (qiMult > 1) parts.push(`Корень, эпоха, мир и Просветление: ×${qiMult.toFixed(2)}`);
         const techMult = game.getTechQiMultiplier();
         if (techMult > 1) parts.push(`Техники: ×${techMult.toFixed(2)}`);
         const formMult = 1 + game.getFormationBonus("qi");

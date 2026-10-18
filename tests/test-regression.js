@@ -322,6 +322,29 @@ test('Дыхание Уединения увеличивает множител�
     assert.equal(ctx.run('game.getSpiritMultiplier()'), base);
 });
 
+test('Ци и усиление медитации повышают один темп без ускорения опыта характеристик', () => {
+    const ctx = createContext();
+    ctx.run('game.realmIndex=3; game.spirit=10; game.strength=10; game.spiritualRoot={qiMultiplier:1,elements:[]};');
+    const baseQi = ctx.run('game.getMeditationQiPerSec()');
+    const baseSpirit = ctx.run('game.getSpiritBaseMultiplier()');
+    const baseStatXp = ctx.run('game.statXpPerTick("spirit")');
+
+    ctx.run('game.getFormationBonus = key => key === "statXpSpeed" ? 0.2 : 0;');
+    const meditationQi = ctx.run('game.getMeditationQiPerSec()');
+    assert.equal(ctx.run('game.getSpiritBaseMultiplier()'), baseSpirit);
+    assert.equal(ctx.run('game.getMeditationBoostMultiplier()'), 1.2);
+    assert.equal(ctx.run('game.getSpiritMultiplier()'), baseSpirit * 1.2);
+    assert.equal(ctx.run('game.statXpPerTick("spirit")'), baseStatXp);
+
+    ctx.run('game.getFormationBonus = key => key === "qi" ? 0.2 : 0;');
+    assert.equal(ctx.run('game.getSpiritBaseMultiplier()'), baseSpirit);
+    assert.equal(ctx.run('game.getMeditationBoostMultiplier()'), 1);
+    assert.equal(ctx.run('game.getMeditationQiPerSec()'), meditationQi);
+    assert.equal(ctx.run('game.statXpPerTick("spirit")'), baseStatXp);
+    assert.equal(baseQi, 29);
+    assert.equal(meditationQi, 34);
+});
+
 test('Печь применяет заявленные 8% к базовой пилюле', () => {
     const ctx = createContext();
     ctx.run(`game.formations.alchemyFurnace=1; game.selectedFormations=['alchemyFurnace']; game.pills=1;`);

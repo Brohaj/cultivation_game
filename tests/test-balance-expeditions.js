@@ -224,5 +224,23 @@ test('Воин и Алое Пламя сокращают число успешн
     assert.equal(ctx.run("game.adventureRumors.some(r=>r.id==='ascend2_beast_cave')"), true);
 });
 
+test('Звёзды Воина последовательно сокращают пороги походов, в том числе с Алым Пламенем', () => {
+    const ctx = createContext();
+    ctx.run("game.prestige.lastBody='wandering_warrior';");
+    const thresholds = [
+        { star: 0, alone: [9, 18], withSect: [8, 16] },
+        { star: 1, alone: [9, 17], withSect: [8, 15] },
+        { star: 2, alone: [8, 16], withSect: [7, 14] },
+        { star: 3, alone: [8, 15], withSect: [7, 13] },
+    ];
+    for (const { star, alone, withSect } of thresholds) {
+        ctx.run(`game.prestige.bodyAscensions.wandering_warrior=${star}; game.sect=null;`);
+        assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), alone, `Воин ★${star}`);
+        ctx.run("game.sect={id:'crimson_flame',rank:0,contribution:0};");
+        assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), withSect, `Воин ★${star} и Алое Пламя`);
+        assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('heavenly_auction',1),game.getLocationAscensionRequirement('heavenly_auction',2)]"), [10, 20]);
+    }
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

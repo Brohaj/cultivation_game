@@ -706,7 +706,7 @@ function exportDetailedSave() {
         // --- Дао скорость ---
         daoSpeedMult: typeof game.getDaoSpeedMultiplier === "function" ? game.getDaoSpeedMultiplier() : 1,
 
-        // --- Совершенствование (statXpSpeed) ---
+        // --- Усиление медитации (statXpSpeed): отдельный множитель ци, не XP характеристик ---
         statXpSpeedTotal: (() => {
             const form = game.getFormationBonus("statXpSpeed");
             const sect = game.getSectBonus("statXpSpeed");

@@ -118,7 +118,7 @@ const ARTIFACT_EFFECT_POOLS = {
         { key: "qi",             min: 3, max: 8,  name: "Ци (%)" },
         { key: "techXpSpeed",    min: 3, max: 8,  name: "Мастерство техник (%)" },
         { key: "stoneIncome",    min: 3, max: 8,  name: "Доход камней (%)" },
-        { key: "statXpSpeed",    min: 2, max: 6,  name: "Совершенствование (%)" },
+        { key: "statXpSpeed",    min: 2, max: 6,  name: "Усиление медитации (%)" },
     ],
 };
 
@@ -244,7 +244,7 @@ const ARTIFACT_EFFECT_SUFFIXES = {
     pillEffect:        "Алхимии",
     demonReduction:    "Покоя",
     dangerReward:      "Охоты",
-    statXpSpeed:       "Роста",
+    statXpSpeed:       "Медитации",
     karmaBonus:        "Кармы",
     timeSpeed:         "Времени",
     daoSpeed:          "Просветления",

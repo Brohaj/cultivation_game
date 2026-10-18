@@ -85,20 +85,27 @@ Object.assign(game, {
         return 1 + resonance * 0.12;
     },
 
-    // Множитель духа (flat бонус от артефактов)
-    getSpiritMultiplier() {
+    // Вклад духа в скорость ци без усиления медитации
+    getSpiritBaseMultiplier() {
         const total = this.spirit + this.getArtifactBonus("spirit");
-        // Совершенствование: +% к духу вместо скорости прокачки
-        const rawPerfBonus = this.getFormationBonus("statXpSpeed") + this.getSectBonus("statXpSpeed")
-            + this.getArtifactBonus("statXpSpeed") * 0.01 + this.getTechBonus("statXpSpeed");
-        const _spPerks = this.getActiveBodyPerks();
-        const karmaPerf = ((this.prestige.karmaUpgrades.statSpeed || 0) + (_spPerks.freeUpgradeLevel || 0)) * 0.05;
-        // Софт-кап на perfBonus: после +300% уходит в sqrt
-        const totalPerf = 1 + softcap(rawPerfBonus + karmaPerf, 3.0, 0.5);
         // Софт-кап на spirit: линейно до порога (100/150/200 по эпохе), sqrt после
         const statCap = this.getEraStatSoftcap();
         const spiritBonus = softcap(total, statCap, 0.5) * 0.06;
-        return (1 + spiritBonus + this.getTechBonus("spirit")) * totalPerf;
+        return 1 + spiritBonus + this.getTechBonus("spirit");
+    },
+
+    // Отдельный множитель темпа медитации; на XP характеристик не влияет
+    getMeditationBoostMultiplier() {
+        const rawPerfBonus = this.getFormationBonus("statXpSpeed") + this.getSectBonus("statXpSpeed")
+            + this.getArtifactBonus("statXpSpeed") * 0.01 + this.getTechBonus("statXpSpeed");
+        const perks = this.getActiveBodyPerks();
+        const karmaPerf = ((this.prestige.karmaUpgrades.statSpeed || 0) + (perks.freeUpgradeLevel || 0)) * 0.05;
+        // Софт-кап на perfBonus: после +300% уходит в sqrt
+        return 1 + softcap(rawPerfBonus + karmaPerf, 3.0, 0.5);
+    },
+
+    getSpiritMultiplier() {
+        return this.getSpiritBaseMultiplier() * this.getMeditationBoostMultiplier();
     },
 
     // Множитель силы (пассивный бонус ци)
@@ -163,7 +170,7 @@ Object.assign(game, {
         const base = 1.0;
         const levelMult = Math.pow(level, 0.7);
         const realmMult = 1 + this.realmIndex * 0.15;
-        // Совершенствование теперь в getSpiritMultiplier(), не здесь
+        // Усиление медитации учитывается в итоговом ци, а не в XP характеристик.
         const formationMult = 1;
         const sectMult = 1;
         const artifactMult = 1;

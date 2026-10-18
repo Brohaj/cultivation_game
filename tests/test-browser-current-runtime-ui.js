@@ -67,6 +67,23 @@ const {chromium}=require('playwright');
             assert.equal(await page.locator('#btn-breakthrough').isDisabled(),true);
             assert.equal(await page.locator('#v2-breakthrough-risk').isVisible(),false);
         });
+        await check('Звезда тела и множители ци отображаются без устаревшего дублирования',async()=>{
+            await fresh();
+            await page.evaluate(()=>{
+                game.prestige.lastBody='wandering_warrior';
+                game.prestige.bodyAscensions.wandering_warrior=3;
+                game.prestige.karmaUpgrades.statSpeed=4;
+                game.prestige.karmaUpgrades.enlightenment=4;
+                updateUI();
+            });
+            assert.match(await page.locator('#body-name').textContent(),/Бессмертный Странник ★3/);
+            const bodyTip=await page.locator('#tip-body').textContent();
+            assert.match(bodyTip,/25% меньше успешных походов/);
+            assert.match(bodyTip,/Пространственное Кольцо: 30 артефактов/);
+            assert.match(await page.locator('#tip-qi-rate').textContent(),/Усиление медитации: ×1\.20/);
+            assert.doesNotMatch(await page.locator('#tip-spirit').textContent(),/Усиление медитации/);
+            assert.equal(await page.locator('#perfection-row').count(),0);
+        });
         await check('Подсказка демона видна при нулевом риске и объясняет порог с клавиатуры',async()=>{
             await fresh();
             await page.evaluate(()=>{game.realmIndex=3;game.subLevel=1;game.daoLevel=0;game.luck=100;updateUI();});

@@ -270,7 +270,7 @@ game._showDeathTimer                         — опциональный пер
 |------|-------|----------|
 | formulas.js | `qiNeeded()` | Ци для прорыва |
 | | `qiPerSec()` | Ци/сек (авто, × формация × техники × артефакты × секта) |
-| | `getSpiritMultiplier()` | Множитель духа: (1 + softcap(totalSpirit) × 0.06 + techSpirit) × (1 + softcap(perf)). perf включает Совершенствование |
+| | `getSpiritMultiplier()` | Вклад духа в ци × отдельный множитель усиления медитации (`statXpSpeed` и кармическое `statSpeed`); XP характеристик не ускоряется |
 | | `getStrengthMultiplier()` | Множитель ци от силы: 1 + softcap(totalStrength) × 0.03 + techStrength |
 | | `statXpNeeded(stat)` | XP до следующего уровня стата (baseCost × level × 1.05^level) |
 | | `statXpPerTick(stat)` | XP стата в секунду (уровень и реалм); тик начисляет 1/5, активный стат 100%, остальные 15% |

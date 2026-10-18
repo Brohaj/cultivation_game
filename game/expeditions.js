@@ -60,7 +60,7 @@ Object.assign(game, {
         if (locationId === "heavenly_auction") return base;
         const body = this.getActiveBodyPerks().expeditionProgressReduction || 0;
         const sect = this.getSectBonus("expeditionProgressReduction");
-        const reduction = Math.min(0.20, Math.max(0, body + sect));
+        const reduction = Math.min(0.35, Math.max(0, body + sect));
         return Math.ceil(base * (1 - reduction));
     },
 
