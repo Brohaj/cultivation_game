@@ -156,5 +156,73 @@ test('Карточки нового UI показывают действител
     assert.doesNotMatch(auction,/Опыт Дао|v2-resource-qi/);
 });
 
+test('Карточки походов показывают пороги испытаний всех царств с учётом текущего пути', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7;game.stones=10000;
+        game.prestige.lastBody='wandering_warrior';
+        game.sect={id:'crimson_flame',rank:0,contribution:0};
+        game.expeditionCompletions={spirit_forest:4,beast_cave:4,forgotten_ruins:4,
+            heavenly_auction:4,demon_abyss:4,immortal_palace:4};
+        const cards=[];const container={..._testElement(),innerHTML:'',appendChild(el){cards.push(el);}};
+        document.getElementById=id=>id==='expeditions-list'?container:null;
+        document.createElement=()=>({..._testElement(),appendChild(el){cards.push(el);}});
+        renderExpeditions();`);
+    for (const locationId of ['spirit_forest', 'beast_cave', 'forgotten_ruins',
+        'heavenly_auction', 'demon_abyss', 'immortal_palace']) {
+        const required = ctx.run(`game.getLocationAscensionRequirement('${locationId}',1)`);
+        const html = ctx.run(`cards.find(card=>card.dataset?.location==='${locationId}').innerHTML`);
+        assert.ok(html.includes(`4/${required} успешных походов`), locationId);
+    }
+    assert.ok(ctx.run(`game.getLocationAscensionRequirement('spirit_forest',1)`) < 10);
+    assert.equal(ctx.run(`game.getLocationAscensionRequirement('heavenly_auction',1)`), 10);
+    const forest = ctx.run(`cards.find(card=>card.dataset?.location==='spirit_forest').innerHTML`);
+    const secondRequirement = ctx.run(`game.getLocationAscensionRequirement('spirit_forest',2)`);
+    assert.ok(secondRequirement < 20);
+    assert.ok(forest.includes(`Корень Мира» (${secondRequirement})`));
+    const sectRealm = ctx.run(`cards.find(card=>card.dataset?.location==='sect_secret_realm').innerHTML`);
+    assert.doesNotMatch(sectRealm, /успешных походов|Вознесение завершено/);
+
+    ctx.run(`game.ascendedLocations.spirit_forest=1;
+        game.expeditionCompletions.spirit_forest=game.getLocationAscensionRequirement('spirit_forest',2);
+        renderExpeditions();`);
+    const higherForest = ctx.run(`cards.filter(card=>card.dataset?.location==='spirit_forest').at(-1).innerHTML`);
+    assert.ok(higherForest.includes(`${secondRequirement}/${secondRequirement} успешных походов`));
+    assert.match(higherForest, /Высшее испытание доступно/);
+});
+
+test('Воин и Алое Пламя сокращают число успешных походов до глубины царства', () => {
+    const ctx = createContext();
+    ctx.run(`game.realmIndex=7;game.stones=10000;game.daoEssence=1000;game.artifactDust=1000;`);
+    assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), [10,20]);
+    ctx.run("game.prestige.lastBody='wandering_warrior';");
+    assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), [9,18]);
+    ctx.run("game.prestige.lastBody='peasant';game.sect={id:'crimson_flame',rank:0,contribution:0};");
+    assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), [9,18]);
+    ctx.run("game.prestige.lastBody='wandering_warrior';");
+    assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('beast_cave',1),game.getLocationAscensionRequirement('beast_cave',2)]"), [8,16]);
+    assert.deepEqual(json(ctx, "[game.getLocationAscensionRequirement('heavenly_auction',1),game.getLocationAscensionRequirement('heavenly_auction',2)]"), [10,20]);
+
+    ctx.run("game.expeditionCompletions.spirit_forest=7;");
+    assert.equal(ctx.run("game.canAscendLocation('spirit_forest')"), false);
+    ctx.run("game.expeditionCompletions.spirit_forest=8;");
+    assert.equal(ctx.run("game.canAscendLocation('spirit_forest')"), true);
+    assert.equal(ctx.run("game.ascendLocation('spirit_forest')"), true);
+    assert.equal(ctx.run('game.expeditionCompletions.spirit_forest'), 8);
+
+    ctx.run(`game.expeditionCompletions.beast_cave=7;game.getCombatPower=()=>10000;
+        game._rollExpeditionRumor=()=>{};game.checkMilestones=()=>{};Math.random=()=>.5;
+        game.startExpedition('beast_cave');game._completeExpedition();`);
+    assert.equal(ctx.run('game.expeditionCompletions.beast_cave'), 8);
+    assert.equal(ctx.run("game.adventureRumors.some(r=>r.id==='ascend_beast_cave')"), true);
+    ctx.run("game.prestige.lastBody='peasant';game.sect={id:'jade_purity',rank:0,contribution:0};game.tickAdventures();");
+    assert.equal(ctx.run("game.adventureRumors.some(r=>r.id==='ascend_beast_cave')"), true);
+    assert.equal(ctx.run("game.acceptAdventure('ascend_beast_cave')"), true);
+    ctx.run("game.activeAdventures=[];game.prestige.lastBody='wandering_warrior';game.sect.id='crimson_flame';");
+    ctx.run(`game.ascendedLocations.beast_cave=1;game.expeditionCompletions.beast_cave=15;
+        game.startExpedition('beast_cave');game._completeExpedition();`);
+    assert.equal(ctx.run('game.expeditionCompletions.beast_cave'), 16);
+    assert.equal(ctx.run("game.adventureRumors.some(r=>r.id==='ascend2_beast_cave')"), true);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exitCode = 1;

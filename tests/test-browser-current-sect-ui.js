@@ -161,6 +161,40 @@ const makeSyntheticSectPlayer=require('./test-synthetic-player');
             assert.match(daoTip,/\+3[.,]0 опыта пути\/год/);
             assert.doesNotMatch(daoTip,/×0[.,]5/);
         });
+        await check('Боевой путь показывает укороченные пороги углубления царств',async()=>{
+            await page.evaluate(()=>{
+                game.reset();game.stop();game.selectSpiritualRoot('common');
+                game.realmIndex=7;game.stones=10000;game.daoEssence=1000;game.artifactDust=1000;
+                game.prestige.lastBody='wandering_warrior';
+                game.sect={id:'crimson_flame',rank:0,contribution:0};
+                game.expeditionCompletions={spirit_forest:4,beast_cave:4,heavenly_auction:4};
+                switchTab('sect');updateUI();
+            });
+            assert.match(await page.locator('.sect-active-bonuses').innerText(),/Походы до углубления −10%/);
+            await page.evaluate(()=>switchTab('expeditions'));
+            assert.match(await page.locator('.expedition-card[data-location="spirit_forest"]').innerText(),/4\/8 успешных походов/);
+            assert.match(await page.locator('.expedition-card[data-location="spirit_forest"]').innerText(),/Корень Мира» \(16\)/);
+            assert.match(await page.locator('.expedition-card[data-location="beast_cave"]').innerText(),/4\/8 успешных походов/);
+            assert.match(await page.locator('.expedition-card[data-location="heavenly_auction"]').innerText(),/4\/10 успешных походов/);
+            const width=await page.locator('.expedition-card[data-location="spirit_forest"]').evaluate(card=>({
+                card:card.getBoundingClientRect().width,content:card.scrollWidth
+            }));
+            assert.ok(width.content<=width.card+2);
+            await page.setViewportSize({width:390,height:900});
+            const mobileWidth=await page.locator('.expedition-card[data-location="spirit_forest"]').evaluate(card=>({
+                card:card.getBoundingClientRect().width,content:card.scrollWidth
+            }));
+            assert.ok(mobileWidth.content<=mobileWidth.card+2);
+            await page.setViewportSize({width:1280,height:900});
+            await page.evaluate(()=>{
+                game.expeditionCompletions.spirit_forest=8;
+                game.adventureRumors=[{id:'ascend_spirit_forest',appearedYear:game.years}];
+                game.prestige.lastBody='peasant';game.sect.id='jade_purity';
+                renderExpeditions();renderAdventures();
+            });
+            assert.match(await page.locator('.expedition-card[data-location="spirit_forest"]').innerText(),/8 успешных походов · Первое испытание доступно/);
+            assert.equal(await page.locator('.adventure-rumor button').first().isEnabled(),true);
+        });
         assert.deepEqual(errors,[]);console.log(`${passed} current sect UI scenarios passed,0 page errors`);
     } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

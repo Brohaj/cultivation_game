@@ -231,7 +231,9 @@ function renderAdventures() {
             const yearsLeft = isAscend ? Infinity : Math.max(0, 100 - (game.years - rumor.appearedYear));
             const cost = adv.ascendCost || {};
             const hasEntryCost = (!cost.stones || game.stones >= cost.stones) && (!cost.essence || game.daoEssence >= cost.essence) && (!cost.dust || game.artifactDust >= cost.dust);
-            const canAccept = !game.gameOver && !game.pendingRebirth && game.activeAdventures.length < 1 && adv.condition(game) && !game.completedAdventures.includes(adv.id) && hasEntryCost;
+            const canAccept = !game.gameOver && !game.pendingRebirth && game.activeAdventures.length < 1
+                && (adv.condition(game) || game.canKeepAscensionRumor(adv.id))
+                && !game.completedAdventures.includes(adv.id) && hasEntryCost;
 
             const bossPower = _getAdventureBossPower(adv);
 

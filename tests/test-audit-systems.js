@@ -178,7 +178,8 @@ test('Старое вознесение царства не списывает �
         const ctx = createContext();
         ctx.run(`game.realmIndex=7;game.strength=10000;game.stones=10000;game.daoEssence=1000;game.artifactDust=1000;
             Math.random=()=>.5;game.startExpedition('spirit_forest');
-            game.years+=game.getAdjustedExpeditionDuration();game.tickExpedition();`);
+            game.years+=game.getAdjustedExpeditionDuration();game.tickExpedition();
+            game.expeditionCompletions.spirit_forest=game.getLocationAscensionRequirement('spirit_forest',1);`);
         if (status === 'dead') ctx.run('game.gameOver=true;');
         if (status === 'pending') ctx.run('game.beginRebirth(false);');
         const snapshot = 'JSON.stringify({stones:game.stones,essence:game.daoEssence,dust:game.artifactDust,ascended:game.ascendedLocations})';

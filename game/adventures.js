@@ -103,6 +103,17 @@ Object.assign(game, {
         return true;
     },
 
+    // Уже найденное испытание углубления остаётся доступным после смены тела/секты,
+    // даже если текущая скидка к числу походов больше не действует.
+    canKeepAscensionRumor(adventureId) {
+        const second = adventureId.startsWith("ascend2_");
+        if (!second && !adventureId.startsWith("ascend_")) return false;
+        const locationId = adventureId.slice(second ? "ascend2_".length : "ascend_".length);
+        if (!LOCATIONS.some(loc => loc.id === locationId)) return false;
+        const tier = this.ascendedLocations[locationId] || 0;
+        return second ? tier === 1 : tier === 0;
+    },
+
     // === ПРИНЯТЬ ПРИКЛЮЧЕНИЕ ===
 
     acceptAdventure(adventureId) {
@@ -112,7 +123,8 @@ Object.assign(game, {
         if (rumorIdx === -1) return false;
 
         const adv = ADVENTURES.find(a => a.id === adventureId);
-        if (!adv || !adv.condition(this) || this.completedAdventures.includes(adventureId)) return false;
+        if (!adv || (!adv.condition(this) && !this.canKeepAscensionRumor(adventureId))
+            || this.completedAdventures.includes(adventureId)) return false;
 
         // Стоимость входа (для приключений вознесения)
         if (adv.ascendCost) {
@@ -274,7 +286,8 @@ Object.assign(game, {
         // Истечение слухов (100 лет)
         this.adventureRumors = this.adventureRumors.filter(r => {
             const adv = ADVENTURES.find(a => a.id === r.id);
-            if (!adv || !adv.condition(this) || this.completedAdventures.includes(r.id)) return false;
+            if (!adv || (!adv.condition(this) && !this.canKeepAscensionRumor(r.id))
+                || this.completedAdventures.includes(r.id)) return false;
             if (this.years - r.appearedYear >= 100 && !r.id.startsWith("ascend")) {
                 if (adv) addLog(`Слух о "${adv.name}" развеялся...`, "system");
                 return false;

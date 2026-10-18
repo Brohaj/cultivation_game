@@ -83,13 +83,15 @@ function renderSects() {
                 pillEffect: "Эффект пилюль", qiRetention: "Удержание ци",
                 techXpSpeed: "Обучение техник", statXpSpeed: "Усиление медитации",
                 karmaMultiplier: "Карма", disassembleBonus: "Разбор артефактов",
-                missionCdMult: "Ожидание заданий"
+                missionCdMult: "Ожидание заданий", expeditionProgressReduction: "Походы до углубления царств"
             };
             const bonusParts = [];
             if (sect.dao) {
                 for (const [k, v] of Object.entries(sect.dao)) {
                     if (k === "missionCdMult") {
                         bonusParts.push(`${v.min > 1 ? "x" + v.min.toFixed(1) : "x" + v.min.toFixed(1)} -> ${v.max < 1 ? "x" + v.max.toFixed(1) : "x" + v.max.toFixed(1)} ${bonusNames[k] || k}`);
+                    } else if (k === "expeditionProgressReduction") {
+                        bonusParts.push(`−${Math.round(v.min * 100)}% ${bonusNames[k]}`);
                     } else if (k === "karmaMultiplier") {
                         bonusParts.push(`x${v.min.toFixed(2)} -> x${v.max.toFixed(2)} ${bonusNames[k] || k}`);
                     } else {
@@ -211,10 +213,12 @@ function _renderV2SectMember(container, sect, existingDisciplesSection) {
         qi: "Ци", combatPower: "Боевая мощь", breakthroughBonus: "Шанс прорыва", dangerReward: "Награды за опасность",
         pillEffect: "Пилюли", qiRetention: "Сохранение ци", techXpSpeed: "Обучение", statXpSpeed: "Медитация",
         karmaMultiplier: "Карма", disassembleBonus: "Разбор", missionCdMult: "Ожидание заданий",
+        expeditionProgressReduction: "Походы до углубления",
     };
     const bonusParts = Object.keys(sect.dao || {}).map(key => {
         const value = game.getSectBonus(key);
-        const amount = key === "karmaMultiplier" || key === "missionCdMult" ? `×${Number(value.toFixed(2))}`
+        const amount = key === "expeditionProgressReduction" ? `−${Number((value * 100).toFixed(1))}%`
+            : key === "karmaMultiplier" || key === "missionCdMult" ? `×${Number(value.toFixed(2))}`
             : `${value >= 0 ? "+" : ""}${Number((value * 100).toFixed(1))}%`;
         const resource = key === "pillEffect" ? " v2-resource-pills" : "";
         return `<span class="sect-bonus-item${resource}${value < 0 ? " sect-bonus-negative" : ""}">${bonusNames[key] || key} ${amount}</span>`;

@@ -1,12 +1,12 @@
 // ADVENTURES/ASCENSION.JS — Приключения вознесения локаций
-// Разблокируются после 10 завершений экспедиции
+// Разблокируются после нужного числа завершённых экспедиций для локации
 // Завершение = локация вознесена (×2 награды)
 // Зависит от: adventures/_base.js, locations.js
 
 function revealSpiritForestDepth(g) {
-    if ((g.expeditionCompletions?.spirit_forest || 0) < 20) return;
+    if ((g.expeditionCompletions?.spirit_forest || 0) < g.getLocationAscensionRequirement("spirit_forest", 2)) return;
     if (g.addAdventureRumor("ascend2_spirit_forest")) {
-        addLog("Двадцать походов открыли проход к Корню Мира.", "breakthrough");
+        addLog("Походы открыли проход к Корню Мира.", "breakthrough");
     }
 }
 
@@ -15,16 +15,16 @@ ADVENTURES.push(
     {
         id: "ascend_spirit_forest",
         name: "Сердце Древнего Леса",
-        description: "Десять походов в Лес Духовных Трав открыли вам его тайну: в самом центре, за стеной тумана, растёт дерево, которому столько же лет, сколько миру.",
+        description: "Походы в Лес Духовных Трав открыли вам его тайну: в самом центре, за стеной тумана, растёт дерево, которому столько же лет, сколько миру.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).spirit_forest || 0;
-            return completions >= 10 && !g.ascendedLocations.spirit_forest;
+            return completions >= g.getLocationAscensionRequirement("spirit_forest", 1) && !g.ascendedLocations.spirit_forest;
         },
-        rumor: "Каждый раз, возвращаясь из Леса Духовных Трав, вы замечали туман на западной опушке. Десять походов — и вы наконец поняли: туман не случаен. Он что-то скрывает.",
+        rumor: "Каждый раз, возвращаясь из Леса Духовных Трав, вы замечали туман на западной опушке. Теперь вы поняли: туман не случаен. Он что-то скрывает.",
         ascendCost: { stones: 300, essence: 50, dust: 50 },
         steps: [
             {
-                text: "Западная опушка Леса Духовных Трав. Туман здесь густой, как молоко — не духовный, а живой. Он отталкивает тех, кто идёт без цели. Но вы были здесь десять раз. Лес вас знает. Туман расступается, открывая тропу, заросшую светящимся мхом. Воздух тяжёлый от ци — каждый вдох как глоток концентрированной энергии.",
+                text: "Западная опушка Леса Духовных Трав. Туман здесь густой, как молоко — не духовный, а живой. Он отталкивает тех, кто идёт без цели. Но вы уже знаете дорогу. Лес вас знает. Туман расступается, открывая тропу, заросшую светящимся мхом. Воздух тяжёлый от ци — каждый вдох как глоток концентрированной энергии.",
                 choices: [
                     {
                         text: "Идти по тропе. Лес позвал — значит, пора",
@@ -102,12 +102,12 @@ ADVENTURES.push(
     {
         id: "ascend_beast_cave",
         name: "Логово Праотца Зверей",
-        description: "Десять экспедиций в Пещеру Древнего Зверя. Каждый раз вы заходили глубже. Теперь вы знаете: пещера не заканчивается. Она уходит вниз — туда, где спит тот, кто был первым.",
+        description: "После походов в Пещеру Древнего Зверя вы нашли путь вглубь. Теперь вы знаете: пещера не заканчивается. Она уходит вниз — туда, где спит тот, кто был первым.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).beast_cave || 0;
-            return completions >= 10 && !g.ascendedLocations.beast_cave;
+            return completions >= g.getLocationAscensionRequirement("beast_cave", 1) && !g.ascendedLocations.beast_cave;
         },
-        rumor: "На десятом походе вы заметили то, чего раньше не видели: трещина в задней стене пещеры. За ней — тёплый воздух и запах зверя. Но не обычного зверя. Чего-то древнего.",
+        rumor: "В последнем походе вы заметили то, чего раньше не видели: трещину в задней стене пещеры. За ней — тёплый воздух и запах зверя. Но не обычного зверя. Чего-то древнего.",
         ascendCost: { stones: 500, essence: 80, dust: 80 },
         steps: [
             {
@@ -180,16 +180,16 @@ ADVENTURES.push(
     {
         id: "ascend_forgotten_ruins",
         name: "Запретный Архив Секты",
-        description: "Десять экспедиций в руины — и вы нашли то, что не находил никто: лестницу вниз, под фундамент. Секта не была забыта. Она была запечатана.",
+        description: "После походов в руины вы нашли то, что не находил никто: лестницу вниз, под фундамент. Секта не была забыта. Она была запечатана.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).forgotten_ruins || 0;
-            return completions >= 10 && !g.ascendedLocations.forgotten_ruins;
+            return completions >= g.getLocationAscensionRequirement("forgotten_ruins", 1) && !g.ascendedLocations.forgotten_ruins;
         },
-        rumor: "На десятом походе в Руины вы заметили: формация в полу — не защитная. Она скрывает лестницу. Кто-то очень не хотел, чтобы то, что внизу, было найдено.",
+        rumor: "В последнем походе в Руины вы заметили: формация в полу — не защитная. Она скрывает лестницу. Кто-то очень не хотел, чтобы то, что внизу, было найдено.",
         ascendCost: { stones: 800, essence: 120, dust: 100 },
         steps: [
             {
-                text: "Формация в полу руин разблокирована — десять походов дали достаточно понимания её структуры. Лестница ведёт в подземелье: стены из чёрного мрамора, руны предупреждения на каждом шагу. «Запрещено Советом Девяти.» «Нарушителю — уничтожение.» «Знание внутри опаснее демонов.» Воздух сухой, холодный. Ци здесь странная — закрученная в спирали, как в ловушке.",
+                text: "Формация в полу руин разблокирована — походы дали достаточно понимания её структуры. Лестница ведёт в подземелье: стены из чёрного мрамора, руны предупреждения на каждом шагу. «Запрещено Советом Девяти.» «Нарушителю — уничтожение.» «Знание внутри опаснее демонов.» Воздух сухой, холодный. Ци здесь странная — закрученная в спирали, как в ловушке.",
                 choices: [
                     {
                         text: "Обезвредить руны-ловушки и войти в архив",
@@ -267,7 +267,7 @@ ADVENTURES.push(
         description: "Десять визитов на Небесный Аукцион. Постоянные клиенты привлекают внимание — хозяин зала приглашает вас в закрытый зал.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).heavenly_auction || 0;
-            return completions >= 10 && !g.ascendedLocations.heavenly_auction;
+            return completions >= g.getLocationAscensionRequirement("heavenly_auction", 1) && !g.ascendedLocations.heavenly_auction;
         },
         rumor: "После десятого аукциона к вам подошёл человек в чёрной маске. «Господин, вы достаточно долго торгуете здесь. Хозяин приглашает вас... вниз.» Он указал на неприметную дверь за портьерой.",
         ascendCost: { stones: 1500, essence: 80, dust: 80 },
@@ -325,12 +325,12 @@ ADVENTURES.push(
     {
         id: "ascend_demon_abyss",
         name: "Сердце Бездны",
-        description: "Десять экспедиций в Бездну. С каждым разом вы спускались глубже. Теперь вы чувствуете пульс — ритмичный, глубокий. Это бьётся сердце самой Бездны.",
+        description: "После походов в Бездну вы научились спускаться глубже. Теперь вы чувствуете пульс — ритмичный, глубокий. Это бьётся сердце самой Бездны.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).demon_abyss || 0;
-            return completions >= 10 && !g.ascendedLocations.demon_abyss;
+            return completions >= g.getLocationAscensionRequirement("demon_abyss", 1) && !g.ascendedLocations.demon_abyss;
         },
-        rumor: "На десятой экспедиции в Бездну земля под ногами пульсировала. Не землетрясение — ритм. Как сердцебиение. Демоны вокруг замерли и склонили головы. Они молились. Чему-то внизу.",
+        rumor: "В последней экспедиции в Бездну земля под ногами пульсировала. Не землетрясение — ритм. Как сердцебиение. Демоны вокруг замерли и склонили головы. Они молились. Чему-то внизу.",
         ascendCost: { stones: 2000, essence: 200, dust: 150 },
         steps: [
             {
@@ -392,12 +392,12 @@ ADVENTURES.push(
         id: "ascend_immortal_palace",
         challengeRealm: 7,
         name: "Тронный Зал Бессмертного",
-        description: "Десять экспедиций во Дворец. Вы изучили каждый зал, каждый коридор. Осталось одно место, куда вы не заходили — Тронный Зал. Двери открываются только тому, кого Дворец признал достойным.",
+        description: "После походов во Дворец вы изучили его залы и коридоры. Осталось одно место, куда вы не заходили — Тронный Зал. Двери открываются только тому, кого Дворец признал достойным.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).immortal_palace || 0;
-            return completions >= 10 && !g.ascendedLocations.immortal_palace;
+            return completions >= g.getLocationAscensionRequirement("immortal_palace", 1) && !g.ascendedLocations.immortal_palace;
         },
-        rumor: "На десятом походе во Дворец двери Тронного Зала дрогнули. Печати на них потускнели — десять визитов ослабили защиту. Или... Дворец решил, что вы готовы.",
+        rumor: "В последнем походе во Дворец двери Тронного Зала дрогнули. Печати на них потускнели от ваших визитов. Или... Дворец решил, что вы готовы.",
         ascendCost: { stones: 3000, essence: 300, dust: 250 },
         steps: [
             {
@@ -475,7 +475,7 @@ ADVENTURES.push(
         description: "Древо показало вам путь вниз — по корням, к подземному озеру. Источник всей ци леса. Озеро живое, и оно не пускает чужих.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).spirit_forest || 0;
-            return completions >= 20 && g.ascendedLocations.spirit_forest === 1;
+            return completions >= g.getLocationAscensionRequirement("spirit_forest", 2) && g.ascendedLocations.spirit_forest === 1;
         },
         rumor: "С каждым походом в Сердце Древнего Леса корни Древа расступаются чуть шире. Теперь вы видите: между ними — проход вниз. Оттуда поднимается влажный воздух и свечение, от которого дрожат меридианы.",
         ascendCost: { stones: 600, essence: 100, dust: 100 },
@@ -549,7 +549,7 @@ ADVENTURES.push(
         description: "Праотец Зверей признал вас. Теперь он открывает свои охотничьи территории — тоннели, которых раньше не существовало. Там водятся звери из эпохи до культиваторов.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).beast_cave || 0;
-            return completions >= 20 && g.ascendedLocations.beast_cave === 1;
+            return completions >= g.getLocationAscensionRequirement("beast_cave", 2) && g.ascendedLocations.beast_cave === 1;
         },
         rumor: "Праотец поднялся. Впервые за тысячелетия он встал на все четыре лапы. Земля вздрогнула. Он повернул голову к задней стене пещеры — и стена раскололась. За ней — тоннель, от которого несёт кровью и древностью.",
         ascendCost: { stones: 1000, essence: 150, dust: 150 },
@@ -613,7 +613,7 @@ ADVENTURES.push(
         description: "В глубине Запретного Архива — дверь, которую вы раньше не замечали. Не запечатанная — заколоченная. Изнутри.",
         condition: (g) => {
             const completions = (g.expeditionCompletions || {}).forgotten_ruins || 0;
-            return completions >= 20 && g.ascendedLocations.forgotten_ruins === 1;
+            return completions >= g.getLocationAscensionRequirement("forgotten_ruins", 2) && g.ascendedLocations.forgotten_ruins === 1;
         },
         rumor: "С каждым походом в Запретный Архив вы замечали: одна дверь в дальнем конце зала... дрожит. Как будто кто-то стучит изнутри. Тихо. Методично. Десять тысяч лет.",
         ascendCost: { stones: 1500, essence: 200, dust: 200 },

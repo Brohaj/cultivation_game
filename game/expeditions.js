@@ -8,8 +8,9 @@ Object.assign(game, {
 
     canAscendLocation(locationId) {
         if (this.gameOver || this.pendingRebirth) return false;
+        if (!LOCATIONS.some(loc => loc.id === locationId)) return false;
         if (this.ascendedLocations[locationId]) return false;
-        if (!this.flags["expedition_" + locationId]) return false; // нужна хотя бы 1 экспедиция
+        if ((this.expeditionCompletions?.[locationId] || 0) < this.getLocationAscensionRequirement(locationId, 1)) return false;
         const cost = LOCATION_ASCEND_COST;
         return this.stones >= cost.stones && this.daoEssence >= cost.essence && this.artifactDust >= cost.dust;
     },
@@ -21,7 +22,6 @@ Object.assign(game, {
         this.daoEssence -= cost.essence;
         this.artifactDust -= cost.dust;
         this.ascendedLocations[locationId] = (this.ascendedLocations[locationId] || 0) + 1;
-        if (this.expeditionCompletions) this.expeditionCompletions[locationId] = 0;
         const ascData = LOCATION_ASCENDED[locationId];
         const name = ascData ? ascData.name : locationId;
         addLog(`Тайное Царство вознесено! ${name} — награды удвоены.`, "breakthrough");
@@ -51,6 +51,17 @@ Object.assign(game, {
         }
         const loc = LOCATIONS.find(l => l.id === locationId);
         return loc ? loc.description : "";
+    },
+
+    // Первый и второй уровни глубины требуют 10 и 20 общих успешных походов.
+    // Боевые тело и секта сокращают именно число походов; Аукцион остаётся торговым путём.
+    getLocationAscensionRequirement(locationId, destinationTier = 1) {
+        const base = destinationTier >= 2 ? 20 : 10;
+        if (locationId === "heavenly_auction") return base;
+        const body = this.getActiveBodyPerks().expeditionProgressReduction || 0;
+        const sect = this.getSectBonus("expeditionProgressReduction");
+        const reduction = Math.min(0.20, Math.max(0, body + sect));
+        return Math.ceil(base * (1 - reduction));
     },
 
     // === ПРОВЕРКА ДОСТУПА ===
@@ -461,24 +472,24 @@ Object.assign(game, {
         if (!this.expeditionCompletions) this.expeditionCompletions = {};
         this.expeditionCompletions[loc.id] = (this.expeditionCompletions[loc.id] || 0) + 1;
 
-        // При 10 завершениях — слух о вознесении тир 2
-        if (this.expeditionCompletions[loc.id] === 10 && !this.ascendedLocations[loc.id]) {
+        // При достаточном числе походов открывается испытание новой глубины.
+        if (this.expeditionCompletions[loc.id] >= this.getLocationAscensionRequirement(loc.id, 1) && !this.ascendedLocations[loc.id]) {
             const ascAdvId = "ascend_" + loc.id;
             const ascAdv = ADVENTURES.find(a => a.id === ascAdvId);
             if (ascAdv && ascAdv.condition(this)) {
                 if (this.addAdventureRumor(ascAdvId)) {
-                    addLog(`Десять походов в "${loc.name}" открыли новый путь. Вы готовы к испытанию вознесения.`, "breakthrough");
+                    addLog(`Походы в "${loc.name}" открыли новый путь. Вы готовы к испытанию вознесения.`, "breakthrough");
                 }
             }
         }
-        // После 20 завершений повторяем выдачу, если слух пропустили или прервали.
+        // Повторяем выдачу, если слух пропустили или прервали.
         // Дубликаты и уже завершённые испытания отсекает addAdventureRumor.
-        if (this.expeditionCompletions[loc.id] >= 20 && this.ascendedLocations[loc.id] === 1) {
+        if (this.expeditionCompletions[loc.id] >= this.getLocationAscensionRequirement(loc.id, 2) && this.ascendedLocations[loc.id] === 1) {
             const ascAdvId = "ascend2_" + loc.id;
             const ascAdv = ADVENTURES.find(a => a.id === ascAdvId);
             if (ascAdv && ascAdv.condition(this)) {
                 if (this.addAdventureRumor(ascAdvId)) {
-                    addLog(`Двадцать походов. "${this.getLocationName(loc.id)}" готово открыть последнюю тайну.`, "breakthrough");
+                    addLog(`"${this.getLocationName(loc.id)}" готово открыть последнюю тайну.`, "breakthrough");
                 }
             }
         }
